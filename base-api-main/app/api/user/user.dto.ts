@@ -10,8 +10,8 @@ export interface IUser extends BaseSchema {
   password?: string; // mapped from password_hash
   password_hash?: string;
   role_id: number;
-  division_id?: number;
-  station_id?: number;
+  division_id?: number | null;
+  station_id?: number | null;
   profile_image?: string;
   users_status?: "active" | "inactive" | "suspended";
   last_login_at?: Date;
@@ -26,8 +26,8 @@ export interface IUserCreate {
   mobile?: string;
   password: string; // plain text
   role_id: number;
-  division_id?: number;
-  station_id?: number;
+  division_id?: number | null;
+  station_id?: number | null;
   profile_image?: string;
   users_status?: "active" | "inactive" | "suspended";
 }
@@ -41,8 +41,8 @@ export interface IUserUpdate {
   mobile?: string;
   password?: string; // plain text if changing
   role_id?: number;
-  division_id?: number;
-  station_id?: number;
+  division_id?: number | null;
+  station_id?: number | null;
   profile_image?: string;
   users_status?: "active" | "inactive" | "suspended";
 }
