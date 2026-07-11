@@ -1,0 +1,254 @@
+.header {
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13.5px;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.errorBanner {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.selectionPanel {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+}
+
+.panelTitle {
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+
+.searchInput {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  margin-bottom: 12px;
+}
+
+.searchInput:focus {
+  border-color: var(--color-primary);
+}
+
+.vendorList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.vendorItem,
+.vendorItemActive {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: none;
+  text-align: left;
+  width: 100%;
+}
+
+.vendorItemActive {
+  background: var(--color-info-bg);
+}
+
+.vendorItem:hover {
+  background: var(--color-bg);
+}
+
+.vendorAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.vendorName {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.vendorSub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.emptyState {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.cardPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-card);
+  min-height: 380px;
+  justify-content: center;
+}
+
+.idCard {
+  width: 100%;
+  max-width: 420px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+}
+
+.idCardHeader {
+  background: var(--color-sidebar);
+  color: #fff;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.idCardBody {
+  display: flex;
+  gap: 16px;
+  padding: 18px 16px;
+  align-items: flex-start;
+}
+
+.idCardAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.idCardDetails {
+  flex: 1;
+  min-width: 0;
+}
+
+.idCardName {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.idCardRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+  gap: 8px;
+}
+
+.idCardRow strong {
+  color: var(--color-text);
+  font-weight: 600;
+  text-align: right;
+}
+
+.qrImage {
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+}
+
+.idCardStatusActive,
+.idCardStatusPending {
+  text-align: center;
+  padding: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.idCardStatusActive {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.idCardStatusPending {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.issueBtn {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.issueBtn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.issueBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

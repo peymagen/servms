@@ -1,0 +1,272 @@
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13.5px;
+}
+
+.roleTag {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.errorBanner {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.statCard {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+}
+
+.statValue {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.panelGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.panel {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.panelTitle {
+  font-size: 15px;
+  margin: 0 0 16px;
+}
+
+.barChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  height: 180px;
+  padding-top: 10px;
+}
+
+.barCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 8px;
+}
+
+.bar {
+  width: 100%;
+  max-width: 36px;
+  background: var(--color-primary);
+  border-radius: 6px 6px 0 0;
+  min-height: 4px;
+}
+
+.barLabel {
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.emptyState {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.donutRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.donut {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.donutHole {
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+
+.donutLegend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.donutLegend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dotSidebar,
+.dotInfo,
+.dotWarn,
+.dotDanger {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.dotSidebar {
+  background: var(--color-sidebar);
+}
+
+.dotInfo {
+  background: var(--color-info);
+}
+
+.dotWarn {
+  background: var(--color-warning);
+}
+
+.dotDanger {
+  background: var(--color-danger);
+}
+
+.alertList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.alertItem {
+  display: flex;
+  gap: 10px;
+}
+
+.alertItem .dotWarn,
+.alertItem .dotDanger {
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.alertTitle {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.alertDesc {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+
+.alertTime {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.perfTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.perfTable th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.perfTable td {
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.perfTable tr:last-child td {
+  border-bottom: none;
+}
+
+.scoreExcellent,
+.scoreGood,
+.scoreAverage,
+.scorePoor {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.scoreExcellent {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.scoreGood {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.scoreAverage {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.scorePoor {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}

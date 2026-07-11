@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  DIVISION_ADDITIONAL_ADMIN
+}
+
+enum Division {
+  ADRA
+  RANCHI
+  CHAKRADHARPUR
+  KHARAGPUR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id           String     @id @default(cuid())
+  employeeId   String     @unique
+  passwordHash String
+  fullName     String
+  designation  String?
+  email        String?
+  role         Role
+  division     Division?
+  status       UserStatus @default(ACTIVE)
+  lastLogin    DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+enum FeeStatus {
+  PAID
+  OVERDUE
+}
+
+enum ContractorStatus {
+  ACTIVE
+  PENDING_APPROVAL
+  SUSPENDED
+}
+
+model Contractor {
+  id             String           @id @default(cuid())
+  name           String
+  licenseNumber  String           @unique
+  division       Division
+  validityDate   DateTime
+  feeStatus      FeeStatus        @default(PAID)
+  status         ContractorStatus @default(ACTIVE)
+  vendors        Vendor[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+enum AadhaarStatus {
+  VERIFIED
+  PENDING
+}
+
+enum VendorStatus {
+  ACTIVE
+  EXPIRED
+  INACTIVE
+}
+
+enum IdCardStatus {
+  NOT_ISSUED
+  ACTIVE
+  EXPIRED
+}
+
+model Vendor {
+  id              String        @id @default(cuid())
+  vendorCode      String        @unique
+  fullName        String
+  contractorId    String
+  contractor      Contractor    @relation(fields: [contractorId], references: [id])
+  division        Division
+  unitStation     String
+  vendorType      String
+  mobileNumber    String?
+  email           String?
+  aadhaarStatus   AadhaarStatus @default(PENDING)
+  medicalValidity DateTime?
+  status          VendorStatus  @default(ACTIVE)
+  idCardStatus    IdCardStatus  @default(NOT_ISSUED)
+  idCardIssuedAt  DateTime?
+  penalties       Penalty[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+enum UnitStatus {
+  ACTIVE
+  EXPIRING
+  INACTIVE
+  PENDING
+}
+
+model Unit {
+  id                String     @id @default(cuid())
+  station           String
+  platformLocation  String?
+  division          Division
+  clusterName       String?
+  contractType      String?
+  contractCategory  String?
+  unitName          String
+  unitCode          String     @unique
+  areaDescription   String?
+  inspectorName     String?
+  status            UnitStatus @default(ACTIVE)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ComplaintStatus {
+  PENDING
+  UNDER_INVESTIGATION
+  RESOLVED
+}
+
+model Complaint {
+  id             String            @id @default(cuid())
+  unitStation    String
+  category       String
+  description    String
+  division       Division
+  priority       ComplaintPriority @default(MEDIUM)
+  status         ComplaintStatus   @default(PENDING)
+  occurrenceDate DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+enum PenaltyStatus {
+  PENDING
+  RECOVERED
+  OVERDUE
+}
+
+model Penalty {
+  id           String        @id @default(cuid())
+  refNo        String        @unique
+  vendorId     String?
+  vendor       Vendor?       @relation(fields: [vendorId], references: [id])
+  vendorName   String
+  unitLocation String
+  division     Division
+  penaltyType  String
+  amount       Float
+  status       PenaltyStatus @default(PENDING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
