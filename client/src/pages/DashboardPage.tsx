@@ -108,7 +108,14 @@ export default function DashboardPage() {
 
         <section className={styles.panel}>
           <h2 className={styles.panelTitle}>Inspection Summary</h2>
-          {stats && <DonutChart summary={stats.inspectionSummary} />}
+          {stats &&
+            (stats.inspectionSummary.satisfactory ||
+            stats.inspectionSummary.minorIssues ||
+            stats.inspectionSummary.criticalFailures ? (
+              <DonutChart summary={stats.inspectionSummary} />
+            ) : (
+              <p className={styles.emptyState}>No inspection data yet.</p>
+            ))}
         </section>
       </div>
 

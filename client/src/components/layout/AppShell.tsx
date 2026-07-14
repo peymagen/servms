@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { roleLabel } from "../../types/labels";
+import { api } from "../../api/client";
+import { getReadIds } from "../../utils/notificationPrefs";
 import styles from "./AppShell.module.css";
 
 interface NavItem {
@@ -31,6 +33,19 @@ const FOOTER_NAV_ITEMS: NavItem[] = [
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    api
+      .get<{ rows: { id: string }[] }>("/notifications?module=all&limit=50")
+      .then((res) => {
+        const readIds = getReadIds();
+        setUnreadCount(res.rows.filter((r) => !readIds.has(r.id)).length);
+      })
+      .catch(() => {});
+  }, [user]);
 
   if (!user) return null;
 
@@ -86,8 +101,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <header className={styles.topbar}>
           <input className={styles.search} placeholder="Search across SERVMS…" />
           <div className={styles.headerIcons}>
-            <button className={styles.iconBtn} aria-label="Notifications" type="button">
+            <button
+              className={styles.iconBtn}
+              aria-label="Notifications"
+              type="button"
+              onClick={() => navigate("/notifications")}
+            >
               <IconBell />
+              {unreadCount > 0 && (
+                <span className={styles.notificationDot}>{unreadCount > 9 ? "9+" : unreadCount}</span>
+              )}
             </button>
             <button className={styles.iconBtn} aria-label="Help" type="button">
               <IconHelpCircle />

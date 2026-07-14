@@ -91,7 +91,7 @@ export const issueIdCard = async (vendorId: string) => {
 export const verifyIdCard = async (idNumberOrCode: string) => {
   const query = `
     SELECT
-      v.vendor_code, v.full_name, v.vendor_type, v.profile_image, v.validity_start, v.validity_end,
+      v.vendor_code, v.full_name, v.vendor_type, v.validity_start, v.validity_end,
       v.police_verification_status, v.medical_fitness_status, v.aadhar_linked,
       c.company_name as contractor_name,
       u.unit_name, st.station_name,

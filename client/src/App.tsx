@@ -21,6 +21,7 @@ import QrVerificationPage from "./pages/QrVerificationPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpCenterPage from "./pages/HelpCenterPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 function protectedPage(page: ReactNode) {
   return (
@@ -52,6 +53,7 @@ function App() {
           <Route path="/complaints/new" element={protectedPage(<ComplaintRegistrationPage />)} />
           <Route path="/penalties" element={protectedPage(<PenaltiesPage />)} />
           <Route path="/reports" element={protectedPage(<ReportsPage />)} />
+          <Route path="/notifications" element={protectedPage(<NotificationsPage />)} />
           <Route path="/settings" element={protectedPage(<SettingsPage />)} />
           <Route path="/help" element={protectedPage(<HelpCenterPage />)} />
 

@@ -34,7 +34,12 @@ router.get("/metrics", vendorController.getVendorMetrics);
 router.get("/", vendorController.getVendors);
 router.get("/:id", vendorController.getVendorById);
 
-router.post("/", upload.single("profile_image"), createVendorValidation, validate, vendorController.createVendor);
+const vendorUpload = upload.fields([
+  { name: "profile_image", maxCount: 1 },
+  { name: "medical_doc", maxCount: 1 },
+]);
+
+router.post("/", vendorUpload, createVendorValidation, validate, vendorController.createVendor);
 router.patch("/:id", upload.single("profile_image"), updateVendorValidation, validate, vendorController.editVendor);
 router.delete("/:id", vendorController.deleteVendor);
 

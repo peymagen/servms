@@ -7,14 +7,16 @@ import { type Request, type Response } from "express";
 export const createVendor = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id ?? 1;
 
+  const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+
   // Handle uploaded profile image file if exists
-  if (req.file) {
-    req.body.profile_image = `/uploads/${req.file.filename}`;
+  if (files?.profile_image?.[0]) {
+    req.body.profile_image = `/uploads/${files.profile_image[0].filename}`;
   }
 
   // Handle document upload if passed (for medical fitness)
-  if ((req as any).files && (req as any).files["medical_doc"]) {
-    req.body.medical_fitness_doc = `/uploads/${(req as any).files["medical_doc"][0].filename}`;
+  if (files?.medical_doc?.[0]) {
+    req.body.medical_fitness_doc = `/uploads/${files.medical_doc[0].filename}`;
   }
 
   const result = await vendorService.createVendor(req.body, userId);

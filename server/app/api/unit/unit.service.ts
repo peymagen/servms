@@ -87,6 +87,8 @@ export const getUnits = async (filters: {
     whereClauses.push("u.units_status = ?");
     params.push(filters.units_status);
     countParams.push(filters.units_status);
+  } else {
+    whereClauses.push("u.units_status != 'inactive'");
   }
 
   const whereSql = `WHERE ${whereClauses.join(" AND ")}`;
@@ -190,7 +192,7 @@ export const deleteUnit = async (id: string) => {
 // ─── GET UNIT METRICS ────────────────────────────────────────────────────────────
 export const getUnitMetrics = async (divisionId?: number) => {
   const params: any[] = [];
-  let whereSql = "1 = 1";
+  let whereSql = "u.units_status != 'inactive'";
   if (divisionId) {
     whereSql += " AND st.division_id = ?";
     params.push(divisionId);

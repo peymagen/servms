@@ -10,6 +10,7 @@ import unitRoutes from "./api/unit/unit.route";
 import idcardRoutes from "./api/idcard/idcard.route";
 import renewalRoutes from "./api/renewal/renewal.route";
 import roleRoutes from "./api/role/role.route";
+import notificationRoutes from "./api/notification/notification.route";
 
 const router = express.Router();
 
@@ -24,5 +25,6 @@ router.use("/units", unitRoutes);
 router.use("/idcards", idcardRoutes);
 router.use("/renewals", renewalRoutes);
 router.use("/roles", roleRoutes);
+router.use("/notifications", notificationRoutes);
 
 export default router;
