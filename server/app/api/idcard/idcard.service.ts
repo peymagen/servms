@@ -33,12 +33,15 @@ export const getIdCards = async (filters: {
   const query = `
     SELECT
       v.id as vendor_id, v.vendor_code, v.full_name, v.vendor_type, v.profile_image,
+      v.validity_start, v.validity_end, v.police_verification_status, v.medical_fitness_status, v.aadhar_linked,
+      c.company_name as contractor_name,
       u.unit_name, st.station_name, d.division_name,
       ic.id, ic.id_number, ic.qr_code_data, ic.issued_date, ic.cards_status, ic.last_checked_at
     FROM vendors v
     LEFT JOIN units u ON u.id = v.unit_id
     LEFT JOIN stations st ON st.id = v.station_id
     LEFT JOIN divisions d ON d.id = v.division_id
+    LEFT JOIN contractors c ON c.id = v.contractor_id
     LEFT JOIN vendor_id_cards ic ON ic.vendor_id = v.id
     ${whereSql}
     ORDER BY v.created_at DESC

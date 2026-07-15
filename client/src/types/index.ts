@@ -195,6 +195,12 @@ export interface IdCard {
   issued_date: string | null;
   cards_status: "active" | "pending" | "expired";
   last_checked_at: string | null;
+  validity_start?: string | null;
+  validity_end?: string | null;
+  police_verification_status?: string | null;
+  medical_fitness_status?: string | null;
+  aadhar_linked?: boolean | number | null;
+  contractor_name?: string | null;
 }
 
 export interface VendorRenewal {
