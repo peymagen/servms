@@ -48,15 +48,31 @@ export default function IdCardQrPage() {
       setQrDataUrl(null);
       return;
     }
+    const calculateDaysRemaining = (end: string | null | undefined) => {
+      if (!end) return "N/A";
+      const diff = new Date(end).getTime() - new Date().getTime();
+      return Math.ceil(diff / (1000 * 3600 * 24));
+    };
+
     const qrData = {
+      status: selectedCard.cards_status,
+      lastChecked: selectedCard.last_checked_at,
+      fullName: selectedCard.full_name,
+      vendorType: selectedCard.vendor_type,
+      contractorAgency: selectedCard.contractor_name || "N/A",
+      assignedUnit: selectedCard.unit_name || "N/A",
+      validityPeriod: `${selectedCard.validity_start || "N/A"} to ${selectedCard.validity_end || "N/A"}`,
+      daysRemaining: calculateDaysRemaining(selectedCard.validity_end),
+      policeVerification: selectedCard.police_verification_status,
+      medicalFitness: selectedCard.medical_fitness_status,
+      aadharLinked: selectedCard.aadhar_linked ? "Yes" : "No",
+      employeeId: selectedCard.vendor_code,
       idNumber: selectedCard.id_number,
-      name: selectedCard.full_name,
       qrCode: selectedCard.qr_code_data,
-      
     };
 
     QRCode.toDataURL(JSON.stringify(qrData), {
-      width: 180,
+      width: 500,
       margin: 1,
     })
       .then(setQrDataUrl)
