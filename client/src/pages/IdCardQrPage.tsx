@@ -48,9 +48,17 @@ export default function IdCardQrPage() {
       setQrDataUrl(null);
       return;
     }
-    const code = selectedCard.qr_code_data ?? selectedCard.id_number;
-    const verifyUrl = `${window.location.origin}/verify/${encodeURIComponent(code)}`;
-    QRCode.toDataURL(verifyUrl, { width: 180, margin: 1 })
+    const qrData = {
+      idNumber: selectedCard.id_number,
+      name: selectedCard.full_name,
+      qrCode: selectedCard.qr_code_data,
+      
+    };
+
+    QRCode.toDataURL(JSON.stringify(qrData), {
+      width: 180,
+      margin: 1,
+    })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
   }, [selectedCard]);
