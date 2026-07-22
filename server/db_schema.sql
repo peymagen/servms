@@ -46,6 +46,7 @@ CREATE TABLE `complaints` (
   `description` text DEFAULT NULL,
   `occurrence_date` date DEFAULT NULL,
   `occurrence_time` time DEFAULT NULL,
+  `resolution_date` date DEFAULT NULL,
   `priority` enum('low','medium','high') NOT NULL DEFAULT 'medium',
   `complaints_status` enum('open','investigating','resolved','rejected') NOT NULL DEFAULT 'open',
   `registered_by` int(10) unsigned DEFAULT NULL,

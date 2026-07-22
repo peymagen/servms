@@ -1,0 +1,34 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Output of 'npm run build'
+dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+logs/*.log
+
+# IDE configs
+.vscode/
+.idea/
+
+# Optional: coverage reports
+coverage/
+
+# Optional: PM2 logs and runtime files
+.pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional: lock files if you don't want them
+# package-lock.json
+# yarn.lock

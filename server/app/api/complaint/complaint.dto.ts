@@ -8,6 +8,7 @@ export interface IComplaint extends BaseSchema {
   description: string;
   occurrence_date?: string;
   occurrence_time?: string;
+  resolution_date?: string;
   priority: "low" | "medium" | "high";
   complaints_status: "open" | "investigating" | "resolved" | "rejected";
   registered_by?: number;
@@ -31,4 +32,5 @@ export interface IComplaintUpdate {
   description?: string;
   priority?: "low" | "medium" | "high";
   complaints_status?: "open" | "investigating" | "resolved" | "rejected";
+  resolution_date?: string;
 }
