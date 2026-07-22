@@ -15,6 +15,13 @@ function derivePenaltyType(reason: string): string {
   return "OTHER";
 }
 
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 const LIMIT = 10;
 
 const STATUS_LABELS: Record<Penalty["penalties_status"], string> = {
@@ -50,6 +57,10 @@ export default function PenaltiesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
+  const [viewPenalty, setViewPenalty] = useState<Penalty | null>(null);
+  const [editPenaltyTarget, setEditPenaltyTarget] = useState<Penalty | null>(null);
+  const [resolvingId, setResolvingId] = useState<number | null>(null);
+
   function buildParams(limit: number, offsetVal: number) {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offsetVal) });
     if (search) params.set("search", search);
@@ -82,7 +93,17 @@ export default function PenaltiesPage() {
     try {
       const params = buildParams(2000, 0);
       const res = await api.get<{ total: number; rows: Penalty[] }>(`/penalties?${params.toString()}`);
-      const headers = ["Ref No", "Contractor / Vendor", "Unit / Location", "Penalty Type", "Reason", "Amount", "Status"];
+      const headers = [
+        "Ref No",
+        "Contractor / Vendor",
+        "Unit / Location",
+        "Penalty Type",
+        "Reason",
+        "Amount",
+        "Date Raised",
+        "Date Resolved",
+        "Status",
+      ];
       const rows = res.rows.map((p) => [
         p.penalty_code,
         p.contractor_name ?? p.vendor_name ?? "",
@@ -90,6 +111,8 @@ export default function PenaltiesPage() {
         derivePenaltyType(p.reason),
         p.reason,
         p.amount,
+        formatDate(p.issued_date),
+        p.penalties_status !== "pending" ? formatDate(p.resolution_date) : "",
         STATUS_LABELS[p.penalties_status],
       ]);
       const csv = [headers, ...rows]
@@ -106,6 +129,28 @@ export default function PenaltiesPage() {
       setError("Unable to export penalty ledger");
     } finally {
       setIsExporting(false);
+    }
+  }
+
+  async function updatePenalty(id: number, data: Partial<Penalty>) {
+    await api.patch(`/penalties/${id}`, data);
+    load();
+  }
+
+  // Direct resolve action — fires the API call immediately when an option is picked
+  async function resolvePenalty(id: number, status: "recovered" | "waived") {
+    setResolvingId(id);
+    setError(null);
+    try {
+      await api.patch(`/penalties/${id}`, {
+        penalties_status: status,
+        resolution_date: new Date().toISOString(),
+      });
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to update penalty status");
+    } finally {
+      setResolvingId(null);
     }
   }
 
@@ -221,19 +266,22 @@ export default function PenaltiesPage() {
               <th>Penalty Type</th>
               <th>Reason</th>
               <th>Amount</th>
+              <th>Date Raised</th>
+              <th>Date Resolved</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className={styles.emptyCell}>
+                <td colSpan={10} className={styles.emptyCell}>
                   Loading…
                 </td>
               </tr>
             ) : penalties.length === 0 ? (
               <tr>
-                <td colSpan={7} className={styles.emptyCell}>
+                <td colSpan={10} className={styles.emptyCell}>
                   No penalties recorded.
                 </td>
               </tr>
@@ -250,6 +298,10 @@ export default function PenaltiesPage() {
                     {p.reason}
                   </td>
                   <td>{currency.format(p.amount)}</td>
+                  <td>{formatDate(p.issued_date)}</td>
+                  <td>
+                    {p.penalties_status !== "pending" ? formatDate(p.resolution_date) : "—"}
+                  </td>
                   <td>
                     <span
                       className={
@@ -262,6 +314,31 @@ export default function PenaltiesPage() {
                     >
                       {STATUS_LABELS[p.penalties_status]}
                     </span>
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <button
+                        type="button"
+                        className={styles.pageBtn}
+                        title="View penalty"
+                        onClick={() => setViewPenalty(p)}
+                      >
+                        <EyeIcon />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.pageBtn}
+                        title="Edit penalty"
+                        onClick={() => setEditPenaltyTarget(p)}
+                      >
+                        <EditIcon />
+                      </button>
+                      <ResolveActionMenu
+                        penalty={p}
+                        onResolve={resolvePenalty}
+                        isResolving={resolvingId === p.id}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))
@@ -281,6 +358,53 @@ export default function PenaltiesPage() {
           }}
         />
       )}
+
+      {viewPenalty && (
+        <div className={styles.modalOverlay} onClick={() => setViewPenalty(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>{viewPenalty.penalty_code}</h2>
+            <div className={styles.formGrid}>
+              <DetailItem
+                label="Contractor / Vendor"
+                value={viewPenalty.contractor_name ?? viewPenalty.vendor_name ?? "—"}
+              />
+              <DetailItem label="Unit / Location" value={viewPenalty.unit_name ?? "—"} />
+              <DetailItem label="Penalty Type" value={derivePenaltyType(viewPenalty.reason)} />
+              <DetailItem label="Amount" value={currency.format(viewPenalty.amount)} />
+              <DetailItem label="Date Raised" value={formatDate(viewPenalty.issued_date)} />
+              <DetailItem
+                label="Date Resolved"
+                value={
+                  viewPenalty.penalties_status !== "pending"
+                    ? formatDate(viewPenalty.resolution_date)
+                    : "—"
+                }
+              />
+              <DetailItem label="Status" value={STATUS_LABELS[viewPenalty.penalties_status]} />
+              <div className={styles.fieldWide}>
+                <div className={styles.fieldLabel}>Reason</div>
+                <div className={styles.strong}>{viewPenalty.reason}</div>
+              </div>
+            </div>
+            <div className={styles.modalActions}>
+              <button className={styles.cancelBtn} onClick={() => setViewPenalty(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editPenaltyTarget && (
+        <EditPenaltyModal
+          penalty={editPenaltyTarget}
+          onClose={() => setEditPenaltyTarget(null)}
+          onSaved={(data) => {
+            updatePenalty(editPenaltyTarget.id, data);
+            setEditPenaltyTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -290,6 +414,108 @@ function LabeledField({ label, children }: { label: string; children: ReactNode 
     <div className={styles.field} style={{ flex: 1 }}>
       <span className={styles.fieldLabel}>{label}</span>
       {children}
+    </div>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className={styles.fieldLabel}>{label}</div>
+      <div className={styles.strong}>{value}</div>
+    </div>
+  );
+}
+
+function ResolveActionMenu({
+  penalty,
+  onResolve,
+  isResolving,
+}: {
+  penalty: Penalty;
+  onResolve: (id: number, status: "recovered" | "waived") => void;
+  isResolving: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (penalty.penalties_status !== "pending") return null;
+
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <button
+        type="button"
+        className={styles.pageBtn}
+        title="Update status"
+        disabled={isResolving}
+        onClick={() => setOpen((o) => !o)}
+        style={{ opacity: isResolving ? 0.5 : 1, cursor: isResolving ? "not-allowed" : "pointer" }}
+      >
+        <StatusIcon />
+      </button>
+
+      {open && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setOpen(false)} />
+          <div
+            style={{
+              position: "absolute",
+              top: "100%",
+              right: 0,
+              marginTop: 4,
+              background: "var(--color-surface)",
+              boxShadow: "var(--shadow-card)",
+              borderRadius: 8,
+              zIndex: 20,
+              minWidth: 150,
+              overflow: "hidden",
+              border: "1px solid rgba(0,0,0,0.08)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                onResolve(penalty.id, "recovered");
+                setOpen(false);
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                padding: "9px 14px",
+                border: "none",
+                background: "none",
+                cursor: "pointer",
+                fontSize: 13,
+                color: "#16a34a",
+                fontWeight: 500,
+              }}
+            >
+              ✓ Mark Recovered
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onResolve(penalty.id, "waived");
+                setOpen(false);
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                padding: "9px 14px",
+                border: "none",
+                background: "none",
+                cursor: "pointer",
+                fontSize: 13,
+                color: "#d97706",
+                fontWeight: 500,
+              }}
+            >
+              Waive Penalty
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -384,5 +610,116 @@ function NewPenaltyModal({
         </div>
       </form>
     </div>
+  );
+}
+
+function EditPenaltyModal({
+  penalty,
+  onClose,
+  onSaved,
+}: {
+  penalty: Penalty;
+  onClose: () => void;
+  onSaved: (data: Partial<Penalty>) => void;
+}) {
+  const [amount, setAmount] = useState(String(penalty.amount));
+  const [reason, setReason] = useState(penalty.reason);
+  const [penaltiesStatus, setPenaltiesStatus] = useState(penalty.penalties_status);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      onSaved({
+        amount: Number(amount),
+        reason,
+        penalties_status: penaltiesStatus,
+      });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to update penalty");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <h2 className={styles.modalTitle}>Edit {penalty.penalty_code}</h2>
+        <div className={styles.formGrid}>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Amount (₹)</span>
+            <input type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Status</span>
+            <select
+              value={penaltiesStatus}
+              onChange={(e) => setPenaltiesStatus(e.target.value as Penalty["penalties_status"])}
+            >
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.fieldWide}>
+            <div className={styles.field}>
+              <span className={styles.fieldLabel}>Reason</span>
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} />
+            </div>
+          </div>
+        </div>
+        {error && <div className={styles.errorBanner}>{error}</div>}
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.cancelBtn} onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className={styles.addBtn} onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function StatusIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M8 12.5l2.5 2.5L16 9.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
