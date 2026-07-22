@@ -7,13 +7,6 @@ import StatCard from "../components/ui/StatCard";
 import Pagination from "../components/ui/Pagination";
 import styles from "../styles/listPage.module.css";
 
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
-
 const LIMIT = 10;
 
 const STATUS_LABELS: Record<Complaint["complaints_status"], string> = {
@@ -47,7 +40,6 @@ export default function ComplaintsPage() {
   const [editComplaintTarget, setEditComplaintTarget] = useState<Complaint | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [resolvingId, setResolvingId] = useState<number | null>(null);
 
   function buildParams(limit: number, offsetVal: number) {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offsetVal) });
@@ -87,19 +79,6 @@ export default function ComplaintsPage() {
   async function updateStatus(id: number, data: Partial<Complaint>) {
     await api.patch(`/complaints/${id}`, data);
     load();
-  }
-
-  async function changeComplaintStatus(id: number, status: Complaint["complaints_status"]) {
-    setResolvingId(id);
-    setError(null);
-    try {
-      await api.patch(`/complaints/${id}`, { complaints_status: status });
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to update complaint status");
-    } finally {
-      setResolvingId(null);
-    }
   }
 
   return (
@@ -204,8 +183,7 @@ export default function ComplaintsPage() {
           <thead>
             <tr>
               <th>Complaint ID</th>
-              <th>Date Raised</th>
-              <th>Date Resolved</th>
+              <th>Date</th>
               <th>Unit / Station</th>
               <th>Category</th>
               <th>Priority</th>
@@ -216,13 +194,13 @@ export default function ComplaintsPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={8} className={styles.emptyCell}>
+                <td colSpan={7} className={styles.emptyCell}>
                   Loading…
                 </td>
               </tr>
             ) : complaints.length === 0 ? (
               <tr>
-                <td colSpan={8} className={styles.emptyCell}>
+                <td colSpan={7} className={styles.emptyCell}>
                   No complaints found.
                 </td>
               </tr>
@@ -230,12 +208,7 @@ export default function ComplaintsPage() {
               complaints.map((c) => (
                 <tr key={c.id}>
                   <td className={styles.strong}>#{c.complaint_code}</td>
-                  <td>{formatDate(c.occurrence_date)}</td>
-                  <td>
-                    {c.complaints_status === "resolved" || c.complaints_status === "rejected"
-                      ? formatDate(c.resolution_date)
-                      : "—"}
-                  </td>
+                  <td>{c.occurrence_date ? new Date(c.occurrence_date).toLocaleDateString() : "—"}</td>
                   <td>{c.unit_name ?? c.station_name ?? "—"}</td>
                   <td>{c.category}</td>
                   <td>
@@ -282,11 +255,6 @@ export default function ComplaintsPage() {
                       >
                         <EditIcon />
                       </button>
-                      <ComplaintStatusMenu
-                        complaint={c}
-                        onChangeStatus={changeComplaintStatus}
-                        isUpdating={resolvingId === c.id}
-                      />
                     </div>
                   </td>
                 </tr>
@@ -307,12 +275,11 @@ export default function ComplaintsPage() {
                 label="Priority"
                 value={viewComplaint.priority.charAt(0).toUpperCase() + viewComplaint.priority.slice(1)}
               />
-              <DetailItem label="Date Raised" value={formatDate(viewComplaint.occurrence_date)} />
               <DetailItem
-                label="Date Resolved"
+                label="Date"
                 value={
-                  viewComplaint.complaints_status === "resolved" || viewComplaint.complaints_status === "rejected"
-                    ? formatDate(viewComplaint.resolution_date)
+                  viewComplaint.occurrence_date
+                    ? new Date(viewComplaint.occurrence_date).toLocaleDateString()
                     : "—"
                 }
               />
@@ -363,90 +330,6 @@ function DetailItem({ label, value }: { label: string; value: string }) {
     <div>
       <div className={styles.fieldLabel}>{label}</div>
       <div className={styles.strong}>{value}</div>
-    </div>
-  );
-}
-
-function ComplaintStatusMenu({
-  complaint,
-  onChangeStatus,
-  isUpdating,
-}: {
-  complaint: Complaint;
-  onChangeStatus: (id: number, status: Complaint["complaints_status"]) => void;
-  isUpdating: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-
-  if (complaint.complaints_status === "resolved" || complaint.complaints_status === "rejected") {
-    return null;
-  }
-
-  const options: Array<{ status: Complaint["complaints_status"]; label: string; color: string }> = [];
-  if (complaint.complaints_status === "open") {
-    options.push({ status: "investigating", label: "Mark Under Investigation", color: "#2563eb" });
-  }
-  options.push({ status: "resolved", label: "Mark Resolved", color: "#16a34a" });
-  options.push({ status: "rejected", label: "Reject Complaint", color: "#d97706" });
-
-  return (
-    <div style={{ position: "relative", display: "inline-block" }}>
-      <button
-        type="button"
-        className={styles.pageBtn}
-        title="Update status"
-        disabled={isUpdating}
-        onClick={() => setOpen((o) => !o)}
-        style={{ opacity: isUpdating ? 0.5 : 1, cursor: isUpdating ? "not-allowed" : "pointer" }}
-      >
-        <StatusIcon />
-      </button>
-
-      {open && (
-        <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setOpen(false)} />
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              right: 0,
-              marginTop: 4,
-              background: "var(--color-surface)",
-              boxShadow: "var(--shadow-card)",
-              borderRadius: 8,
-              zIndex: 20,
-              minWidth: 180,
-              overflow: "hidden",
-              border: "1px solid rgba(0,0,0,0.08)",
-            }}
-          >
-            {options.map((opt) => (
-              <button
-                key={opt.status}
-                type="button"
-                onClick={() => {
-                  onChangeStatus(complaint.id, opt.status);
-                  setOpen(false);
-                }}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "9px 14px",
-                  border: "none",
-                  background: "none",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  color: opt.color,
-                  fontWeight: 500,
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -551,21 +434,6 @@ function EditIcon() {
         d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z"
         stroke="currentColor"
         strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function StatusIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M8 12.5l2.5 2.5L16 9.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>

@@ -160,7 +160,6 @@ export interface Complaint {
   description: string;
   occurrence_date: string | null;
   occurrence_time: string | null;
-  resolution_date?: string | null;
   priority: "low" | "medium" | "high";
   complaints_status: "open" | "investigating" | "resolved" | "rejected";
   registered_by_name?: string | null;

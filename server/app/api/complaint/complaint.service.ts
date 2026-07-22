@@ -168,21 +168,13 @@ export const editComplaint = async (id: string, data: any) => {
   const updates: string[] = [];
   const values: any[] = [];
 
-  const allowedFields = ["complaints_status", "priority", "description", "category", "location_text", "resolution_date"];
+  const allowedFields = ["complaints_status", "priority", "description", "category", "location_text"];
 
   for (const field of allowedFields) {
     if (data[field] !== undefined) {
       updates.push(`\`${field}\` = ?`);
       values.push(data[field]);
     }
-  }
-
-  if (
-    (data.complaints_status === "resolved" || data.complaints_status === "rejected") &&
-    !data.resolution_date
-  ) {
-    updates.push("resolution_date = ?");
-    values.push(new Date().toISOString().split("T")[0]);
   }
 
   if (updates.length === 0) {

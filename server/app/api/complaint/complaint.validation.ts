@@ -37,8 +37,4 @@ export const updateComplaintValidation = [
     .optional()
     .trim()
     .notEmpty().withMessage("Description cannot be empty"),
-
-  body("resolution_date")
-    .optional()
-    .isISO8601().withMessage("resolution_date must be a valid date"),
 ];
