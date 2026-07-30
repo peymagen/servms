@@ -31,6 +31,14 @@ export const createContractorValidation = [
     .optional({ nullable: true })
     .isFloat({ min: 0 }).withMessage("Annual registration fee must be a positive number"),
 
+  body("award_date").optional({ nullable: true }).isDate().withMessage("Must be a valid award date"),
+  body("tenure_months")
+    .optional({ nullable: true })
+    .isInt({ min: 1 }).withMessage("Tenure must be a positive number of months"),
+  body("annual_contract_value")
+    .optional({ nullable: true })
+    .isFloat({ min: 0 }).withMessage("Annual contract value must be a positive number"),
+
   body("division_id")
     .notEmpty().withMessage("Division selection is required")
     .isInt().withMessage("division_id must be an integer"),
@@ -70,6 +78,14 @@ export const updateContractorValidation = [
     .optional()
     .isInt().withMessage("division_id must be an integer"),
 
+  body("award_date").optional({ nullable: true }).isDate().withMessage("Must be a valid award date"),
+  body("tenure_months")
+    .optional({ nullable: true })
+    .isInt({ min: 1 }).withMessage("Tenure must be a positive number of months"),
+  body("annual_contract_value")
+    .optional({ nullable: true })
+    .isFloat({ min: 0 }).withMessage("Annual contract value must be a positive number"),
+
   body("contractors_status")
     .optional()
     .isIn(["active", "pending_approval", "suspended", "expired"]).withMessage("Invalid status value"),
@@ -77,4 +93,17 @@ export const updateContractorValidation = [
   body("fee_status")
     .optional()
     .isIn(["paid", "overdue"]).withMessage("Invalid fee status value"),
+];
+
+export const changeStatusValidation = [
+  param("id").isInt().withMessage("id param must be a valid integer"),
+  body("contractors_status")
+    .notEmpty().withMessage("contractors_status is required")
+    .isIn(["active", "pending_approval", "suspended", "expired"]).withMessage("Invalid status value"),
+  body("reason").optional().isString(),
+];
+
+export const assignUnitValidation = [
+  param("id").isInt().withMessage("id param must be a valid integer"),
+  body("unit_id").notEmpty().withMessage("unit_id is required").isInt().withMessage("unit_id must be an integer"),
 ];

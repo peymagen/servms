@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, ApiError } from "../api/client";
-import { getContractorsLite, getDivisions, getStations } from "../api/masters";
-import type { Contractor, Division, Station, Unit, Vendor } from "../types";
+import { useCreateVendorMutation } from "../api/vendorApi";
+import { useGetContractorsLiteQuery, useGetDivisionsQuery, useGetStationsQuery, useGetUnitsLiteQuery } from "../api/mastersApi";
+import { VENDOR_TYPE_LABELS, type VendorType, type VerificationStatus } from "../types";
 import styles from "./VendorRegistrationPage.module.css";
 
 const STEPS = ["Personal Details", "Deployment", "Verification", "Documents", "Submit"];
+const ALLOWED_DOC_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"];
+const MAX_DOC_SIZE = 5 * 1024 * 1024;
+
+function validateDocFile(file: File): string | null {
+  const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+  if (!ALLOWED_DOC_EXTENSIONS.includes(ext)) {
+    return "Only PDF, JPG, and PNG files are supported.";
+  }
+  if (file.size > MAX_DOC_SIZE) {
+    return "File is too large. Maximum size is 5MB.";
+  }
+  return null;
+}
 
 export default function VendorRegistrationPage() {
   const navigate = useNavigate();
@@ -17,12 +30,14 @@ export default function VendorRegistrationPage() {
   const [dob, setDob] = useState("");
   const [aadhaar, setAadhaar] = useState("");
   const [mobile, setMobile] = useState("");
-  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
 
   // Step 2 — Deployment
-  const [vendorType, setVendorType] = useState<Vendor["vendor_type"]>("stationary");
+  const [vendorType, setVendorType] = useState<VendorType>("station_others");
   const [divisionId, setDivisionId] = useState<number | "">("");
   const [stationId, setStationId] = useState<number | "">("");
   const [contractorId, setContractorId] = useState<number | "">("");
@@ -31,37 +46,47 @@ export default function VendorRegistrationPage() {
   const [validityEnd, setValidityEnd] = useState("");
 
   // Step 3 — Verification
-  const [pvrNumber, setPvrNumber] = useState("");
-  const [pvrDate, setPvrDate] = useState("");
-  const [aadharLinked, setAadharLinked] = useState(false);
+  const [policeStatus, setPoliceStatus] = useState<VerificationStatus>("pending");
+  const [policeIssueDate, setPoliceIssueDate] = useState("");
+  const [policeValidTill, setPoliceValidTill] = useState("");
+  const [policeRemarks, setPoliceRemarks] = useState("");
+  const [medicalStatus, setMedicalStatus] = useState<VerificationStatus>("pending");
+  const [medicalIssueDate, setMedicalIssueDate] = useState("");
+  const [medicalValidTill, setMedicalValidTill] = useState("");
+  const [medicalRemarks, setMedicalRemarks] = useState("");
 
   // Step 4 — Documents
+  const [aadhaarDoc, setAadhaarDoc] = useState<File | null>(null);
   const [medicalDoc, setMedicalDoc] = useState<File | null>(null);
+  const [policeDoc, setPoliceDoc] = useState<File | null>(null);
 
-  const [divisions, setDivisions] = useState<Division[]>([]);
-  const [stations, setStations] = useState<Station[]>([]);
-  const [contractors, setContractors] = useState<Contractor[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: divisions = [] } = useGetDivisionsQuery();
+  const { data: contractors = [] } = useGetContractorsLiteQuery();
+  const { data: units = [] } = useGetUnitsLiteQuery();
+  const { data: stations = [] } = useGetStationsQuery(divisionId || undefined);
+  const [createVendor, { isLoading: isSubmitting }] = useCreateVendorMutation();
 
   useEffect(() => {
-    getDivisions().then(setDivisions).catch(() => {});
-    getContractorsLite().then(setContractors).catch(() => {});
-    api
-      .get<{ total: number; rows: Unit[] }>("/units?limit=200")
-      .then((res) => setUnits(res.rows))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    getStations(divisionId || undefined).then(setStations).catch(() => {});
+    // Reset immediately so a division with no stations doesn't briefly show the
+    // previous division's stations (which would wrongly make Station look required).
+    setStationId("");
   }, [divisionId]);
 
-  const filteredUnits = useMemo(
-    () => (stationId ? units.filter((u) => u.station_id === stationId) : units),
-    [units, stationId]
-  );
+  // Some divisions (e.g. Chakradharpur) have no stations configured at all — Station
+  // is only mandatory when the selected division actually has stations to choose from.
+  const stationRequired = stations.length > 0;
+
+  const filteredUnits = useMemo(() => {
+    if (stationId) return units.filter((u) => u.station_id === stationId);
+    if (divisionId) return units.filter((u) => u.division_id === divisionId);
+    return units;
+  }, [units, stationId, divisionId]);
+
+  // A division with no stations (e.g. Chakradharpur) also has no units, since every
+  // unit belongs to a station. Unit is only mandatory when at least one is available.
+  const unitRequired = divisionId !== "" ? filteredUnits.length > 0 : true;
 
   function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
@@ -69,15 +94,55 @@ export default function VendorRegistrationPage() {
     setPhotoPreview(file ? URL.createObjectURL(file) : null);
   }
 
+  function handleSignatureChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setSignatureFile(file);
+    setSignaturePreview(file ? URL.createObjectURL(file) : null);
+  }
+
+  function handleDocChange(file: File | null, setter: (f: File | null) => void) {
+    if (file) {
+      const validationError = validateDocFile(file);
+      if (validationError) {
+        setError(validationError);
+        setter(null);
+        return;
+      }
+    }
+    setError(null);
+    setter(file);
+  }
+
   function goNext() {
     setError(null);
-    if (step === 1 && (!fullName || !mobile)) {
-      setError("Full name and mobile number are required.");
+    if (step === 1 && (!fullName || !mobile || !address)) {
+      setError("Full name, mobile number, and address are required.");
       return;
     }
-    if (step === 2 && (!divisionId || !stationId || !contractorId || !unitId)) {
-      setError("Division, station, contractor, and unit are all required.");
-      return;
+    if (step === 2) {
+      const missing = [
+        { label: "Division", ok: Boolean(divisionId) },
+        { label: "Station", ok: !stationRequired || Boolean(stationId) },
+        { label: "Contractor", ok: Boolean(contractorId) },
+        { label: "Unit", ok: !unitRequired || Boolean(unitId) },
+      ]
+        .filter((f) => !f.ok)
+        .map((f) => f.label);
+
+      if (missing.length > 0) {
+        setError(`${missing.join(", ")} ${missing.length > 1 ? "are" : "is"} required.`);
+        return;
+      }
+    }
+    if (step === 3) {
+      if (policeValidTill && policeIssueDate && policeValidTill < policeIssueDate) {
+        setError("Police verification valid till date cannot be before the issue date.");
+        return;
+      }
+      if (medicalValidTill && medicalIssueDate && medicalValidTill < medicalIssueDate) {
+        setError("Medical verification valid till date cannot be before the issue date.");
+        return;
+      }
     }
     setStep((s) => Math.min(5, s + 1));
   }
@@ -89,38 +154,38 @@ export default function VendorRegistrationPage() {
 
   async function handleSubmit() {
     setError(null);
-    setIsSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append("full_name", fullName);
-      if (fatherName) formData.append("father_name", fatherName);
-      if (dob) formData.append("date_of_birth", dob);
-      if (aadhaar) formData.append("aadhaar_number", aadhaar);
-      formData.append("mobile_number", mobile);
-      if (email) formData.append("email", email);
-      formData.append("vendor_type", vendorType);
-      formData.append("division_id", String(divisionId));
-      formData.append("station_id", String(stationId));
-      formData.append("contractor_id", String(contractorId));
-      formData.append("unit_id", String(unitId));
-      if (validityStart) formData.append("validity_start", validityStart);
-      if (validityEnd) formData.append("validity_end", validityEnd);
-      if (pvrNumber) formData.append("police_verification_number", pvrNumber);
-      if (pvrDate) formData.append("police_verification_date", pvrDate);
-      if (pvrNumber) formData.append("police_verification_status", "completed");
-      formData.append("aadhar_linked", aadharLinked ? "1" : "0");
-      if (photoFile) formData.append("profile_image", photoFile);
-      if (medicalDoc) {
-        formData.append("medical_doc", medicalDoc);
-        formData.append("medical_fitness_status", "completed");
-      }
-
-      await api.post("/vendors", formData, true);
+      await createVendor({
+        full_name: fullName,
+        father_name: fatherName || undefined,
+        date_of_birth: dob || undefined,
+        aadhaar_number: aadhaar || undefined,
+        mobile_number: mobile,
+        address: address || undefined,
+        vendor_type: vendorType,
+        division_id: divisionId ? Number(divisionId) : undefined,
+        station_id: stationId ? Number(stationId) : undefined,
+        contractor_id: contractorId ? Number(contractorId) : undefined,
+        unit_id: unitId ? Number(unitId) : undefined,
+        validity_start: validityStart || undefined,
+        validity_end: validityEnd || undefined,
+        police_verification_status: policeStatus,
+        police_verification_issue_date: policeIssueDate || undefined,
+        police_verification_valid_till: policeValidTill || undefined,
+        police_verification_remarks: policeRemarks || undefined,
+        medical_verification_status: medicalStatus,
+        medical_verification_issue_date: medicalIssueDate || undefined,
+        medical_verification_valid_till: medicalValidTill || undefined,
+        medical_verification_remarks: medicalRemarks || undefined,
+        profile_image: photoFile ?? undefined,
+        signature: signatureFile ?? undefined,
+        aadhaar_document: aadhaarDoc ?? undefined,
+        medical_verification_document: medicalDoc ?? undefined,
+        police_verification_document: policeDoc ?? undefined,
+      }).unwrap();
       navigate("/vendors");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to onboard vendor");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to onboard vendor");
     }
   }
 
@@ -203,6 +268,18 @@ export default function VendorRegistrationPage() {
               Use a clear, front-facing portrait with a neutral background. Max size 2MB
               (JPG/PNG).
             </div>
+            <div className={styles.photoCardTitle} style={{ marginTop: 16 }}>
+              Signature
+            </div>
+            <label className={styles.photoUpload}>
+              <input type="file" accept="image/*" onChange={handleSignatureChange} hidden />
+              {signaturePreview ? (
+                <img src={signaturePreview} alt="Signature preview" className={styles.photoPreview} />
+              ) : (
+                <DocIcon />
+              )}
+            </label>
+            <div className={styles.photoLabel}>Upload Signature</div>
           </section>
 
           <section className={`${styles.card} ${styles.spanAll}`}>
@@ -218,12 +295,12 @@ export default function VendorRegistrationPage() {
                   required
                 />
               </Field>
-              <Field label="Email Address (Optional)">
+              <Field label="Address">
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@example.com"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Enter current residential address"
+                  required
                 />
               </Field>
             </div>
@@ -238,9 +315,12 @@ export default function VendorRegistrationPage() {
           </h2>
           <div className={styles.fieldRow}>
             <Field label="Vendor Type">
-              <select value={vendorType} onChange={(e) => setVendorType(e.target.value as Vendor["vendor_type"])}>
-                <option value="stationary">Stationary Vendor</option>
-                <option value="statutory">Statutory Vendor</option>
+              <select value={vendorType} onChange={(e) => setVendorType(e.target.value as VendorType)}>
+                {Object.entries(VENDOR_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field label="Division">
@@ -262,19 +342,25 @@ export default function VendorRegistrationPage() {
             </Field>
           </div>
           <div className={styles.fieldRow}>
-            <Field label="Station">
+            <Field label={stationRequired ? "Station" : "Station (optional)"}>
               <select
                 value={stationId}
                 onChange={(e) => setStationId(e.target.value ? Number(e.target.value) : "")}
-                required
+                required={stationRequired}
+                disabled={divisionId !== "" && stations.length === 0}
               >
-                <option value="">Select station</option>
+                <option value="">{stationRequired ? "Select station" : "No station required"}</option>
                 {stations.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.station_name}
                   </option>
                 ))}
               </select>
+              {divisionId !== "" && !stationRequired && (
+                <span className={styles.dropzoneHint}>
+                  No stations are configured for this division — station selection is not required.
+                </span>
+              )}
             </Field>
             <Field label="Contractor / Agency">
               <select
@@ -292,19 +378,25 @@ export default function VendorRegistrationPage() {
             </Field>
           </div>
           <div className={styles.fieldRow}>
-            <Field label="Platform Unit / Stall">
+            <Field label={unitRequired ? "Platform Unit / Stall" : "Platform Unit / Stall (optional)"}>
               <select
                 value={unitId}
                 onChange={(e) => setUnitId(e.target.value ? Number(e.target.value) : "")}
-                required
+                required={unitRequired}
+                disabled={divisionId !== "" && filteredUnits.length === 0}
               >
-                <option value="">Select unit</option>
+                <option value="">{unitRequired ? "Select unit" : "No unit available for this division"}</option>
                 {filteredUnits.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.unit_name}
                   </option>
                 ))}
               </select>
+              {divisionId !== "" && !unitRequired && (
+                <span className={styles.dropzoneHint}>
+                  No platform units are configured for this division — unit selection is not required.
+                </span>
+              )}
             </Field>
             <Field label="Validity Start">
               <input type="date" value={validityStart} onChange={(e) => setValidityStart(e.target.value)} />
@@ -320,56 +412,134 @@ export default function VendorRegistrationPage() {
       )}
 
       {step === 3 && (
-        <section className={styles.card}>
-          <h2 className={styles.cardTitle}>
-            <ShieldIcon /> Police Verification
-          </h2>
-          <div className={styles.fieldRow}>
-            <Field label="PVR Number">
-              <input
-                value={pvrNumber}
-                onChange={(e) => setPvrNumber(e.target.value)}
-                placeholder="e.g. PVR/KGP/2026/1029"
-              />
-            </Field>
-            <Field label="Date of Issue">
-              <input type="date" value={pvrDate} onChange={(e) => setPvrDate(e.target.value)} />
-            </Field>
-          </div>
-          <label className={styles.toggleRow}>
-            <input
-              type="checkbox"
-              checked={aadharLinked}
-              onChange={(e) => setAadharLinked(e.target.checked)}
-            />
-            Aadhaar is linked and verified
-          </label>
-        </section>
+        <div className={styles.grid} style={{ gridTemplateColumns: "1fr 1fr" }}>
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              <ShieldIcon /> Police Verification
+            </h2>
+            <div className={styles.fieldRow}>
+              <Field label="Verification Status">
+                <select
+                  value={policeStatus}
+                  onChange={(e) => setPoliceStatus(e.target.value as VerificationStatus)}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="verified">Verified</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </Field>
+              <Field label="Issue Date">
+                <input type="date" value={policeIssueDate} onChange={(e) => setPoliceIssueDate(e.target.value)} />
+              </Field>
+            </div>
+            <div className={styles.fieldRow}>
+              <Field label="Valid Till Date">
+                <input type="date" value={policeValidTill} onChange={(e) => setPoliceValidTill(e.target.value)} />
+              </Field>
+              <Field label="Remarks (optional)">
+                <input
+                  value={policeRemarks}
+                  onChange={(e) => setPoliceRemarks(e.target.value)}
+                  placeholder="e.g. PVR/KGP/2026/1029"
+                />
+              </Field>
+            </div>
+          </section>
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              <DocIcon /> Medical Verification
+            </h2>
+            <div className={styles.fieldRow}>
+              <Field label="Verification Status">
+                <select
+                  value={medicalStatus}
+                  onChange={(e) => setMedicalStatus(e.target.value as VerificationStatus)}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="verified">Verified</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </Field>
+              <Field label="Issue Date">
+                <input type="date" value={medicalIssueDate} onChange={(e) => setMedicalIssueDate(e.target.value)} />
+              </Field>
+            </div>
+            <div className={styles.fieldRow}>
+              <Field label="Valid Till Date">
+                <input type="date" value={medicalValidTill} onChange={(e) => setMedicalValidTill(e.target.value)} />
+              </Field>
+              <Field label="Remarks (optional)">
+                <input
+                  value={medicalRemarks}
+                  onChange={(e) => setMedicalRemarks(e.target.value)}
+                  placeholder="Additional notes"
+                />
+              </Field>
+            </div>
+          </section>
+        </div>
       )}
 
       {step === 4 && (
-        <section className={styles.card}>
-          <h2 className={styles.cardTitle}>
-            <DocIcon /> Medical Fitness Certificate
-          </h2>
-          <p className={styles.cardSubtitle}>
-            Upload a signed medical fitness certificate from a registered railway medical
-            officer or authorized practitioner.
-          </p>
-          <label className={styles.dropzone}>
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              hidden
-              onChange={(e) => setMedicalDoc(e.target.files?.[0] ?? null)}
-            />
-            <UploadIcon />
-            <div className={styles.dropzoneTitle}>
-              {medicalDoc ? medicalDoc.name : "Click to upload or drag and drop"}
-            </div>
-            <div className={styles.dropzoneHint}>PDF, JPG up to 5MB</div>
-          </label>
-        </section>
+        <div className={styles.grid} style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              <DocIcon /> Aadhaar Document
+            </h2>
+            <label className={styles.dropzone}>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                hidden
+                onChange={(e) => handleDocChange(e.target.files?.[0] ?? null, setAadhaarDoc)}
+              />
+              <UploadIcon />
+              <div className={styles.dropzoneTitle}>
+                {aadhaarDoc ? aadhaarDoc.name : "Click to upload or drag and drop"}
+              </div>
+              <div className={styles.dropzoneHint}>PDF, JPG, PNG up to 5MB</div>
+            </label>
+          </section>
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              <DocIcon /> Medical Verification Document
+            </h2>
+            <label className={styles.dropzone}>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                hidden
+                onChange={(e) => handleDocChange(e.target.files?.[0] ?? null, setMedicalDoc)}
+              />
+              <UploadIcon />
+              <div className={styles.dropzoneTitle}>
+                {medicalDoc ? medicalDoc.name : "Click to upload or drag and drop"}
+              </div>
+              <div className={styles.dropzoneHint}>PDF, JPG, PNG up to 5MB</div>
+            </label>
+          </section>
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              <ShieldIcon /> Police Verification Document
+            </h2>
+            <label className={styles.dropzone}>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                hidden
+                onChange={(e) => handleDocChange(e.target.files?.[0] ?? null, setPoliceDoc)}
+              />
+              <UploadIcon />
+              <div className={styles.dropzoneTitle}>
+                {policeDoc ? policeDoc.name : "Click to upload or drag and drop"}
+              </div>
+              <div className={styles.dropzoneHint}>PDF, JPG, PNG up to 5MB</div>
+            </label>
+          </section>
+        </div>
       )}
 
       {step === 5 && (
@@ -378,6 +548,7 @@ export default function VendorRegistrationPage() {
           <div className={styles.reviewGrid}>
             <ReviewItem label="Full Name" value={fullName || "—"} />
             <ReviewItem label="Mobile Number" value={mobile || "—"} />
+            <ReviewItem label="Address" value={address || "—"} />
             <ReviewItem label="Aadhaar Number" value={aadhaar || "—"} />
             <ReviewItem
               label="Division"
@@ -391,8 +562,11 @@ export default function VendorRegistrationPage() {
               label="Contractor"
               value={contractors.find((c) => c.id === contractorId)?.company_name ?? "—"}
             />
-            <ReviewItem label="PVR Number" value={pvrNumber || "—"} />
+            <ReviewItem label="Police Verification" value={policeStatus} />
+            <ReviewItem label="Medical Verification" value={medicalStatus} />
+            <ReviewItem label="Aadhaar Document" value={aadhaarDoc?.name ?? "Not uploaded"} />
             <ReviewItem label="Medical Document" value={medicalDoc?.name ?? "Not uploaded"} />
+            <ReviewItem label="Police Document" value={policeDoc?.name ?? "Not uploaded"} />
           </div>
         </section>
       )}

@@ -83,61 +83,169 @@ async function main() {
       stationIds[st.code] = (res as any).insertId;
     }
 
-    // 5. Insert Roles
+    // 5. Insert Roles — the 8-role hierarchy required by the UAT spec
     console.log("Inserting roles...");
-    const [roleSuperAdminRes] = await pool.execute(
-      "INSERT INTO roles (role_name, description) VALUES (?, ?)",
-      ["superadmin", "HQ/System Administrator with full access across all divisions"]
-    );
-    const superAdminRoleId = (roleSuperAdminRes as any).insertId;
+    const roleDefs = [
+      { key: "super_admin_hq", name: "super_admin_hq", desc: "Super Admin HQ — complete control over every zone and division" },
+      { key: "hq_admin", name: "hq_admin", desc: "HQ Admin — full HQ-level access across all zones" },
+      { key: "hq_sub_admin", name: "hq_sub_admin", desc: "HQ Sub Admin — limited HQ-level access" },
+      { key: "divisional_admin", name: "divisional_admin", desc: "Divisional Admin — full access within a single division" },
+      { key: "divisional_sub_admin", name: "divisional_sub_admin", desc: "Divisional Sub Admin — limited access within a division" },
+      { key: "inspector", name: "inspector", desc: "Inspector — creates inspections, limited dashboard access" },
+      { key: "dealing_section", name: "dealing_section", desc: "Dealing Section — ATR, recovery, and reports" },
+      { key: "complaint_cell", name: "complaint_cell", desc: "Complaint Cell — complaint module only" },
+    ] as const;
 
-    const [roleAdminRes] = await pool.execute(
-      "INSERT INTO roles (role_name, description) VALUES (?, ?)",
-      ["admin", "Divisional Administrator with access restricted to a single division"]
-    );
-    const adminRoleId = (roleAdminRes as any).insertId;
+    const roleIds: Record<string, number> = {};
+    for (const role of roleDefs) {
+      const [res] = await pool.execute(
+        "INSERT INTO roles (role_name, description) VALUES (?, ?)",
+        [role.name, role.desc]
+      );
+      roleIds[role.key] = (res as any).insertId;
+    }
+    const superAdminRoleId = roleIds["super_admin_hq"];
+    const adminRoleId = roleIds["divisional_admin"];
+    const inspectorRoleId = roleIds["inspector"];
 
-    const [roleInspectorRes] = await pool.execute(
-      "INSERT INTO roles (role_name, description) VALUES (?, ?)",
-      ["inspector", "Station/Health Inspector with limited dashboard access"]
-    );
-    const inspectorRoleId = (roleInspectorRes as any).insertId;
-
-    // 6. Insert Role Permissions
+    // 6. Insert Role Permissions — module x action matrix for every role
     console.log("Inserting role permissions...");
     const modules = [
+      "user_management",
+      "role_management",
       "vendor_management",
-      "unit_masters",
-      "contractor_database",
-      "qr_issuance",
-      "complaints_grievances",
-      "penalties_fines"
-    ];
+      "contractor_management",
+      "unit_management",
+      "location_management",
+      "id_card_management",
+      "penalty_management",
+      "complaint_management",
+      "inspection_management",
+      "audit_logs",
+      "reports",
+      "dashboard",
+      "admin_module",
+    ] as const;
 
-    for (const mod of modules) {
-      // Superadmin has all permissions
-      await pool.execute(
-        `INSERT INTO role_permissions 
-        (role_id, module_name, can_view, can_create, can_edit, can_delete, can_approve_reject, can_export) 
-        VALUES (?, ?, 1, 1, 1, 1, 1, 1)`,
-        [superAdminRoleId, mod]
-      );
+    type Perm = [view: number, create: number, edit: number, del: number, approve: number, exportP: number];
+    const FULL: Perm = [1, 1, 1, 1, 1, 1];
+    const NONE: Perm = [0, 0, 0, 0, 0, 0];
 
-      // Admin has view, create, edit, approve, export permissions, but no delete
-      await pool.execute(
-        `INSERT INTO role_permissions 
-        (role_id, module_name, can_view, can_create, can_edit, can_delete, can_approve_reject, can_export) 
-        VALUES (?, ?, 1, 1, 1, 0, 1, 1)`,
-        [adminRoleId, mod]
-      );
+    // Per-role, per-module permission matrix. Modules not listed for a role default to NONE.
+    const rolePermissionOverrides: Record<string, Partial<Record<(typeof modules)[number], Perm>>> = {
+      hq_admin: {
+        user_management: [1, 1, 1, 0, 1, 1],
+        // Divisional & HQ Admin shall have full powers in Role Management Module (per UAT doc).
+        role_management: FULL,
+        vendor_management: [1, 1, 1, 0, 1, 1],
+        contractor_management: [1, 1, 1, 0, 1, 1],
+        unit_management: [1, 1, 1, 0, 1, 1],
+        location_management: [1, 1, 1, 0, 1, 1],
+        id_card_management: [1, 1, 1, 0, 1, 1],
+        penalty_management: [1, 1, 1, 0, 1, 1],
+        complaint_management: [1, 1, 1, 0, 1, 1],
+        inspection_management: [1, 1, 1, 0, 1, 1],
+        audit_logs: [1, 0, 0, 0, 0, 1],
+        reports: [1, 1, 1, 0, 1, 1],
+        dashboard: [1, 0, 0, 0, 0, 0],
+        admin_module: [1, 1, 1, 0, 1, 1],
+      },
+      hq_sub_admin: {
+        // Divisional & HQ Sub-admin shall have full powers in terms of creation of users (per UAT doc) —
+        // create/edit, but approval stays with the Admin tier.
+        user_management: [1, 1, 1, 0, 0, 0],
+        vendor_management: [1, 1, 1, 0, 0, 0],
+        contractor_management: [1, 1, 1, 0, 0, 0],
+        unit_management: [1, 1, 1, 0, 0, 0],
+        location_management: [1, 1, 1, 0, 0, 0],
+        // UAT: ID cards are approved by Sub Admin — narrowed further at the application
+        // layer to users.card_signing_authority=1 (see idcard module).
+        id_card_management: [1, 1, 1, 0, 1, 0],
+        penalty_management: [1, 1, 1, 0, 0, 0],
+        complaint_management: [1, 1, 1, 0, 0, 0],
+        inspection_management: [1, 1, 1, 0, 0, 0],
+        reports: [1, 0, 0, 0, 0, 1],
+        dashboard: [1, 0, 0, 0, 0, 0],
+      },
+      divisional_admin: {
+        user_management: [1, 1, 1, 0, 1, 1],
+        // Divisional & HQ Admin shall have full powers in Role Management Module (per UAT doc).
+        role_management: FULL,
+        vendor_management: [1, 1, 1, 0, 1, 1],
+        contractor_management: [1, 1, 1, 0, 1, 1],
+        unit_management: [1, 1, 1, 0, 1, 1],
+        location_management: [1, 1, 1, 0, 1, 1],
+        id_card_management: [1, 1, 1, 0, 1, 1],
+        penalty_management: [1, 1, 1, 0, 1, 1],
+        complaint_management: [1, 1, 1, 0, 1, 1],
+        inspection_management: [1, 1, 1, 0, 1, 1],
+        audit_logs: [1, 0, 0, 0, 0, 1],
+        reports: [1, 1, 1, 0, 1, 1],
+        dashboard: [1, 0, 0, 0, 0, 0],
+      },
+      divisional_sub_admin: {
+        // Divisional & HQ Sub-admin shall have full powers in terms of creation of users (per UAT doc) —
+        // create/edit, but approval stays with the Admin tier.
+        user_management: [1, 1, 1, 0, 0, 0],
+        vendor_management: [1, 1, 1, 0, 0, 0],
+        contractor_management: [1, 1, 1, 0, 0, 0],
+        unit_management: [1, 1, 1, 0, 0, 0],
+        location_management: [1, 1, 1, 0, 0, 0],
+        // UAT: ID cards are approved by Sub Admin — narrowed further at the application
+        // layer to users.card_signing_authority=1 (see idcard module).
+        id_card_management: [1, 1, 1, 0, 1, 0],
+        penalty_management: [1, 1, 1, 0, 0, 0],
+        complaint_management: [1, 1, 1, 0, 0, 0],
+        inspection_management: [1, 1, 1, 0, 0, 0],
+        reports: [1, 0, 0, 0, 0, 0],
+        dashboard: [1, 0, 0, 0, 0, 0],
+      },
+      inspector: {
+        vendor_management: [1, 0, 0, 0, 0, 0],
+        contractor_management: [1, 0, 0, 0, 0, 0],
+        unit_management: [1, 0, 0, 0, 0, 0],
+        location_management: [1, 0, 0, 0, 0, 0],
+        id_card_management: [1, 0, 0, 0, 0, 0],
+        penalty_management: [1, 0, 0, 0, 0, 0],
+        complaint_management: [1, 1, 0, 0, 0, 0],
+        inspection_management: [1, 1, 1, 0, 0, 0],
+        reports: [1, 0, 0, 0, 0, 0],
+        dashboard: [1, 0, 0, 0, 0, 0],
+      },
+      dealing_section: {
+        vendor_management: [1, 0, 0, 0, 0, 0],
+        contractor_management: [1, 0, 0, 0, 0, 0],
+        unit_management: [1, 0, 0, 0, 0, 0],
+        location_management: [1, 0, 0, 0, 0, 0],
+        id_card_management: [1, 0, 0, 0, 0, 0],
+        penalty_management: [1, 0, 1, 0, 0, 0],
+        complaint_management: [1, 0, 1, 0, 0, 0],
+        inspection_management: [1, 0, 1, 0, 0, 0],
+        reports: [1, 0, 0, 0, 0, 1],
+        dashboard: [1, 0, 0, 0, 0, 0],
+      },
+      complaint_cell: {
+        vendor_management: [1, 0, 0, 0, 0, 0],
+        unit_management: [1, 0, 0, 0, 0, 0],
+        location_management: [1, 0, 0, 0, 0, 0],
+        complaint_management: [1, 1, 1, 0, 0, 0],
+        reports: [1, 0, 0, 0, 0, 0],
+        dashboard: [1, 0, 0, 0, 0, 0],
+      },
+    };
 
-      // Inspector has view and create permission, but no edit or delete
-      await pool.execute(
-        `INSERT INTO role_permissions 
-        (role_id, module_name, can_view, can_create, can_edit, can_delete, can_approve_reject, can_export) 
-        VALUES (?, ?, 1, 1, 0, 0, 0, 0)`,
-        [inspectorRoleId, mod]
-      );
+    for (const role of roleDefs) {
+      const roleId = roleIds[role.key];
+      for (const mod of modules) {
+        const perm: Perm =
+          role.key === "super_admin_hq" ? FULL : rolePermissionOverrides[role.key]?.[mod] ?? NONE;
+        await pool.execute(
+          `INSERT INTO role_permissions
+          (role_id, module_name, can_view, can_create, can_edit, can_delete, can_approve_reject, can_export)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [roleId, mod, ...perm]
+        );
+      }
     }
 
     // 7. Insert Users
@@ -145,12 +253,12 @@ async function main() {
     const passwordHash = await hashPassword("admin123");
     const superadminHash = await hashPassword("superadmin123");
 
-    // Superadmin (HQ Admin)
+    // Super Admin HQ — username renamed to "superadminhq" per UAT requirement
     const [superUserRes] = await pool.execute(
-      `INSERT INTO users 
-      (employee_id, username, full_name, email, mobile, password_hash, role_id, division_id, station_id, designation) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
-      ["EMP-001", "superadmin", "HQ Superadmin User", "superadmin@cris.org.in", "9999999999", superadminHash, superAdminRoleId, "Sr. Administrator"]
+      `INSERT INTO users
+      (employee_id, username, full_name, email, mobile, password_hash, is_temp_password, role_id, division_id, station_id, designation)
+      VALUES (?, ?, ?, ?, ?, ?, 0, ?, NULL, NULL, ?)`,
+      ["EMP-001", "superadminhq", "HQ Superadmin User", "superadmin@cris.org.in", "9999999999", superadminHash, superAdminRoleId, "Sr. Administrator"]
     );
     const superuserId = (superUserRes as any).insertId;
 
@@ -221,9 +329,9 @@ async function main() {
     const userIds: Record<string, number> = {};
     for (const usr of mockUsers) {
       const [res] = await pool.execute(
-        `INSERT INTO users 
-        (employee_id, username, full_name, email, mobile, password_hash, role_id, division_id, station_id, designation, users_status) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO users
+        (employee_id, username, full_name, email, mobile, password_hash, is_temp_password, role_id, division_id, station_id, designation, users_status)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
         [
           usr.employee_id,
           usr.username,
@@ -241,19 +349,21 @@ async function main() {
       userIds[usr.username] = (res as any).insertId;
     }
 
-    // Divisional Admins
+    // Divisional Admins — every division's admin is seeded as a JS-graded Card Signing
+    // Authority for their own division, so each of the four divisions can approve/sign
+    // ID cards for its own vendors without needing a separate Sub Admin account first.
     const divisionalAdmins = [
-      { username: "admin_kgp", name: "R. Prasad", email: "kgp_admin@cris.org.in", divCode: "KGP", stCode: "KGP" },
-      { username: "admin_adra", name: "B. K. Sharma", email: "adra_admin@cris.org.in", divCode: "ADRA", stCode: "BKSC" },
-      { username: "admin_ckp", name: "S. K. Roy", email: "ckp_admin@cris.org.in", divCode: "CKP", stCode: "TATA" },
-      { username: "admin_rnc", name: "A. K. Mehta", email: "rnc_admin@cris.org.in", divCode: "RNC", stCode: "RNC" }
+      { username: "admin_kgp", name: "R. Prasad", email: "kgp_admin@cris.org.in", divCode: "KGP", stCode: "KGP", designationGrade: "JS", cardSigningAuthority: 1 },
+      { username: "admin_adra", name: "B. K. Sharma", email: "adra_admin@cris.org.in", divCode: "ADRA", stCode: "BKSC", designationGrade: "JS", cardSigningAuthority: 1 },
+      { username: "admin_ckp", name: "S. K. Roy", email: "ckp_admin@cris.org.in", divCode: "CKP", stCode: "TATA", designationGrade: "JS", cardSigningAuthority: 1 },
+      { username: "admin_rnc", name: "A. K. Mehta", email: "rnc_admin@cris.org.in", divCode: "RNC", stCode: "RNC", designationGrade: "JS", cardSigningAuthority: 1 }
     ];
 
     for (const adm of divisionalAdmins) {
       const [res] = await pool.execute(
-        `INSERT INTO users 
-        (employee_id, username, full_name, email, mobile, password_hash, role_id, division_id, station_id, designation) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO users
+        (employee_id, username, full_name, email, mobile, password_hash, is_temp_password, role_id, division_id, station_id, designation, designation_grade, card_signing_authority)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
         [
           `EMP-${adm.username.toUpperCase()}`,
           adm.username,
@@ -264,7 +374,9 @@ async function main() {
           adminRoleId,
           divisionIds[adm.divCode],
           stationIds[adm.stCode],
-          "Divisional Administrator"
+          "Divisional Administrator",
+          adm.designationGrade,
+          adm.cardSigningAuthority
         ]
       );
       userIds[adm.username] = (res as any).insertId;
@@ -345,9 +457,8 @@ async function main() {
         status: "active",
         validityStart: "2024-01-01",
         validityEnd: "2025-12-12",
-        pvrStatus: "completed",
-        medicalStatus: "completed",
-        aadharLinked: 1
+        pvrStatus: "verified",
+        medicalStatus: "verified"
       },
       {
         code: "V-2024-1102",
@@ -364,9 +475,8 @@ async function main() {
         status: "expired",
         validityStart: "2022-10-01",
         validityEnd: "2023-10-15",
-        pvrStatus: "completed",
-        medicalStatus: "pending",
-        aadharLinked: 1
+        pvrStatus: "verified",
+        medicalStatus: "pending"
       },
       {
         code: "V-2024-0943",
@@ -384,8 +494,7 @@ async function main() {
         validityStart: "2023-06-25",
         validityEnd: "2024-06-24",
         pvrStatus: "pending",
-        medicalStatus: "completed",
-        aadharLinked: 0
+        medicalStatus: "verified"
       },
       {
         code: "V-2024-1288",
@@ -402,20 +511,19 @@ async function main() {
         status: "active",
         validityStart: "2024-02-03",
         validityEnd: "2026-02-02",
-        pvrStatus: "completed",
-        medicalStatus: "completed",
-        aadharLinked: 1
+        pvrStatus: "verified",
+        medicalStatus: "verified"
       }
     ];
 
     const vendorIds: Record<string, number> = {};
     for (const vnd of vendors) {
       const [res] = await pool.execute(
-        `INSERT INTO vendors 
-        (vendor_code, full_name, father_name, date_of_birth, aadhaar_number, mobile_number, email, 
-         contractor_id, unit_id, station_id, division_id, vendor_status, validity_start, validity_end, 
-         police_verification_status, medical_fitness_status, aadhar_linked, created_by) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO vendors
+        (vendor_code, full_name, father_name, date_of_birth, aadhaar_number, mobile_number, email,
+         contractor_id, unit_id, station_id, division_id, vendor_status, validity_start, validity_end,
+         police_verification_status, medical_verification_status, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           vnd.code,
           vnd.name,
@@ -433,7 +541,6 @@ async function main() {
           vnd.validityEnd,
           vnd.pvrStatus,
           vnd.medicalStatus,
-          vnd.aadharLinked,
           superuserId
         ]
       );

@@ -21,6 +21,9 @@ export interface IContractor extends BaseSchema {
   fee_status?: "paid" | "overdue";
   division_id?: number;
   joined_date?: string;
+  award_date?: string;
+  tenure_months?: number;
+  annual_contract_value?: number;
   created_by?: number;
 }
 
@@ -39,6 +42,9 @@ export interface IContractorCreate {
   irctc_licensed?: boolean;
   logo_image?: string;
   division_id?: number;
+  award_date?: string;
+  tenure_months?: number;
+  annual_contract_value?: number;
   contractors_status?: "active" | "pending_approval" | "suspended" | "expired";
   fee_status?: "paid" | "overdue";
 }
@@ -58,6 +64,9 @@ export interface IContractorUpdate {
   irctc_licensed?: boolean;
   logo_image?: string;
   division_id?: number;
+  award_date?: string;
+  tenure_months?: number;
+  annual_contract_value?: number;
   contractors_status?: "active" | "pending_approval" | "suspended" | "expired";
   fee_status?: "paid" | "overdue";
 }

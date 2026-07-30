@@ -1,6 +1,11 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { api, ApiError } from "../api/client";
-import type { Vendor, VendorRenewal } from "../types";
+import { useState, type FormEvent } from "react";
+import {
+  useGetRenewalsQuery,
+  useCreateRenewalMutation,
+  useUpdateRenewalStatusMutation,
+} from "../api/renewalApi";
+import { useGetVendorsLiteQuery } from "../api/mastersApi";
+import type { VendorRenewal } from "../types";
 import Field from "../components/ui/Field";
 import Pagination from "../components/ui/Pagination";
 import styles from "../styles/listPage.module.css";
@@ -15,32 +20,18 @@ const STATUS_LABELS: Record<VendorRenewal["renewals_status"], string> = {
 };
 
 export default function RenewalsPage() {
-  const [renewals, setRenewals] = useState<VendorRenewal[]>([]);
-  const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  function load() {
-    setIsLoading(true);
-    api
-      .get<{ total: number; rows: VendorRenewal[] }>(
-        `/renewals?limit=${LIMIT}&offset=${offset}`
-      )
-      .then((res) => {
-        setRenewals(res.rows);
-        setTotal(res.total);
-      })
-      .catch(() => setError("Unable to load renewals"))
-      .finally(() => setIsLoading(false));
-  }
+  const { data: listData, isFetching: isLoading, error: loadError } = useGetRenewalsQuery({ limit: LIMIT, offset });
+  const [updateRenewalStatus] = useUpdateRenewalStatusMutation();
 
-  useEffect(load, [offset]);
+  const renewals = listData?.rows ?? [];
+  const total = listData?.total ?? 0;
+  const error = loadError ? "Unable to load renewals" : null;
 
   async function updateStatus(id: number, status: "approved" | "rejected") {
-    await api.patch(`/renewals/${id}`, { renewals_status: status });
-    load();
+    await updateRenewalStatus({ id, renewals_status: status }).unwrap();
   }
 
   return (
@@ -53,7 +44,7 @@ export default function RenewalsPage() {
           </p>
         </div>
         <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>
-          + Submit Renewal
+          + Renewal
         </button>
       </div>
 
@@ -129,15 +120,7 @@ export default function RenewalsPage() {
         <Pagination total={total} limit={LIMIT} offset={offset} onOffsetChange={setOffset} />
       </div>
 
-      {isFormOpen && (
-        <NewRenewalModal
-          onClose={() => setIsFormOpen(false)}
-          onCreated={() => {
-            setIsFormOpen(false);
-            load();
-          }}
-        />
-      )}
+      {isFormOpen && <NewRenewalModal onClose={() => setIsFormOpen(false)} onCreated={() => setIsFormOpen(false)} />}
     </div>
   );
 }
@@ -148,35 +131,26 @@ function NewRenewalModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [newExpiry, setNewExpiry] = useState("");
   const [pvrNumber, setPvrNumber] = useState("");
   const [pvrIssueDate, setPvrIssueDate] = useState("");
-  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    api
-      .get<{ total: number; rows: Vendor[] }>("/vendors?limit=100")
-      .then((res) => setVendors(res.rows))
-      .catch(() => {});
-  }, []);
+  const { data: vendors = [] } = useGetVendorsLiteQuery();
+  const [createRenewal, { isLoading: isSubmitting }] = useCreateRenewalMutation();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
     try {
-      await api.post("/renewals", {
-        vendor_id: vendorId,
+      await createRenewal({
+        vendor_id: Number(vendorId),
         renewal_period: renewalPeriod,
         new_expiry: newExpiry || undefined,
         pvr_number: pvrNumber || undefined,
         pvr_issue_date: pvrIssueDate || undefined,
         renewals_status: "pending_approval",
-      });
+      }).unwrap();
       onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to submit renewal");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to submit renewal");
     }
   }
 

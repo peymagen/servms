@@ -1,34 +1,61 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import QRCode from "qrcode";
-import { api, ApiError } from "../api/client";
-import type { IdCard } from "../types";
+import { ASSET_BASE } from "../store/apiSlice";
+import { useAuth } from "../context/AuthContext";
+import {
+  useGetIdCardsQuery,
+  useRequestIdCardMutation,
+  useApproveIdCardMutation,
+  useRejectIdCardMutation,
+} from "../api/idcardApi";
+import { CARD_TEMPLATE_LABELS, VENDOR_TYPE_LABELS, type CardExpirySource, type CardTemplate, type IdCard } from "../types";
 import StatCard from "../components/ui/StatCard";
 import styles from "./IdCardQrPage.module.css";
+
+const APPROVAL_LABELS: Record<IdCard["approval_status"], string> = {
+  draft: "Not Requested",
+  pending_approval: "Pending Sub Admin Approval",
+  approved: "Approved & Issued",
+  rejected: "Rejected",
+};
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "N/A";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "N/A";
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
 
 export default function IdCardQrPage() {
   const [searchParams] = useSearchParams();
   const preselectVendorId = searchParams.get("vendor");
-  const [cards, setCards] = useState<IdCard[]>([]);
+  const { user, can } = useAuth();
+  const canApprove = can("id_card_management", "approve_reject") && Boolean(user?.card_signing_authority);
+  const canRequest = can("id_card_management", "create");
+
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(
     preselectVendorId ? Number(preselectVendorId) : null
   );
   const [search, setSearch] = useState("");
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isIssuing, setIsIssuing] = useState(false);
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [template, setTemplate] = useState<CardTemplate>("template_a");
+  const [expirySource, setExpirySource] = useState<CardExpirySource>("medical");
+  const [rejectReason, setRejectReason] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
-  function load() {
-    api
-      .get<{ total: number; rows: IdCard[] }>("/idcards?limit=100")
-      .then((res) => {
-        setCards(res.rows);
-        if (!selectedVendorId && res.rows.length > 0) setSelectedVendorId(res.rows[0].vendor_id);
-      })
-      .catch(() => setError("Unable to load ID cards"));
-  }
+  const { data: listData } = useGetIdCardsQuery({ limit: 200 });
+  const [requestCard, { isLoading: isRequesting }] = useRequestIdCardMutation();
+  const [approveCard, { isLoading: isApproving }] = useApproveIdCardMutation();
+  const [rejectCard, { isLoading: isRejecting }] = useRejectIdCardMutation();
 
-  useEffect(load, []);
+  const cards = listData?.rows ?? [];
+
+  useEffect(() => {
+    if (!selectedVendorId && cards.length > 0) setSelectedVendorId(cards[0].vendor_id);
+  }, [cards, selectedVendorId]);
 
   const selectedCard = cards.find((c) => c.vendor_id === selectedVendorId) ?? null;
 
@@ -44,55 +71,59 @@ export default function IdCardQrPage() {
   );
 
   useEffect(() => {
-    if (!selectedCard) {
+    if (!selectedCard || selectedCard.approval_status !== "approved") {
       setQrDataUrl(null);
       return;
     }
-    const calculateDaysRemaining = (end: string | null | undefined) => {
-      if (!end) return "N/A";
-      const diff = new Date(end).getTime() - new Date().getTime();
-      return Math.ceil(diff / (1000 * 3600 * 24));
+    const payload = {
+      vendor_name: selectedCard.full_name,
+      vendor_type: VENDOR_TYPE_LABELS[selectedCard.vendor_type],
+      contractor: selectedCard.contractor_name ?? null,
+      unit: selectedCard.unit_name ?? null,
+      id_card_validity: selectedCard.expiry_date ?? null,
+      card_number: selectedCard.id_number,
+      card_status: selectedCard.cards_status,
+      issuing_authority_name: selectedCard.approved_by_name ?? null,
+      verification_url: `${window.location.origin}/verify/${selectedCard.id_number}`,
     };
-
-    const qrData = {
-      status: selectedCard.cards_status,
-      lastChecked: selectedCard.last_checked_at,
-      fullName: selectedCard.full_name,
-      vendorType: selectedCard.vendor_type,
-      contractorAgency: selectedCard.contractor_name || "N/A",
-      assignedUnit: selectedCard.unit_name || "N/A",
-      validityPeriod: `${selectedCard.validity_start || "N/A"} to ${selectedCard.validity_end || "N/A"}`,
-      daysRemaining: calculateDaysRemaining(selectedCard.validity_end),
-      policeVerification: selectedCard.police_verification_status,
-      medicalFitness: selectedCard.medical_fitness_status,
-      aadharLinked: selectedCard.aadhar_linked ? "Yes" : "No",
-      employeeId: selectedCard.vendor_code,
-      idNumber: selectedCard.id_number,
-      qrCode: selectedCard.qr_code_data,
-    };
-
-    QRCode.toDataURL(JSON.stringify(qrData), {
-      width: 500,
-      margin: 1,
-    })
+    QRCode.toDataURL(JSON.stringify(payload), { width: 400, margin: 1 })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
   }, [selectedCard]);
 
-  const activeCards = cards.filter((c) => c.cards_status === "active").length;
-  const pendingCards = cards.filter((c) => c.cards_status === "pending").length;
+  const activeCards = cards.filter((c) => c.approval_status === "approved").length;
+  const pendingCards = cards.filter((c) => c.approval_status === "pending_approval").length;
 
-  async function handleIssue() {
+  async function handleRequest() {
     if (!selectedCard) return;
-    setIsIssuing(true);
     setError(null);
     try {
-      await api.post(`/idcards/${selectedCard.vendor_id}/issue`);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to issue ID card");
-    } finally {
-      setIsIssuing(false);
+      await requestCard({ vendorId: selectedCard.vendor_id, template, expiry_source: expirySource }).unwrap();
+      setShowRequestForm(false);
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to submit issue request");
+    }
+  }
+
+  async function handleApprove() {
+    if (!selectedCard) return;
+    setError(null);
+    try {
+      await approveCard(selectedCard.vendor_id).unwrap();
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to approve ID card");
+    }
+  }
+
+  async function handleReject() {
+    if (!selectedCard || !rejectReason.trim()) return;
+    setError(null);
+    try {
+      await rejectCard({ vendorId: selectedCard.vendor_id, reason: rejectReason }).unwrap();
+      setShowRejectForm(false);
+      setRejectReason("");
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to reject ID card");
     }
   }
 
@@ -101,13 +132,14 @@ export default function IdCardQrPage() {
       <div className={styles.header}>
         <h1 className={styles.title}>ID Card & QR Management</h1>
         <p className={styles.subtitle}>
-          Generate, manage and verify digital identity credentials for railway vendors.
+          Issue-request → Sub Admin approval → automatic digital signature → QR → PDF workflow for
+          vendor identity credentials.
         </p>
       </div>
 
       <div className={styles.statGrid}>
-        <StatCard label="Total Active IDs" value={activeCards} />
-        <StatCard label="Pending Generation" value={pendingCards} />
+        <StatCard label="Approved & Issued" value={activeCards} />
+        <StatCard label="Pending Approval" value={pendingCards} />
         <StatCard label="Total Vendors" value={cards.length} />
       </div>
 
@@ -127,12 +159,18 @@ export default function IdCardQrPage() {
               <button
                 key={c.vendor_id}
                 className={c.vendor_id === selectedVendorId ? styles.vendorItemActive : styles.vendorItem}
-                onClick={() => setSelectedVendorId(c.vendor_id)}
+                onClick={() => {
+                  setSelectedVendorId(c.vendor_id);
+                  setShowRequestForm(false);
+                  setShowRejectForm(false);
+                }}
               >
                 <div className={styles.vendorAvatar}>{c.full_name.charAt(0)}</div>
                 <div>
                   <div className={styles.vendorName}>{c.full_name}</div>
-                  <div className={styles.vendorSub}>{c.vendor_code}</div>
+                  <div className={styles.vendorSub}>
+                    {c.vendor_code} · {APPROVAL_LABELS[c.approval_status]}
+                  </div>
                 </div>
               </button>
             ))}
@@ -143,58 +181,142 @@ export default function IdCardQrPage() {
         <div className={styles.cardPanel}>
           {selectedCard ? (
             <>
-              <div className={styles.idCard}>
-                <div className={styles.idCardHeader}>
-                  <span>SOUTH EASTERN RAILWAY</span>
-                  <span>Vendor Identity Card</span>
-                </div>
-                <div className={styles.idCardBody}>
-                  <div className={styles.idCardAvatar}>{selectedCard.full_name.charAt(0)}</div>
-                  <div className={styles.idCardDetails}>
-                    <div className={styles.idCardName}>{selectedCard.full_name}</div>
-                    <div className={styles.idCardRow}>
-                      <span>Unit / Station</span>
-                      <strong>{selectedCard.unit_name ?? selectedCard.station_name ?? "—"}</strong>
-                    </div>
-                    <div className={styles.idCardRow}>
-                      <span>Division</span>
-                      <strong>{selectedCard.division_name ?? "—"}</strong>
-                    </div>
-                    <div className={styles.idCardRow}>
-                      <span>Vendor Type</span>
-                      <strong>{selectedCard.vendor_type}</strong>
-                    </div>
-                    <div className={styles.idCardRow}>
-                      <span>ID Number</span>
-                      <strong>{selectedCard.id_number}</strong>
-                    </div>
+              {selectedCard.approval_status === "approved" ? (
+                <div className={styles.idCard}>
+                  <div className={styles.idCardHeader}>
+                    <span>SOUTH EASTERN RAILWAY</span>
+                    <span>Vendor Identity Card</span>
                   </div>
-                  {qrDataUrl && <img className={styles.qrImage} src={qrDataUrl} alt="Vendor QR code" />}
+                  <div className={styles.idCardBody}>
+                    <div className={styles.idCardAvatar}>{selectedCard.full_name.charAt(0)}</div>
+                    <div className={styles.idCardDetails}>
+                      <div className={styles.idCardName}>{selectedCard.full_name}</div>
+                      <div className={styles.idCardRow}>
+                        <span>Unit / Station</span>
+                        <strong>{selectedCard.unit_name ?? selectedCard.station_name ?? "—"}</strong>
+                      </div>
+                      <div className={styles.idCardRow}>
+                        <span>Division</span>
+                        <strong>{selectedCard.division_name ?? "—"}</strong>
+                      </div>
+                      <div className={styles.idCardRow}>
+                        <span>Vendor Type</span>
+                        <strong>{VENDOR_TYPE_LABELS[selectedCard.vendor_type]}</strong>
+                      </div>
+                      <div className={styles.idCardRow}>
+                        <span>ID Number</span>
+                        <strong>{selectedCard.id_number}</strong>
+                      </div>
+                      <div className={styles.idCardRow}>
+                        <span>Template</span>
+                        <strong>{CARD_TEMPLATE_LABELS[selectedCard.template]}</strong>
+                      </div>
+                      <div className={styles.idCardRow}>
+                        <span>Card Validity</span>
+                        <strong>{formatDate(selectedCard.expiry_date)}</strong>
+                      </div>
+                      <div className={styles.idCardRow}>
+                        <span>Issued / Signed By</span>
+                        <strong>{selectedCard.approved_by_name ?? "—"}</strong>
+                      </div>
+                    </div>
+                    {qrDataUrl && <img className={styles.qrImage} src={qrDataUrl} alt="Vendor QR code" />}
+                  </div>
+                  <div className={styles.idCardStatusActive}>ID ACTIVE — DIGITALLY SIGNED</div>
                 </div>
-                <div
-                  className={
-                    selectedCard.cards_status === "active"
-                      ? styles.idCardStatusActive
-                      : styles.idCardStatusPending
-                  }
-                >
-                  {selectedCard.cards_status === "active"
-                    ? "ID ACTIVE"
-                    : selectedCard.cards_status === "expired"
-                    ? "ID EXPIRED"
-                    : "NOT ISSUED"}
+              ) : (
+                <div className={styles.emptyState}>
+                  <p>
+                    <strong>{APPROVAL_LABELS[selectedCard.approval_status]}</strong>
+                  </p>
+                  {selectedCard.approval_status === "pending_approval" && (
+                    <p>
+                      Requested by {selectedCard.requested_by_name ?? "—"} on {formatDate(selectedCard.requested_at)}
+                      {" · "}Template: {CARD_TEMPLATE_LABELS[selectedCard.template]}
+                    </p>
+                  )}
+                  {selectedCard.approval_status === "rejected" && selectedCard.rejection_reason && (
+                    <p>Reason: {selectedCard.rejection_reason}</p>
+                  )}
                 </div>
-              </div>
+              )}
 
               <div className={styles.actions}>
-                <button className={styles.issueBtn} onClick={handleIssue} disabled={isIssuing}>
-                  {isIssuing
-                    ? "Issuing…"
-                    : selectedCard.cards_status === "active"
-                    ? "Reissue ID Card"
-                    : "Issue ID Card"}
-                </button>
+                {selectedCard.approval_status === "approved" && selectedCard.pdf_path && (
+                  <a
+                    className={styles.issueBtn}
+                    href={`${ASSET_BASE}${selectedCard.pdf_path}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Download PDF
+                  </a>
+                )}
+
+                {canRequest && selectedCard.approval_status !== "pending_approval" && !showRequestForm && (
+                  <button className={styles.issueBtn} onClick={() => setShowRequestForm(true)}>
+                    {selectedCard.approval_status === "approved" ? "Re-issue ID Card" : "Request ID Card"}
+                  </button>
+                )}
+
+                {canApprove && selectedCard.approval_status === "pending_approval" && (
+                  <>
+                    <button className={styles.issueBtn} onClick={handleApprove} disabled={isApproving}>
+                      {isApproving ? "Approving…" : "Approve & Sign"}
+                    </button>
+                    <button className={styles.issueBtn} onClick={() => setShowRejectForm(true)}>
+                      Reject
+                    </button>
+                  </>
+                )}
               </div>
+
+              {showRequestForm && (
+                <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+                  <label>
+                    Template
+                    <select value={template} onChange={(e) => setTemplate(e.target.value as CardTemplate)}>
+                      {Object.entries(CARD_TEMPLATE_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    ID Card Expiry Driver
+                    <select value={expirySource} onChange={(e) => setExpirySource(e.target.value as CardExpirySource)}>
+                      <option value="medical">Use Medical Expiry</option>
+                      <option value="police_verification">Use Police Verification Expiry</option>
+                    </select>
+                  </label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className={styles.issueBtn} onClick={handleRequest} disabled={isRequesting}>
+                      {isRequesting ? "Submitting…" : "Submit Request"}
+                    </button>
+                    <button className={styles.issueBtn} onClick={() => setShowRequestForm(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {showRejectForm && (
+                <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+                  <label>
+                    Rejection Reason
+                    <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
+                  </label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className={styles.issueBtn} onClick={handleReject} disabled={isRejecting || !rejectReason.trim()}>
+                      {isRejecting ? "Rejecting…" : "Confirm Reject"}
+                    </button>
+                    <button className={styles.issueBtn} onClick={() => setShowRejectForm(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <p className={styles.emptyState}>Select a vendor to preview their ID card.</p>

@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, ApiError } from "../api/client";
-import { getDivisions } from "../api/masters";
+import { useCreateContractorMutation } from "../api/contractorApi";
+import { useGetDivisionsQuery } from "../api/mastersApi";
 import { useAuth } from "../context/AuthContext";
-import type { Division } from "../types";
 import styles from "./ContractorRegistrationPage.module.css";
 
 export default function ContractorRegistrationPage() {
@@ -19,16 +18,15 @@ export default function ContractorRegistrationPage() {
   const [annualFee, setAnnualFee] = useState("");
   const [officialEmail, setOfficialEmail] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
+  const [awardDate, setAwardDate] = useState("");
+  const [tenureMonths, setTenureMonths] = useState("");
+  const [annualContractValue, setAnnualContractValue] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  const [divisions, setDivisions] = useState<Division[]>([]);
+  const { data: divisions = [] } = useGetDivisionsQuery();
+  const [createContractor, { isLoading: isSubmitting }] = useCreateContractorMutation();
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    getDivisions().then(setDivisions).catch(() => {});
-  }, []);
 
   const divisionId = useMemo(() => {
     if (user?.role_name === "admin" && user.division_id) return user.division_id;
@@ -76,27 +74,26 @@ export default function ContractorRegistrationPage() {
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append("company_name", companyName);
-      if (primaryContactName) formData.append("primary_contact_name", primaryContactName);
-      if (mobileNumber) formData.append("primary_contact_mobile", mobileNumber);
-      if (officialEmail) formData.append("official_email", officialEmail);
-      if (registeredAddress) formData.append("registered_address", registeredAddress);
-      if (panNumber) formData.append("pan_number", panNumber);
-      if (gstin) formData.append("gstin", gstin);
-      if (licenseValidityDate) formData.append("license_validity_date", licenseValidityDate);
-      if (annualFee) formData.append("annual_registration_fee", annualFee);
-      formData.append("division_id", String(divisionId));
-      if (logoFile) formData.append("logo_image", logoFile);
-
-      await api.post("/contractors", formData, true);
+      await createContractor({
+        company_name: companyName,
+        primary_contact_name: primaryContactName || undefined,
+        primary_contact_mobile: mobileNumber || undefined,
+        official_email: officialEmail || undefined,
+        registered_address: registeredAddress || undefined,
+        pan_number: panNumber || undefined,
+        gstin: gstin || undefined,
+        license_validity_date: licenseValidityDate || undefined,
+        annual_registration_fee: annualFee ? Number(annualFee) : undefined,
+        award_date: awardDate || undefined,
+        tenure_months: tenureMonths ? Number(tenureMonths) : undefined,
+        annual_contract_value: annualContractValue ? Number(annualContractValue) : undefined,
+        division_id: divisionId,
+        logo_image: logoFile ?? undefined,
+      }).unwrap();
       navigate("/contractors");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to submit registration");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to submit registration");
     }
   }
 
@@ -185,6 +182,35 @@ export default function ContractorRegistrationPage() {
                   min="0"
                   value={annualFee}
                   onChange={(e) => setAnnualFee(e.target.value)}
+                  placeholder="0.00"
+                />
+              </Field>
+            </div>
+          </section>
+
+          <section className={`${styles.card} ${styles.spanAll}`}>
+            <h2 className={styles.cardTitle}>
+              <span className={styles.accentBar} /> Contract Information
+            </h2>
+            <div className={styles.fieldRow}>
+              <Field label="Award Date">
+                <input type="date" value={awardDate} onChange={(e) => setAwardDate(e.target.value)} />
+              </Field>
+              <Field label="Tenure (months)">
+                <input
+                  type="number"
+                  min="1"
+                  value={tenureMonths}
+                  onChange={(e) => setTenureMonths(e.target.value)}
+                  placeholder="e.g. 36"
+                />
+              </Field>
+              <Field label="Annual Contract Value (₹)">
+                <input
+                  type="number"
+                  min="0"
+                  value={annualContractValue}
+                  onChange={(e) => setAnnualContractValue(e.target.value)}
                   placeholder="0.00"
                 />
               </Field>

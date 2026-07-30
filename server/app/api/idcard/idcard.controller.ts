@@ -2,6 +2,10 @@ import * as idcardService from "./idcard.service";
 import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
+import path from "path";
+import { isDivisionScoped } from "../../common/constants/roles";
+import { logAudit } from "../../common/services/auditLog.service";
+import { type CardExpirySource, type CardTemplate } from "./idcard.dto";
 
 // ─── GET ID CARDS ───────────────────────────────────────────────────────────────
 export const getIdCards = asyncHandler(async (req: Request, res: Response) => {
@@ -10,25 +14,60 @@ export const getIdCards = asyncHandler(async (req: Request, res: Response) => {
   const limit = req.query.limit ? Number(req.query.limit) : 10;
   const offset = req.query.offset ? Number(req.query.offset) : 0;
   const search = req.query.search ? String(req.query.search) : undefined;
+  const approval_status = req.query.approval_status ? String(req.query.approval_status) : undefined;
 
   let division_id = req.query.division_id ? Number(req.query.division_id) : undefined;
-  if (user?.role_name === "admin") {
+  if (isDivisionScoped(user?.role_name)) {
     division_id = user.division_id;
   }
 
-  const result = await idcardService.getIdCards({ limit, offset, search, division_id });
+  const result = await idcardService.getIdCards({ limit, offset, search, division_id, approval_status });
   res.send(createResponse(result));
 });
 
-// ─── ISSUE / REISSUE ID CARD ────────────────────────────────────────────────────
-export const issueIdCard = asyncHandler(async (req: Request, res: Response) => {
-  const result = await idcardService.issueIdCard(req.params.vendorId);
-  res.send(createResponse(result, "ID card issued successfully"));
+// ─── ISSUE REQUEST ───────────────────────────────────────────────────────────────
+export const requestIdCard = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req.user as any)?.id;
+  const result = await idcardService.requestIdCard(
+    req.params.vendorId as string,
+    { template: req.body.template as CardTemplate, expiry_source: req.body.expiry_source as CardExpirySource },
+    userId
+  );
+  await logAudit({ req, module: "idcard", recordId: req.params.vendorId, action: "ISSUE", newData: req.body, details: "Issue requested" });
+  res.send(createResponse(result, "ID card issue request submitted"));
+});
+
+// ─── SUB ADMIN APPROVAL (auto digital signature + QR + PDF) ─────────────────────
+export const approveIdCard = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user as any;
+  const actorDivisionId = isDivisionScoped(user?.role_name) ? user.division_id : undefined;
+  const result = await idcardService.approveIdCard(req.params.vendorId as string, user?.id, actorDivisionId);
+  await logAudit({ req, module: "idcard", recordId: req.params.vendorId, action: "APPROVE", details: "Card approved and signed" });
+  res.send(createResponse(result, "ID card approved, signed, and generated"));
+});
+
+export const rejectIdCard = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user as any;
+  const actorDivisionId = isDivisionScoped(user?.role_name) ? user.division_id : undefined;
+  const result = await idcardService.rejectIdCard(req.params.vendorId as string, user?.id, req.body.reason, actorDivisionId);
+  await logAudit({ req, module: "idcard", recordId: req.params.vendorId, action: "REJECT", details: req.body.reason });
+  res.send(createResponse(result, "ID card request rejected"));
+});
+
+// ─── DOWNLOAD PDF ────────────────────────────────────────────────────────────────
+export const downloadIdCardPdf = asyncHandler(async (req: Request, res: Response) => {
+  const pdfPath = await idcardService.getIdCardPdfPath(req.params.vendorId as string);
+  if (!pdfPath) {
+    res.status(404).send(createResponse(null, "No generated ID card PDF found for this vendor"));
+    return;
+  }
+  await logAudit({ req, module: "idcard", recordId: req.params.vendorId, action: "DOWNLOAD" });
+  res.sendFile(path.join(process.cwd(), pdfPath));
 });
 
 // ─── PUBLIC QR VERIFICATION ─────────────────────────────────────────────────────
 export const verifyIdCard = asyncHandler(async (req: Request, res: Response) => {
-  const result = await idcardService.verifyIdCard(req.params.code);
+  const result = await idcardService.verifyIdCard(req.params.code as string);
   if (!result) {
     res.status(404).send(createResponse(null, "Invalid or unrecognized ID card / QR code"));
     return;

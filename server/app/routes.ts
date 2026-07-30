@@ -2,6 +2,8 @@ import express from "express";
 import userRoutes from "./api/user/user.route";
 import vendorRoutes from "./api/vendor/vendor.route";
 import complaintRoutes from "./api/complaint/complaint.route";
+import inspectionRoutes from "./api/inspection/inspection.route";
+import reportRoutes from "./api/report/report.route";
 import penaltyRoutes from "./api/penalty/penalty.route";
 import masterRoutes from "./api/master/master.route";
 import dashboardRoutes from "./api/dashboard/dashboard.route";
@@ -11,12 +13,18 @@ import idcardRoutes from "./api/idcard/idcard.route";
 import renewalRoutes from "./api/renewal/renewal.route";
 import roleRoutes from "./api/role/role.route";
 import notificationRoutes from "./api/notification/notification.route";
+import auditRoutes from "./api/audit/audit.route";
+import trainRoutes from "./api/train/train.route";
+import clusterRoutes from "./api/cluster/cluster.route";
+import dropdownRoutes from "./api/dropdown/dropdown.route";
 
 const router = express.Router();
 
 router.use("/users", userRoutes);
 router.use("/vendors", vendorRoutes);
 router.use("/complaints", complaintRoutes);
+router.use("/inspections", inspectionRoutes);
+router.use("/reports", reportRoutes);
 router.use("/penalties", penaltyRoutes);
 router.use("/masters", masterRoutes);
 router.use("/dashboard", dashboardRoutes);
@@ -26,5 +34,9 @@ router.use("/idcards", idcardRoutes);
 router.use("/renewals", renewalRoutes);
 router.use("/roles", roleRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/audit-logs", auditRoutes);
+router.use("/trains", trainRoutes);
+router.use("/clusters", clusterRoutes);
+router.use("/dropdowns", dropdownRoutes);
 
 export default router;

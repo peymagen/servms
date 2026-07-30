@@ -3,10 +3,15 @@ import { type NextFunction, type Request, type Response } from "express";
 import { validationResult } from "express-validator";
 import * as vendorController from "./vendor.controller";
 import { roleAuth } from "../../common/middleware/role-auth.middleware";
-import { upload } from "../../common/middleware/multer.middleware";
+import { requirePermission } from "../../common/middleware/permission.middleware";
+import { documentUpload } from "../../common/middleware/multer.middleware";
 import {
   createVendorValidation,
-  updateVendorValidation
+  updateVendorValidation,
+  updateVerificationValidation,
+  uploadDocumentValidation,
+  transferUnitValidation,
+  transferContractorValidation
 } from "./vendor.validation";
 
 const validate = (req: Request, res: Response, next: NextFunction) => {
@@ -30,17 +35,85 @@ const router = Router();
 // Secure all vendor endpoints
 router.use(roleAuth());
 
-router.get("/metrics", vendorController.getVendorMetrics);
-router.get("/", vendorController.getVendors);
-router.get("/:id", vendorController.getVendorById);
+router.get("/metrics", requirePermission("vendor_management", "view"), vendorController.getVendorMetrics);
+router.get("/", requirePermission("vendor_management", "view"), vendorController.getVendors);
+router.get("/:id", requirePermission("vendor_management", "view"), vendorController.getVendorById);
 
-const vendorUpload = upload.fields([
+const vendorUpload = documentUpload.fields([
   { name: "profile_image", maxCount: 1 },
-  { name: "medical_doc", maxCount: 1 },
+  { name: "signature", maxCount: 1 },
+  { name: "aadhaar_document", maxCount: 1 },
+  { name: "medical_verification_document", maxCount: 1 },
+  { name: "police_verification_document", maxCount: 1 },
 ]);
 
-router.post("/", vendorUpload, createVendorValidation, validate, vendorController.createVendor);
-router.patch("/:id", upload.single("profile_image"), updateVendorValidation, validate, vendorController.editVendor);
-router.delete("/:id", vendorController.deleteVendor);
+router.post(
+  "/",
+  requirePermission("vendor_management", "create"),
+  vendorUpload,
+  createVendorValidation,
+  validate,
+  vendorController.createVendor
+);
+router.patch(
+  "/:id",
+  requirePermission("vendor_management", "edit"),
+  vendorUpload,
+  updateVendorValidation,
+  validate,
+  vendorController.editVendor
+);
+router.delete("/:id", requirePermission("vendor_management", "delete"), vendorController.deleteVendor);
+
+// ─── Transfers ─────────────────────────────────────────────────────────────────────
+router.post(
+  "/:id/transfer-unit",
+  requirePermission("vendor_management", "edit"),
+  transferUnitValidation,
+  validate,
+  vendorController.transferUnit
+);
+router.post(
+  "/:id/transfer-contractor",
+  requirePermission("vendor_management", "edit"),
+  transferContractorValidation,
+  validate,
+  vendorController.transferContractor
+);
+
+// ─── Verification ────────────────────────────────────────────────────────────────
+router.get("/:id/verification", requirePermission("vendor_management", "view"), vendorController.getVendorVerification);
+router.patch(
+  "/:id/verification/police",
+  requirePermission("vendor_management", "edit"),
+  documentUpload.single("document"),
+  updateVerificationValidation,
+  validate,
+  vendorController.updatePoliceVerification
+);
+router.patch(
+  "/:id/verification/medical",
+  requirePermission("vendor_management", "edit"),
+  documentUpload.single("document"),
+  updateVerificationValidation,
+  validate,
+  vendorController.updateMedicalVerification
+);
+
+// ─── Documents ────────────────────────────────────────────────────────────────────
+router.get("/:id/documents", requirePermission("vendor_management", "view"), vendorController.getVendorDocuments);
+router.post(
+  "/:id/documents",
+  requirePermission("vendor_management", "edit"),
+  documentUpload.single("document"),
+  uploadDocumentValidation,
+  validate,
+  vendorController.uploadVendorDocument
+);
+router.delete(
+  "/:id/documents/:docId",
+  requirePermission("vendor_management", "edit"),
+  vendorController.deleteVendorDocument
+);
 
 export default router;

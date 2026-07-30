@@ -1,5 +1,27 @@
-import { pool } from "../../common/services/sql.service";
+import { pool, withTransaction } from "../../common/services/sql.service";
 import { type RowDataPacket, type ResultSetHeader } from "mysql2";
+import { type VendorDocumentType, type VerificationStatus } from "./vendor.dto";
+
+// ─── VERIFICATION HELPERS ────────────────────────────────────────────────────────
+// A verification is only ever "expired" for display purposes once its valid-till
+// date has passed; we don't overwrite the admin-set status (verified/rejected/pending)
+// in the database, so a rejected/pending record never gets silently relabelled.
+const effectiveStatus = (status: string, validTill: string | Date | null): VerificationStatus => {
+  if (status === "verified" && validTill) {
+    const till = new Date(validTill);
+    const today = new Date(new Date().toDateString());
+    if (till < today) {
+      return "expired";
+    }
+  }
+  return status as VerificationStatus;
+};
+
+const withEffectiveVerification = <T extends Record<string, any>>(row: T): T => ({
+  ...row,
+  police_verification_status: effectiveStatus(row.police_verification_status, row.police_verification_valid_till),
+  medical_verification_status: effectiveStatus(row.medical_verification_status, row.medical_verification_valid_till),
+});
 
 // ─── CREATE VENDOR ─────────────────────────────────────────────────────────────
 export const createVendor = async (data: any, userId: number) => {
@@ -9,11 +31,15 @@ export const createVendor = async (data: any, userId: number) => {
 
   const query = `
     INSERT INTO vendors (
-      vendor_code, full_name, father_name, date_of_birth, aadhaar_number, mobile_number, email,
-      profile_image, vendor_type, contractor_id, unit_id, station_id, division_id, vendor_status,
-      validity_start, validity_end, police_verification_status, police_verification_number, police_verification_date,
-      medical_fitness_status, medical_fitness_doc, aadhar_linked, created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      vendor_code, full_name, father_name, date_of_birth, aadhaar_number, mobile_number, address,
+      profile_image, signature_path, vendor_type, contractor_id, unit_id, station_id, division_id, vendor_status,
+      validity_start, validity_end,
+      police_verification_status, police_verification_issue_date, police_verification_valid_till,
+      police_verification_remarks, police_verification_document,
+      medical_verification_status, medical_verification_issue_date, medical_verification_valid_till,
+      medical_verification_remarks, medical_verification_document,
+      created_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const values = [
@@ -23,9 +49,10 @@ export const createVendor = async (data: any, userId: number) => {
     data.date_of_birth ?? null,
     data.aadhaar_number ?? null,
     data.mobile_number ?? null,
-    data.email ?? null,
+    data.address ?? null,
     data.profile_image ?? null,
-    data.vendor_type ?? "stationary",
+    data.signature_path ?? null,
+    data.vendor_type ?? "station_others",
     data.contractor_id ?? null,
     data.unit_id ?? null,
     data.station_id ?? null,
@@ -34,29 +61,54 @@ export const createVendor = async (data: any, userId: number) => {
     data.validity_start ?? null,
     data.validity_end ?? null,
     data.police_verification_status ?? "pending",
-    data.police_verification_number ?? null,
-    data.police_verification_date ?? null,
-    data.medical_fitness_status ?? "pending",
-    data.medical_fitness_doc ?? null,
-    data.aadhar_linked ?? 0,
+    data.police_verification_issue_date ?? null,
+    data.police_verification_valid_till ?? null,
+    data.police_verification_remarks ?? null,
+    data.police_verification_document ?? null,
+    data.medical_verification_status ?? "pending",
+    data.medical_verification_issue_date ?? null,
+    data.medical_verification_valid_till ?? null,
+    data.medical_verification_remarks ?? null,
+    data.medical_verification_document ?? null,
     userId
   ];
 
-  const [result] = await pool.execute<ResultSetHeader>(query, values);
-  const insertId = result.insertId;
+  // Vendor row + auto-created ID card row + any onboarding documents must all land
+  // together — wrapped in a transaction so a mid-way failure can't leave an orphaned
+  // vendor with no card row or a partially-seeded document set.
+  const insertId = await withTransaction(async (conn) => {
+    const [result] = await conn.execute<ResultSetHeader>(query, values);
+    const newId = result.insertId;
 
-  // Auto create ID Card for new vendor
-  await pool.execute(
-    `INSERT INTO vendor_id_cards (vendor_id, id_number, qr_code_data, issued_date, cards_status) 
-     VALUES (?, ?, ?, ?, ?)`,
-    [
-      insertId,
-      `CRIS-ID-${randomNum}`,
-      `VMS-VERIFY-CODE-${vendorCode}`,
-      data.validity_start ?? new Date().toISOString().split("T")[0],
-      data.vendor_status === "active" ? "active" : "pending"
-    ]
-  );
+    await conn.execute(
+      `INSERT INTO vendor_id_cards (vendor_id, id_number, qr_code_data, issued_date, cards_status)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        newId,
+        `CRIS-ID-${randomNum}`,
+        `VMS-VERIFY-CODE-${vendorCode}`,
+        data.validity_start ?? new Date().toISOString().split("T")[0],
+        data.vendor_status === "active" ? "active" : "pending"
+      ]
+    );
+
+    // Seed vendor_documents from any files uploaded during onboarding
+    const initialDocs: Array<[VendorDocumentType, string | undefined, string | undefined]> = [
+      ["AADHAAR", data.aadhaar_document, data.aadhaar_document_name],
+      ["MEDICAL", data.medical_verification_document, data.medical_verification_document_name],
+      ["POLICE_VERIFICATION", data.police_verification_document, data.police_verification_document_name],
+    ];
+    for (const [documentType, documentPath, originalName] of initialDocs) {
+      if (documentPath) {
+        await conn.execute(
+          `INSERT INTO vendor_documents (vendor_id, document_type, document_path, original_name, uploaded_by) VALUES (?, ?, ?, ?, ?)`,
+          [newId, documentType, documentPath, originalName ?? null, userId]
+        );
+      }
+    }
+
+    return newId;
+  });
 
   return { id: insertId, vendor_code: vendorCode };
 };
@@ -67,7 +119,6 @@ export const getVendors = async (filters: {
   division_id?: number;
   unit_id?: number;
   status?: string;
-  aadhaar_status?: string;
   limit?: number;
   offset?: number;
 }) => {
@@ -103,19 +154,11 @@ export const getVendors = async (filters: {
     countParams.push(filters.status);
   }
 
-  if (filters.aadhaar_status) {
-    if (filters.aadhaar_status === "verified") {
-      whereClauses.push("v.aadhar_linked = 1");
-    } else if (filters.aadhaar_status === "pending") {
-      whereClauses.push("v.aadhar_linked = 0");
-    }
-  }
-
   const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
   // Get total count
   const countQuery = `
-    SELECT COUNT(*) as total 
+    SELECT COUNT(*) as total
     FROM vendors v
     LEFT JOIN contractors c ON c.id = v.contractor_id
     ${whereSql}
@@ -125,7 +168,7 @@ export const getVendors = async (filters: {
 
   // Get rows
   const query = `
-    SELECT 
+    SELECT
       v.*,
       c.company_name as contractor_name,
       u.unit_name,
@@ -146,13 +189,13 @@ export const getVendors = async (filters: {
 
   const [rows] = await pool.execute<RowDataPacket[]>(query, params);
 
-  return { total, rows };
+  return { total, rows: rows.map(withEffectiveVerification) };
 };
 
 // ─── GET VENDOR BY ID ────────────────────────────────────────────────────────────
 export const getVendorById = async (id: string) => {
   const query = `
-    SELECT 
+    SELECT
       v.*,
       c.company_name as contractor_name,
       u.unit_name,
@@ -169,7 +212,7 @@ export const getVendorById = async (id: string) => {
     WHERE v.id = ? AND v.status = 1
   `;
   const [rows] = await pool.execute<RowDataPacket[]>(query, [id]);
-  return rows[0] ?? null;
+  return rows[0] ? withEffectiveVerification(rows[0]) : null;
 };
 
 // ─── EDIT VENDOR (PATCH) ─────────────────────────────────────────────────────────
@@ -179,10 +222,13 @@ export const editVendor = async (id: string, data: any) => {
 
   const allowedFields = [
     "full_name", "father_name", "date_of_birth", "aadhaar_number", "mobile_number",
-    "email", "profile_image", "blood_group", "emergency_contact", "vendor_type",
+    "address", "profile_image", "signature_path", "blood_group", "emergency_contact", "vendor_type",
     "contractor_id", "unit_id", "station_id", "division_id", "vendor_status",
-    "validity_start", "validity_end", "police_verification_status", "police_verification_number",
-    "police_verification_date", "medical_fitness_status", "medical_fitness_doc", "aadhar_linked"
+    "validity_start", "validity_end",
+    "police_verification_status", "police_verification_issue_date", "police_verification_valid_till",
+    "police_verification_remarks", "police_verification_document",
+    "medical_verification_status", "medical_verification_issue_date", "medical_verification_valid_till",
+    "medical_verification_remarks", "medical_verification_document"
   ];
 
   for (const field of allowedFields) {
@@ -217,6 +263,54 @@ export const deleteVendor = async (id: string) => {
   return { id, deleted: true };
 };
 
+// ─── TRANSFER: UNIT ──────────────────────────────────────────────────────────────
+export const transferUnit = async (id: string, unitId: number) => {
+  const [vendorRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT unit_id FROM vendors WHERE id = ? AND status = 1",
+    [id]
+  );
+  if (!vendorRows[0]) throw new Error("Vendor not found");
+
+  const [unitRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT id, station_id FROM units u WHERE id = ?",
+    [unitId]
+  );
+  if (!unitRows[0]) throw new Error("Unit not found");
+
+  const [stationRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT division_id FROM stations WHERE id = ?",
+    [unitRows[0].station_id]
+  );
+
+  const previousUnitId = vendorRows[0].unit_id;
+  await pool.execute(
+    "UPDATE vendors SET unit_id = ?, station_id = ?, division_id = ? WHERE id = ?",
+    [unitId, unitRows[0].station_id ?? null, stationRows[0]?.division_id ?? null, id]
+  );
+
+  return { id: Number(id), previous_unit_id: previousUnitId, new_unit_id: unitId };
+};
+
+// ─── TRANSFER: CONTRACTOR ─────────────────────────────────────────────────────────
+export const transferContractor = async (id: string, contractorId: number) => {
+  const [vendorRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT contractor_id FROM vendors WHERE id = ? AND status = 1",
+    [id]
+  );
+  if (!vendorRows[0]) throw new Error("Vendor not found");
+
+  const [contractorRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT id FROM contractors WHERE id = ? AND status = 1",
+    [contractorId]
+  );
+  if (!contractorRows[0]) throw new Error("Contractor not found");
+
+  const previousContractorId = vendorRows[0].contractor_id;
+  await pool.execute("UPDATE vendors SET contractor_id = ? WHERE id = ?", [contractorId, id]);
+
+  return { id: Number(id), previous_contractor_id: previousContractorId, new_contractor_id: contractorId };
+};
+
 // ─── GET VENDOR METRICS ─────────────────────────────────────────────────────────
 export const getVendorMetrics = async (divisionId?: number) => {
   const params: any[] = [];
@@ -228,11 +322,23 @@ export const getVendorMetrics = async (divisionId?: number) => {
   }
 
   const query = `
-    SELECT 
+    SELECT
       COUNT(*) as total,
       SUM(CASE WHEN vendor_status = 'active' THEN 1 ELSE 0 END) as active,
-      SUM(CASE WHEN aadhar_linked = 1 THEN 1 ELSE 0 END) as aadhaar_verified,
-      SUM(CASE WHEN vendor_status = 'expired' OR validity_end < CURDATE() THEN 1 ELSE 0 END) as expired_medicals,
+      SUM(CASE WHEN police_verification_status = 'verified'
+               AND (police_verification_valid_till IS NULL OR police_verification_valid_till >= CURDATE())
+          THEN 1 ELSE 0 END) as police_verified,
+      SUM(CASE WHEN medical_verification_status = 'expired'
+               OR (medical_verification_status = 'verified' AND medical_verification_valid_till < CURDATE())
+          THEN 1 ELSE 0 END) as expired_medicals,
+      SUM(CASE WHEN police_verification_status = 'expired'
+               OR (police_verification_status = 'verified' AND police_verification_valid_till < CURDATE())
+          THEN 1 ELSE 0 END) as expired_pvr,
+      SUM(CASE WHEN (medical_verification_status = 'verified' AND medical_verification_valid_till IS NOT NULL
+                     AND medical_verification_valid_till BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY))
+               OR (police_verification_status = 'verified' AND police_verification_valid_till IS NOT NULL
+                     AND police_verification_valid_till BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY))
+          THEN 1 ELSE 0 END) as expiring_soon,
       SUM(CASE WHEN vendor_status = 'pending' THEN 1 ELSE 0 END) as awaiting_approval
     FROM vendors
     WHERE ${whereSql}
@@ -243,8 +349,136 @@ export const getVendorMetrics = async (divisionId?: number) => {
 
   return {
     totalActiveVendors: Number(stats.active ?? 0),
-    aadhaarVerified: Number(stats.aadhaar_verified ?? 0),
+    policeVerified: Number(stats.police_verified ?? 0),
     expiredMedicals: Number(stats.expired_medicals ?? 0),
+    expiredPvr: Number(stats.expired_pvr ?? 0),
+    expiringSoon: Number(stats.expiring_soon ?? 0),
     awaitingApproval: Number(stats.awaiting_approval ?? 0)
   };
+};
+
+// ─── GET VENDOR VERIFICATION DETAILS ─────────────────────────────────────────────
+export const getVendorVerification = async (id: string) => {
+  const query = `
+    SELECT
+      id, vendor_code, full_name,
+      police_verification_status, police_verification_issue_date, police_verification_valid_till,
+      police_verification_remarks, police_verification_document,
+      medical_verification_status, medical_verification_issue_date, medical_verification_valid_till,
+      medical_verification_remarks, medical_verification_document
+    FROM vendors
+    WHERE id = ? AND status = 1
+  `;
+  const [rows] = await pool.execute<RowDataPacket[]>(query, [id]);
+  return rows[0] ? withEffectiveVerification(rows[0]) : null;
+};
+
+// ─── UPDATE POLICE / MEDICAL VERIFICATION ────────────────────────────────────────
+const updateVerification = async (
+  id: string,
+  prefix: "police_verification" | "medical_verification",
+  data: { status?: string; issue_date?: string; valid_till?: string; remarks?: string },
+  documentPath?: string
+) => {
+  const updates: string[] = [];
+  const values: any[] = [];
+
+  if (data.status !== undefined) {
+    updates.push(`\`${prefix}_status\` = ?`);
+    values.push(data.status);
+  }
+  if (data.issue_date !== undefined) {
+    updates.push(`\`${prefix}_issue_date\` = ?`);
+    values.push(data.issue_date);
+  }
+  if (data.valid_till !== undefined) {
+    updates.push(`\`${prefix}_valid_till\` = ?`);
+    values.push(data.valid_till);
+  }
+  if (data.remarks !== undefined) {
+    updates.push(`\`${prefix}_remarks\` = ?`);
+    values.push(data.remarks);
+  }
+  if (documentPath) {
+    updates.push(`\`${prefix}_document\` = ?`);
+    values.push(documentPath);
+  }
+
+  if (updates.length === 0) {
+    throw new Error("No updateable verification fields provided");
+  }
+
+  values.push(id);
+  await pool.execute(`UPDATE vendors SET ${updates.join(", ")} WHERE id = ?`, values);
+
+  return getVendorVerification(id);
+};
+
+export const updatePoliceVerification = (
+  id: string,
+  data: { status?: string; issue_date?: string; valid_till?: string; remarks?: string },
+  documentPath?: string
+) => updateVerification(id, "police_verification", data, documentPath);
+
+export const updateMedicalVerification = (
+  id: string,
+  data: { status?: string; issue_date?: string; valid_till?: string; remarks?: string },
+  documentPath?: string
+) => updateVerification(id, "medical_verification", data, documentPath);
+
+// ─── VENDOR DOCUMENTS ─────────────────────────────────────────────────────────────
+export const getVendorDocuments = async (vendorId: string) => {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT vd.*, u.full_name as uploaded_by_name
+     FROM vendor_documents vd
+     LEFT JOIN users u ON u.id = vd.uploaded_by
+     WHERE vd.vendor_id = ? AND vd.status = 1
+     ORDER BY vd.uploaded_at DESC`,
+    [vendorId]
+  );
+  return rows;
+};
+
+export const uploadVendorDocument = async (
+  vendorId: string,
+  documentType: VendorDocumentType,
+  documentPath: string,
+  userId: number,
+  originalName?: string
+) => {
+  const [vendorRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT id FROM vendors WHERE id = ? AND status = 1",
+    [vendorId]
+  );
+  if (vendorRows.length === 0) {
+    throw new Error("Vendor not found");
+  }
+
+  // Replace semantics: retire any existing active document of the same type first.
+  await pool.execute(
+    "UPDATE vendor_documents SET status = 0 WHERE vendor_id = ? AND document_type = ? AND status = 1",
+    [vendorId, documentType]
+  );
+
+  const [result] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO vendor_documents (vendor_id, document_type, document_path, original_name, uploaded_by) VALUES (?, ?, ?, ?, ?)`,
+    [vendorId, documentType, documentPath, originalName ?? null, userId]
+  );
+
+  // Keep the vendor's own verification-document column in sync for the two verification types.
+  if (documentType === "POLICE_VERIFICATION") {
+    await pool.execute("UPDATE vendors SET police_verification_document = ? WHERE id = ?", [documentPath, vendorId]);
+  } else if (documentType === "MEDICAL") {
+    await pool.execute("UPDATE vendors SET medical_verification_document = ? WHERE id = ?", [documentPath, vendorId]);
+  }
+
+  return { id: result.insertId, vendor_id: Number(vendorId), document_type: documentType, document_path: documentPath };
+};
+
+export const deleteVendorDocument = async (vendorId: string, documentId: string) => {
+  await pool.execute(
+    "UPDATE vendor_documents SET status = 0 WHERE id = ? AND vendor_id = ?",
+    [documentId, vendorId]
+  );
+  return { id: Number(documentId), deleted: true };
 };

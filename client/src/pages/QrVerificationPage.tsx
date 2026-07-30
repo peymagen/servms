@@ -1,43 +1,18 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { api, ApiError } from "../api/client";
+import { useVerifyIdCardQuery } from "../api/idcardApi";
+import { VENDOR_TYPE_LABELS } from "../types";
 import styles from "./QrVerificationPage.module.css";
-
-interface VerifyResult {
-  vendor_code: string;
-  full_name: string;
-  vendor_type: string;
-  validity_start: string | null;
-  validity_end: string | null;
-  police_verification_status: string;
-  medical_fitness_status: string;
-  aadhar_linked: number | boolean;
-  contractor_name: string | null;
-  unit_name: string | null;
-  station_name: string | null;
-  id_number: string;
-  cards_status: "active" | "pending" | "expired";
-  last_checked_at: string | null;
-}
 
 export default function QrVerificationPage() {
   const { code } = useParams<{ code: string }>();
-  const [result, setResult] = useState<VerifyResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: result, error: queryError, isFetching: isLoading } = useVerifyIdCardQuery(code ?? "", { skip: !code });
+  const error = queryError ? "Verification failed" : null;
 
-  useEffect(() => {
-    if (!code) return;
-    api
-      .get<VerifyResult>(`/idcards/verify/${encodeURIComponent(code)}`)
-      .then(setResult)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Verification failed"))
-      .finally(() => setIsLoading(false));
-  }, [code]);
-
-  const daysRemaining = result?.validity_end
-    ? Math.ceil((new Date(result.validity_end).getTime() - Date.now()) / (1000 * 3600 * 24))
+  const daysRemaining = result?.expiry_date
+    ? Math.ceil((new Date(result.expiry_date).getTime() - Date.now()) / (1000 * 3600 * 24))
     : null;
+
+  const isValid = result?.cards_status === "active" && result?.approval_status === "approved";
 
   return (
     <div className={styles.page}>
@@ -62,23 +37,18 @@ export default function QrVerificationPage() {
           <div className={styles.resultGrid}>
             <div className={styles.photoCol}>
               <div className={styles.photo}>{result.full_name.charAt(0)}</div>
-              <div className={styles.idLabel}>EMPLOYEE ID</div>
-              <div className={styles.idValue}>{result.vendor_code}</div>
+              <div className={styles.idLabel}>ID NUMBER</div>
+              <div className={styles.idValue}>{result.id_number}</div>
             </div>
 
             <div className={styles.detailCol}>
-              <div
-                className={
-                  result.cards_status === "active" ? styles.statusValid : styles.statusInvalid
-                }
-              >
+              <div className={isValid ? styles.statusValid : styles.statusInvalid}>
                 <div className={styles.statusLabel}>STATUS</div>
                 <div className={styles.statusValue}>
-                  {result.cards_status === "active" ? "VALID" : result.cards_status.toUpperCase()}
+                  {isValid ? "VALID" : result.approval_status !== "approved" ? "NOT ISSUED" : result.cards_status.toUpperCase()}
                 </div>
                 <div className={styles.lastChecked}>
-                  Last Checked{" "}
-                  {result.last_checked_at ? new Date(result.last_checked_at).toLocaleString() : "—"}
+                  Last Checked {result.last_checked_at ? new Date(result.last_checked_at).toLocaleString() : "—"}
                 </div>
               </div>
 
@@ -86,17 +56,16 @@ export default function QrVerificationPage() {
                 <h2 className={styles.infoTitle}>Vendor Information</h2>
                 <div className={styles.infoGrid}>
                   <InfoField label="Full Name" value={result.full_name} />
-                  <InfoField label="Vendor Type" value={result.vendor_type} />
+                  <InfoField label="Vendor Type" value={VENDOR_TYPE_LABELS[result.vendor_type]} />
                   <InfoField label="Contractor / Agency" value={result.contractor_name ?? "—"} />
                   <InfoField label="Assigned Unit" value={result.unit_name ?? result.station_name ?? "—"} />
+                  <InfoField label="Aadhaar Number" value={result.aadhaar_number ?? "—"} />
+                  <InfoField label="Address" value={result.address ?? "—"} />
                 </div>
                 <div className={styles.validityRow}>
                   <div>
-                    <div className={styles.fieldLabel}>Validity Period</div>
-                    <div>
-                      {result.validity_start ? new Date(result.validity_start).toLocaleDateString() : "—"} —{" "}
-                      {result.validity_end ? new Date(result.validity_end).toLocaleDateString() : "—"}
-                    </div>
+                    <div className={styles.fieldLabel}>ID Card Validity</div>
+                    <div>{result.expiry_date ? new Date(result.expiry_date).toLocaleDateString() : "—"}</div>
                   </div>
                   <div>
                     <div className={styles.fieldLabel}>Days Remaining</div>
@@ -107,15 +76,18 @@ export default function QrVerificationPage() {
 
               <div className={styles.stepsCard}>
                 <h2 className={styles.infoTitle}>Verification Step</h2>
-                <StepRow
-                  label="Police Verification (PVR)"
-                  completed={result.police_verification_status === "completed"}
-                />
-                <StepRow
-                  label="Medical Fitness Certificate"
-                  completed={result.medical_fitness_status === "completed"}
-                />
-                <StepRow label="Aadhar Linking" completed={Boolean(result.aadhar_linked)} />
+                <StepRow label="Police Verification" completed={result.police_verification_status === "verified"} />
+                <StepRow label="Medical Verification" completed={result.medical_verification_status === "verified"} />
+              </div>
+
+              <div className={styles.infoCard}>
+                <h2 className={styles.infoTitle}>Issuing Authority</h2>
+                <div className={styles.infoGrid}>
+                  <InfoField label="Authority Name" value={result.issuing_authority_name ?? "—"} />
+                  <InfoField label="Designation" value={result.issuing_authority_designation ?? "—"} />
+                  <InfoField label="Digital Signature" value={result.signature_applied ? "Applied ✓" : "Not applied"} />
+                  <InfoField label="Issue Date" value={result.issued_date ? new Date(result.issued_date).toLocaleDateString() : "—"} />
+                </div>
               </div>
             </div>
           </div>

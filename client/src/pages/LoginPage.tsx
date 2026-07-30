@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { ApiError } from "../api/client";
 import styles from "./LoginPage.module.css";
 
 export default function LoginPage() {
@@ -21,8 +20,8 @@ export default function LoginPage() {
     try {
       await login(username, password);
       navigate("/dashboard");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to sign in");
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to sign in");
     } finally {
       setIsSubmitting(false);
     }
