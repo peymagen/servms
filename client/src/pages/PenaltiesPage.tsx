@@ -29,21 +29,6 @@ import StatCard from "../components/ui/StatCard";
 import Pagination from "../components/ui/Pagination";
 import styles from "../styles/listPage.module.css";
 
-function derivePenaltyType(reason: string): string {
-  const r = reason.toUpperCase();
-  if (r.includes("HYGIENE") || r.includes("EXPIRED")) return "HYGIENE LAPSE";
-  if (r.includes("OVERCHARG")) return "OVERCHARGING";
-  if (r.includes("VENDING") || r.includes("UNAUTHORIZ")) return "UNAUTHORIZED VENDING";
-  return "OTHER";
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
-
 const LIMIT = 10;
 
 const RECOVERY_ORDER: PenaltyRecoveryStatus[] = ["pending", "partially_recovered", "recovered", "closed"];
@@ -102,17 +87,11 @@ export default function PenaltiesPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewPenalty, setViewPenalty] = useState<Penalty | null>(null);
   const [editPenaltyTarget, setEditPenaltyTarget] = useState<Penalty | null>(null);
-  const [resolvingId, setResolvingId] = useState<number | null>(null);
-
-  function buildParams(limit: number, offsetVal: number) {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offsetVal) });
-    if (search) params.set("search", search);
-    if (statusFilter) params.set("status", statusFilter);
-    if (divisionFilter) params.set("division_id", String(divisionFilter));
-    return params;
-  }
+  const [recoveryTarget, setRecoveryTarget] = useState<Penalty | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<Penalty | null>(null);
 
   const filters = useMemo(
     () => ({
@@ -146,18 +125,19 @@ export default function PenaltiesPage() {
   async function handleExport() {
     setIsExporting(true);
     try {
-      const params = buildParams(2000, 0);
-      const res = await api.get<{ total: number; rows: Penalty[] }>(`/penalties?${params.toString()}`);
+      const res = await triggerExport({ ...filters, limit: 2000, offset: 0 }).unwrap();
       const headers = [
         "Ref No",
+        "Reference",
         "Contractor / Vendor",
-        "Unit / Location",
-        "Penalty Type",
-        "Reason",
+        "Unit",
         "Amount",
-        "Date Raised",
-        "Date Resolved",
-        "Status",
+        "Due Date",
+        "Approval Status",
+        "Recovery Status",
+        "Recovery Date",
+        "MR Number",
+        "Order Number",
       ];
       const rows = res.rows.map((p) => [
         p.penalty_code,
@@ -165,9 +145,12 @@ export default function PenaltiesPage() {
         p.contractor_name ?? p.vendor_name ?? "",
         p.unit_name ?? "",
         p.amount,
-        formatDate(p.issued_date),
-        p.penalties_status !== "pending" ? formatDate(p.resolution_date) : "",
-        STATUS_LABELS[p.penalties_status],
+        formatDate(p.due_date),
+        APPROVAL_LABELS[p.approval_status],
+        RECOVERY_LABELS[p.recovery_status],
+        formatDate(p.recovery_date),
+        p.mr_number ?? "",
+        p.order_number ?? "",
       ]);
       const csv = [headers, ...rows]
         .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
@@ -186,25 +169,21 @@ export default function PenaltiesPage() {
     }
   }
 
-  async function updatePenalty(id: number, data: Partial<Penalty>) {
-    await api.patch(`/penalties/${id}`, data);
-    load();
-  }
-
-  // Direct resolve action — fires the API call immediately when an option is picked
-  async function resolvePenalty(id: number, status: "recovered" | "waived") {
-    setResolvingId(id);
+  async function handleApprove(id: number) {
     setError(null);
     try {
-      await api.patch(`/penalties/${id}`, {
-        penalties_status: status,
-        resolution_date: new Date().toISOString(),
-      });
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to update penalty status");
-    } finally {
-      setResolvingId(null);
+      await approvePenalty(id).unwrap();
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to approve penalty");
+    }
+  }
+
+  async function handleReject(id: number) {
+    setError(null);
+    try {
+      await rejectPenalty({ id }).unwrap();
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to reject penalty");
     }
   }
 
@@ -400,22 +379,22 @@ export default function PenaltiesPage() {
               <th>Contractor / Vendor</th>
               <th>Unit</th>
               <th>Amount</th>
-              <th>Date Raised</th>
-              <th>Date Resolved</th>
-              <th>Status</th>
+              <th>Due Date</th>
+              <th>Approval</th>
+              <th>Recovery</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isFetching ? (
               <tr>
-                <td colSpan={10} className={styles.emptyCell}>
+                <td colSpan={8} className={styles.emptyCell}>
                   Loading…
                 </td>
               </tr>
             ) : penalties.length === 0 ? (
               <tr>
-                <td colSpan={10} className={styles.emptyCell}>
+                <td colSpan={8} className={styles.emptyCell}>
                   No penalties recorded.
                 </td>
               </tr>
@@ -432,39 +411,53 @@ export default function PenaltiesPage() {
                       {APPROVAL_LABELS[p.approval_status]}
                     </span>
                   </td>
-                  <td>{currency.format(p.amount)}</td>
-                  <td>{formatDate(p.issued_date)}</td>
-                  <td>
-                    {p.penalties_status !== "pending" ? formatDate(p.resolution_date) : "—"}
-                  </td>
                   <td>
                     <span className={recoveryBadgeClass(p.recovery_status)}>
                       {RECOVERY_LABELS[p.recovery_status]}
                     </span>
                   </td>
                   <td>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <button
-                        type="button"
-                        className={styles.pageBtn}
-                        title="View penalty"
-                        onClick={() => setViewPenalty(p)}
-                      >
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <button type="button" className={styles.pageBtn} title="View penalty" onClick={() => setViewPenalty(p)}>
                         <EyeIcon />
                       </button>
-                      <button
-                        type="button"
-                        className={styles.pageBtn}
-                        title="Edit penalty"
-                        onClick={() => setEditPenaltyTarget(p)}
-                      >
-                        <EditIcon />
-                      </button>
-                      <ResolveActionMenu
-                        penalty={p}
-                        onResolve={resolvePenalty}
-                        isResolving={resolvingId === p.id}
-                      />
+                      {canEdit && p.approval_status !== "revoked" && (
+                        <button type="button" className={styles.pageBtn} title="Edit penalty" onClick={() => setEditPenaltyTarget(p)}>
+                          <EditIcon />
+                        </button>
+                      )}
+                      {canApprove && p.approval_status === "pending_approval" && (
+                        <>
+                          <button
+                            type="button"
+                            className={styles.pageBtn}
+                            title="Approve"
+                            disabled={isApproving}
+                            onClick={() => handleApprove(p.id)}
+                          >
+                            ✓
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.pageBtn}
+                            title="Reject"
+                            disabled={isRejecting}
+                            onClick={() => handleReject(p.id)}
+                          >
+                            ✕
+                          </button>
+                        </>
+                      )}
+                      {canApprove && p.approval_status === "approved" && (
+                        <button type="button" className={styles.pageBtn} title="Revoke" onClick={() => setRevokeTarget(p)}>
+                          Revoke
+                        </button>
+                      )}
+                      {canEdit && p.approval_status === "approved" && p.recovery_status !== "closed" && (
+                        <button type="button" className={styles.pageBtn} title="Update recovery" onClick={() => setRecoveryTarget(p)}>
+                          <StatusIcon />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -489,52 +482,7 @@ export default function PenaltiesPage() {
         <RecoveryModal penalty={recoveryTarget} onClose={() => setRecoveryTarget(null)} />
       )}
 
-      {viewPenalty && (
-        <div className={styles.modalOverlay} onClick={() => setViewPenalty(null)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2 className={styles.modalTitle}>{viewPenalty.penalty_code}</h2>
-            <div className={styles.formGrid}>
-              <DetailItem
-                label="Contractor / Vendor"
-                value={viewPenalty.contractor_name ?? viewPenalty.vendor_name ?? "—"}
-              />
-              <DetailItem label="Unit / Location" value={viewPenalty.unit_name ?? "—"} />
-              <DetailItem label="Penalty Type" value={derivePenaltyType(viewPenalty.reason)} />
-              <DetailItem label="Amount" value={currency.format(viewPenalty.amount)} />
-              <DetailItem label="Date Raised" value={formatDate(viewPenalty.issued_date)} />
-              <DetailItem
-                label="Date Resolved"
-                value={
-                  viewPenalty.penalties_status !== "pending"
-                    ? formatDate(viewPenalty.resolution_date)
-                    : "—"
-                }
-              />
-              <DetailItem label="Status" value={STATUS_LABELS[viewPenalty.penalties_status]} />
-              <div className={styles.fieldWide}>
-                <div className={styles.fieldLabel}>Reason</div>
-                <div className={styles.strong}>{viewPenalty.reason}</div>
-              </div>
-            </div>
-            <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={() => setViewPenalty(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editPenaltyTarget && (
-        <EditPenaltyModal
-          penalty={editPenaltyTarget}
-          onClose={() => setEditPenaltyTarget(null)}
-          onSaved={(data) => {
-            updatePenalty(editPenaltyTarget.id, data);
-            setEditPenaltyTarget(null);
-          }}
-        />
-      )}
+      {revokeTarget && <RevokeModal penalty={revokeTarget} onClose={() => setRevokeTarget(null)} />}
     </div>
   );
 }
@@ -557,95 +505,54 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ResolveActionMenu({
-  penalty,
-  onResolve,
-  isResolving,
-}: {
-  penalty: Penalty;
-  onResolve: (id: number, status: "recovered" | "waived") => void;
-  isResolving: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-
-  if (penalty.penalties_status !== "pending") return null;
-
+function ViewPenaltyModal({ penalty, onClose }: { penalty: Penalty; onClose: () => void }) {
   return (
-    <div style={{ position: "relative", display: "inline-block" }}>
-      <button
-        type="button"
-        className={styles.pageBtn}
-        title="Update status"
-        disabled={isResolving}
-        onClick={() => setOpen((o) => !o)}
-        style={{ opacity: isResolving ? 0.5 : 1, cursor: isResolving ? "not-allowed" : "pointer" }}
-      >
-        <StatusIcon />
-      </button>
-
-      {open && (
-        <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setOpen(false)} />
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              right: 0,
-              marginTop: 4,
-              background: "var(--color-surface)",
-              boxShadow: "var(--shadow-card)",
-              borderRadius: 8,
-              zIndex: 20,
-              minWidth: 150,
-              overflow: "hidden",
-              border: "1px solid rgba(0,0,0,0.08)",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                onResolve(penalty.id, "recovered");
-                setOpen(false);
-              }}
-              style={{
-                display: "block",
-                width: "100%",
-                textAlign: "left",
-                padding: "9px 14px",
-                border: "none",
-                background: "none",
-                cursor: "pointer",
-                fontSize: 13,
-                color: "#16a34a",
-                fontWeight: 500,
-              }}
-            >
-              ✓ Mark Recovered
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onResolve(penalty.id, "waived");
-                setOpen(false);
-              }}
-              style={{
-                display: "block",
-                width: "100%",
-                textAlign: "left",
-                padding: "9px 14px",
-                border: "none",
-                background: "none",
-                cursor: "pointer",
-                fontSize: 13,
-                color: "#d97706",
-                fontWeight: 500,
-              }}
-            >
-              Waive Penalty
-            </button>
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <h2 className={styles.modalTitle}>{penalty.penalty_code}</h2>
+        <div className={styles.formGrid}>
+          <DetailItem label="Contractor / Vendor" value={penalty.contractor_name ?? penalty.vendor_name ?? "—"} />
+          <DetailItem label="Unit / Location" value={penalty.unit_name ?? "—"} />
+          <DetailItem
+            label="Reference"
+            value={
+              penalty.reference_type === "complaint"
+                ? `Complaint ${penalty.complaint_code ?? ""}`
+                : penalty.reference_type === "inspection"
+                ? `Inspection on ${formatDate(penalty.inspection_date)}`
+                : "—"
+            }
+          />
+          <DetailItem label="Amount" value={currency.format(penalty.amount)} />
+          <DetailItem label="Date Raised" value={formatDate(penalty.issued_date)} />
+          <DetailItem label="Due Date" value={formatDate(penalty.due_date)} />
+          <DetailItem label="Approval Status" value={APPROVAL_LABELS[penalty.approval_status]} />
+          <DetailItem label="Approved By" value={penalty.approved_by_name ?? "—"} />
+          <DetailItem label="Recovery Status" value={RECOVERY_LABELS[penalty.recovery_status]} />
+          <DetailItem label="Recovery Amount" value={currency.format(penalty.recovery_amount)} />
+          <DetailItem label="Recovery Date" value={formatDate(penalty.recovery_date)} />
+          <DetailItem label="MR Number / Date" value={`${penalty.mr_number ?? "—"} / ${formatDate(penalty.mr_date)}`} />
+          <DetailItem label="Order Number / Date" value={`${penalty.order_number ?? "—"} / ${formatDate(penalty.order_date)}`} />
+          {penalty.approval_status === "revoked" && (
+            <DetailItem label="Revoke Reason" value={penalty.revoke_reason ?? "—"} />
+          )}
+          <div className={styles.fieldWide}>
+            <div className={styles.fieldLabel}>Reason</div>
+            <div className={styles.strong}>{penalty.reason}</div>
           </div>
-        </>
-      )}
+          {penalty.remarks && (
+            <div className={styles.fieldWide}>
+              <div className={styles.fieldLabel}>Remarks</div>
+              <div className={styles.strong}>{penalty.remarks}</div>
+            </div>
+          )}
+        </div>
+        <div className={styles.modalActions}>
+          <button className={styles.cancelBtn} onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -798,34 +705,24 @@ function NewPenaltyModal({
   );
 }
 
-function EditPenaltyModal({
-  penalty,
-  onClose,
-  onSaved,
-}: {
-  penalty: Penalty;
-  onClose: () => void;
-  onSaved: (data: Partial<Penalty>) => void;
-}) {
+function EditPenaltyModal({ penalty, onClose }: { penalty: Penalty; onClose: () => void }) {
+  const [editPenalty, { isLoading: isSubmitting }] = useEditPenaltyMutation();
   const [amount, setAmount] = useState(String(penalty.amount));
   const [reason, setReason] = useState(penalty.reason);
-  const [penaltiesStatus, setPenaltiesStatus] = useState(penalty.penalties_status);
+  const [dueDate, setDueDate] = useState(penalty.due_date?.slice(0, 10) ?? "");
+  const [remarks, setRemarks] = useState(penalty.remarks ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit() {
     setError(null);
-    setIsSubmitting(true);
     try {
-      onSaved({
-        amount: Number(amount),
-        reason,
-        penalties_status: penaltiesStatus,
-      });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to update penalty");
-    } finally {
-      setIsSubmitting(false);
+      await editPenalty({
+        id: penalty.id,
+        data: { amount: Number(amount), reason, due_date: dueDate || undefined, remarks: remarks || undefined },
+      }).unwrap();
+      onClose();
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to update penalty");
     }
   }
 
@@ -834,28 +731,21 @@ function EditPenaltyModal({
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.modalTitle}>Edit {penalty.penalty_code}</h2>
         <div className={styles.formGrid}>
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>Amount (₹)</span>
+          <Field label="Amount (₹)">
             <input type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          </div>
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>Status</span>
-            <select
-              value={penaltiesStatus}
-              onChange={(e) => setPenaltiesStatus(e.target.value as Penalty["penalties_status"])}
-            >
-              {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+          </Field>
+          <Field label="Due Date">
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </Field>
+          <div className={styles.fieldWide}>
+            <Field label="Reason">
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} />
+            </Field>
           </div>
           <div className={styles.fieldWide}>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>Reason</span>
-              <textarea value={reason} onChange={(e) => setReason(e.target.value)} />
-            </div>
+            <Field label="Remarks">
+              <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+            </Field>
           </div>
         </div>
         {error && <div className={styles.errorBanner}>{error}</div>}
@@ -872,6 +762,145 @@ function EditPenaltyModal({
   );
 }
 
+function RecoveryModal({ penalty, onClose }: { penalty: Penalty; onClose: () => void }) {
+  const [updateRecovery, { isLoading: isSubmitting }] = useUpdatePenaltyRecoveryMutation();
+  const currentIndex = RECOVERY_ORDER.indexOf(penalty.recovery_status);
+  const availableStatuses = RECOVERY_ORDER.slice(currentIndex);
+
+  const [recoveryStatus, setRecoveryStatus] = useState<PenaltyRecoveryStatus>(
+    availableStatuses[availableStatuses.length > 1 ? 1 : 0] ?? penalty.recovery_status
+  );
+  const [recoveryAmount, setRecoveryAmount] = useState(String(penalty.recovery_amount || ""));
+  const [recoveryDate, setRecoveryDate] = useState("");
+  const [mrNumber, setMrNumber] = useState(penalty.mr_number ?? "");
+  const [mrDate, setMrDate] = useState(penalty.mr_date?.slice(0, 10) ?? "");
+  const [orderNumber, setOrderNumber] = useState(penalty.order_number ?? "");
+  const [orderDate, setOrderDate] = useState(penalty.order_date?.slice(0, 10) ?? "");
+  const [remarks, setRemarks] = useState(penalty.remarks ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await updateRecovery({
+        id: penalty.id,
+        data: {
+          recovery_status: recoveryStatus,
+          recovery_amount: recoveryAmount ? Number(recoveryAmount) : undefined,
+          recovery_date: recoveryDate || undefined,
+          mr_number: mrNumber || undefined,
+          mr_date: mrDate || undefined,
+          order_number: orderNumber || undefined,
+          order_date: orderDate || undefined,
+          remarks: remarks || undefined,
+        },
+      }).unwrap();
+      onClose();
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to update recovery status");
+    }
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
+        <h2 className={styles.modalTitle}>Update Recovery — {penalty.penalty_code}</h2>
+        <div className={styles.formGrid}>
+          <Field label="Recovery Status">
+            <select value={recoveryStatus} onChange={(e) => setRecoveryStatus(e.target.value as PenaltyRecoveryStatus)}>
+              {availableStatuses.map((s) => (
+                <option key={s} value={s}>
+                  {RECOVERY_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={`Recovery Amount (of ₹${penalty.amount})`}>
+            <input
+              type="number"
+              min="0"
+              max={penalty.amount}
+              value={recoveryAmount}
+              onChange={(e) => setRecoveryAmount(e.target.value)}
+            />
+          </Field>
+          <Field label="Recovery Date">
+            <input type="date" value={recoveryDate} onChange={(e) => setRecoveryDate(e.target.value)} />
+          </Field>
+          <Field label="MR Number">
+            <input value={mrNumber} onChange={(e) => setMrNumber(e.target.value)} />
+          </Field>
+          <Field label="MR Date">
+            <input type="date" value={mrDate} onChange={(e) => setMrDate(e.target.value)} />
+          </Field>
+          <Field label="Order Number">
+            <input value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} />
+          </Field>
+          <Field label="Order Date">
+            <input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+          </Field>
+          <div className={styles.fieldWide}>
+            <Field label="Remarks">
+              <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+            </Field>
+          </div>
+        </div>
+        {error && <div className={styles.errorBanner}>{error}</div>}
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.cancelBtn} onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className={styles.addBtn} disabled={isSubmitting}>
+            {isSubmitting ? "Saving…" : "Update Recovery"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function RevokeModal({ penalty, onClose }: { penalty: Penalty; onClose: () => void }) {
+  const [revokePenalty, { isLoading: isSubmitting }] = useRevokePenaltyMutation();
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await revokePenalty({ id: penalty.id, reason }).unwrap();
+      onClose();
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to revoke penalty");
+    }
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
+        <h2 className={styles.modalTitle}>Revoke {penalty.penalty_code}</h2>
+        <div className={styles.formGrid}>
+          <div className={styles.fieldWide}>
+            <Field label="Revocation Reason">
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} required />
+            </Field>
+          </div>
+        </div>
+        {error && <div className={styles.errorBanner}>{error}</div>}
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.cancelBtn} onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className={styles.addBtn} disabled={isSubmitting}>
+            {isSubmitting ? "Revoking…" : "Revoke Penalty"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function EyeIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -884,12 +913,7 @@ function EyeIcon() {
 function EditIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
+      <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -898,13 +922,7 @@ function StatusIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M8 12.5l2.5 2.5L16 9.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M8 12.5l2.5 2.5L16 9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

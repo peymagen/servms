@@ -37,11 +37,28 @@ function formatDate(value: string | null | undefined): string {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-interface Metrics {
-  openComplaints: number;
-  pendingATR: number;
-  avgResolutionTime: number;
-  categoryDistribution: Array<{ category: string; count: number }>;
+function BreakdownBar({ title, rows }: { title: string; rows: Array<{ label: string; count: number }> }) {
+  const max = Math.max(1, ...rows.map((r) => r.count));
+  return (
+    <div style={{ background: "var(--color-surface)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card)", padding: "14px 18px" }}>
+      <h3 style={{ fontSize: 12.5, margin: "0 0 10px", color: "var(--color-text-muted)" }}>{title}</h3>
+      {rows.length === 0 ? (
+        <span className={styles.hint}>No data</span>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {rows.slice(0, 8).map((r) => (
+            <div key={r.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5 }}>
+              <span style={{ width: 110, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>
+              <div style={{ flex: 1, background: "var(--color-bg)", borderRadius: 4, height: 8 }}>
+                <div style={{ width: `${(r.count / max) * 100}%`, background: "var(--color-primary)", height: 8, borderRadius: 4 }} />
+              </div>
+              <span style={{ width: 24, textAlign: "right" }}>{r.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ComplaintsPage() {
@@ -67,8 +84,6 @@ export default function ComplaintsPage() {
   const [detailId, setDetailId] = useState<number | null>(null);
   const [editComplaintTarget, setEditComplaintTarget] = useState<Complaint | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [resolvingId, setResolvingId] = useState<number | null>(null);
 
   const filters: ComplaintFilters = useMemo(
     () => ({
@@ -140,24 +155,6 @@ export default function ComplaintsPage() {
       await downloadComplaintsReport(filters, format);
     } catch (err: any) {
       setError(err?.message ?? "Unable to export report");
-    }
-  }
-
-  // Direct one-click status change — fires the API call immediately
-  async function resolveComplaint(id: number, status: Complaint["complaints_status"]) {
-    setResolvingId(id);
-    setError(null);
-    try {
-      const isFinal = status === "resolved" || status === "rejected";
-      await api.patch(`/complaints/${id}`, {
-        complaints_status: status,
-        ...(isFinal ? { resolution_date: new Date().toISOString() } : {}),
-      });
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to update complaint status");
-    } finally {
-      setResolvingId(null);
     }
   }
 
@@ -332,25 +329,15 @@ export default function ComplaintsPage() {
               <th>Type / Sub-Type</th>
               <th>Concerned Unit</th>
               <th>Priority</th>
-              <th>Date Raised</th>
-              <th>Date Resolved</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr>
-                <td colSpan={9} className={styles.emptyCell}>
-                  Loading…
-                </td>
-              </tr>
+              <tr><td colSpan={9} className={styles.emptyCell}>Loading…</td></tr>
             ) : complaints.length === 0 ? (
-              <tr>
-                <td colSpan={9} className={styles.emptyCell}>
-                  No complaints found.
-                </td>
-              </tr>
+              <tr><td colSpan={9} className={styles.emptyCell}>No complaints found.</td></tr>
             ) : (
               complaints.map((c) => (
                 <tr key={c.id}>
@@ -365,12 +352,6 @@ export default function ComplaintsPage() {
                       {c.priority.toUpperCase()}
                     </span>
                   </td>
-                  <td>{formatDate(c.occurrence_date)}</td>
-                  <td>
-                    {c.complaints_status === "resolved" || c.complaints_status === "rejected"
-                      ? formatDate((c as any).resolution_date)
-                      : "—"}
-                  </td>
                   <td>
                     <span className={c.complaints_status === "closed" || c.complaints_status === "approved" ? styles.statusGood : c.complaints_status === "rejected" ? styles.statusBad : styles.statusWarn}>
                       {STATUS_LABELS[c.complaints_status]}
@@ -378,27 +359,14 @@ export default function ComplaintsPage() {
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <button
-                        type="button"
-                        className={styles.pageBtn}
-                        title="View complaint"
-                        onClick={() => setViewComplaint(c)}
-                      >
+                      <button type="button" className={styles.pageBtn} title="View complaint" onClick={() => setDetailId(c.id)}>
                         <EyeIcon />
                       </button>
-                      <button
-                        type="button"
-                        className={styles.pageBtn}
-                        title="Edit complaint"
-                        onClick={() => setEditComplaintTarget(c)}
-                      >
-                        <EditIcon />
-                      </button>
-                      <ComplaintStatusMenu
-                        complaint={c}
-                        onResolve={resolveComplaint}
-                        isResolving={resolvingId === c.id}
-                      />
+                      {can("complaint_management", "edit") && (
+                        <button type="button" className={styles.pageBtn} title="Edit complaint" onClick={() => setEditComplaintTarget(c)}>
+                          <EditIcon />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -409,52 +377,7 @@ export default function ComplaintsPage() {
         <Pagination total={total} limit={LIMIT} offset={offset} onOffsetChange={setOffset} />
       </div>
 
-      {viewComplaint && (
-        <div className={styles.modalOverlay} onClick={() => setViewComplaint(null)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2 className={styles.modalTitle}>#{viewComplaint.complaint_code}</h2>
-            <div className={styles.formGrid}>
-              <DetailItem label="Category" value={viewComplaint.category} />
-              <DetailItem
-                label="Priority"
-                value={viewComplaint.priority.charAt(0).toUpperCase() + viewComplaint.priority.slice(1)}
-              />
-              <DetailItem
-                label="Date"
-                value={
-                  viewComplaint.occurrence_date
-                    ? new Date(viewComplaint.occurrence_date).toLocaleDateString()
-                    : "—"
-                }
-              />
-              <DetailItem label="Unit / Station" value={viewComplaint.unit_name ?? viewComplaint.station_name ?? "—"} />
-              <DetailItem label="Division" value={viewComplaint.division_name ?? "—"} />
-              <DetailItem label="Location" value={viewComplaint.location_text ?? "—"} />
-              <DetailItem label="Registered By" value={viewComplaint.registered_by_name ?? "—"} />
-              <DetailItem label="Date Raised" value={formatDate(viewComplaint.occurrence_date)} />
-              <DetailItem
-                label="Date Resolved"
-                value={
-                  viewComplaint.complaints_status === "resolved" ||
-                  viewComplaint.complaints_status === "rejected"
-                    ? formatDate((viewComplaint as any).resolution_date)
-                    : "—"
-                }
-              />
-              <DetailItem label="Status" value={STATUS_LABELS[viewComplaint.complaints_status]} />
-              <div className={styles.fieldWide}>
-                <div className={styles.fieldLabel}>Description</div>
-                <div className={styles.strong}>{viewComplaint.description}</div>
-              </div>
-            </div>
-            <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={() => setViewComplaint(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {detailId !== null && <ComplaintDetailModal complaintId={detailId} onClose={() => setDetailId(null)} />}
 
       {editComplaintTarget && (
         <EditComplaintModal complaint={editComplaintTarget} onClose={() => setEditComplaintTarget(null)} onSaved={handleEditSave} />
@@ -468,104 +391,6 @@ function LabeledField({ label, children }: { label: string; children: ReactNode 
     <div className={styles.field} style={{ flex: 1 }}>
       <span className={styles.fieldLabel}>{label}</span>
       {children}
-    </div>
-  );
-}
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className={styles.fieldLabel}>{label}</div>
-      <div className={styles.strong}>{value}</div>
-    </div>
-  );
-}
-
-// Click-to-update status icon, matching PenaltiesPage's ResolveActionMenu pattern
-function ComplaintStatusMenu({
-  complaint,
-  onResolve,
-  isResolving,
-}: {
-  complaint: Complaint;
-  onResolve: (id: number, status: Complaint["complaints_status"]) => void;
-  isResolving: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-
-  // Once resolved or rejected, there's nothing further to change
-  if (complaint.complaints_status === "resolved" || complaint.complaints_status === "rejected") {
-    return null;
-  }
-
-  const options = [
-    { value: "investigating", label: "Mark Under Investigation", color: "#d97706" },
-    { value: "resolved", label: "Mark Resolved", color: "#16a34a" },
-    { value: "rejected", label: "Reject Complaint", color: "#dc2626" },
-  ].filter((opt) => opt.value !== complaint.complaints_status) as Array<{
-    value: Complaint["complaints_status"];
-    label: string;
-    color: string;
-  }>;
-
-  return (
-    <div style={{ position: "relative", display: "inline-block" }}>
-      <button
-        type="button"
-        className={styles.pageBtn}
-        title="Update status"
-        disabled={isResolving}
-        onClick={() => setOpen((o) => !o)}
-        style={{ opacity: isResolving ? 0.5 : 1, cursor: isResolving ? "not-allowed" : "pointer" }}
-      >
-        <StatusIcon />
-      </button>
-
-      {open && (
-        <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setOpen(false)} />
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              right: 0,
-              marginTop: 4,
-              background: "var(--color-surface)",
-              boxShadow: "var(--shadow-card)",
-              borderRadius: 8,
-              zIndex: 20,
-              minWidth: 180,
-              overflow: "hidden",
-              border: "1px solid rgba(0,0,0,0.08)",
-            }}
-          >
-            {options.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  onResolve(complaint.id, opt.value);
-                  setOpen(false);
-                }}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "9px 14px",
-                  border: "none",
-                  background: "none",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  color: opt.color,
-                  fontWeight: 500,
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -651,21 +476,6 @@ function EditIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
       <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function StatusIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M8 12.5l2.5 2.5L16 9.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
     </svg>
   );
 }
