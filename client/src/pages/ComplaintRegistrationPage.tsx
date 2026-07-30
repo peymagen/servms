@@ -1,17 +1,12 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, ApiError } from "../api/client";
-import type { Complaint, Unit } from "../types";
+import { useCreateComplaintMutation, useGetComplaintSubtypesQuery, useGetComplaintTypesQuery } from "../api/complaintApi";
+import { useGetUnitsLiteQuery, useGetDivisionsQuery, useGetStationsQuery } from "../api/mastersApi";
+import { useGetTrainsQuery } from "../api/trainApi";
+import type { Complaint } from "../types";
 import styles from "./ComplaintRegistrationPage.module.css";
 
-const CATEGORIES = [
-  "Food Quality & Hygiene",
-  "Overcharging",
-  "Vendor Misbehavior",
-  "Unauthorized Vendor",
-  "Unhygienic Premises",
-  "Other",
-];
+type Source = "cpgrams" | "manual";
 
 const PRIORITIES: Array<{ value: Complaint["priority"]; label: string; icon: ReactNode }> = [
   { value: "low", label: "Low", icon: <ExclaimIcon /> },
@@ -21,23 +16,48 @@ const PRIORITIES: Array<{ value: Complaint["priority"]; label: string; icon: Rea
 
 export default function ComplaintRegistrationPage() {
   const navigate = useNavigate();
-  const [units, setUnits] = useState<Unit[]>([]);
+  const { data: units = [] } = useGetUnitsLiteQuery();
+  const { data: divisions = [] } = useGetDivisionsQuery();
+  const [createComplaint, { isLoading: isSubmitting }] = useCreateComplaintMutation();
+
+  const [source, setSource] = useState<Source>("manual");
+  const [portalRegNo, setPortalRegNo] = useState("");
+  const [dakRefNo, setDakRefNo] = useState("");
+  const [eofficeNo, setEofficeNo] = useState("");
+
+  const [divisionId, setDivisionId] = useState<number | "">("");
+  const { data: stations = [] } = useGetStationsQuery(divisionId || undefined);
+  const { data: trainsResult } = useGetTrainsQuery({ division_id: divisionId || undefined, limit: 500 });
+  const trains = trainsResult?.rows ?? [];
+  const [trainId, setTrainId] = useState<number | "">("");
+  const [stationId, setStationId] = useState<number | "">("");
+
   const [unitId, setUnitId] = useState<number | "">("");
-  const [category, setCategory] = useState("");
+
+  const { data: types = [] } = useGetComplaintTypesQuery();
+  const [typeId, setTypeId] = useState<number | "">("");
+  const { data: subtypes = [] } = useGetComplaintSubtypesQuery({ typeId: typeId || 0 }, { skip: !typeId });
+  const [subtypeId, setSubtypeId] = useState<number | "">("");
+
+  useEffect(() => {
+    setSubtypeId("");
+  }, [typeId]);
+
+  const [complainantName, setComplainantName] = useState("");
+  const [complainantMobile, setComplainantMobile] = useState("");
+  const [complainantEmail, setComplainantEmail] = useState("");
+
   const [description, setDescription] = useState("");
   const [occurrenceDate, setOccurrenceDate] = useState("");
   const [occurrenceTime, setOccurrenceTime] = useState("");
   const [priority, setPriority] = useState<Complaint["priority"]>("medium");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    api
-      .get<{ total: number; rows: Unit[] }>("/units?limit=100")
-      .then((res) => setUnits(res.rows))
-      .catch(() => {});
-  }, []);
+  const referenceLabel = useMemo(
+    () => (source === "cpgrams" ? "Portal Registration Number" : "Manual Dak / E-Office Reference"),
+    [source]
+  );
 
   function handleFilesSelected(selected: FileList | null) {
     if (!selected) return;
@@ -47,23 +67,40 @@ export default function ComplaintRegistrationPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append("unit_id", String(unitId));
-      formData.append("category", category);
-      formData.append("description", description);
-      formData.append("priority", priority);
-      if (occurrenceDate) formData.append("occurrence_date", occurrenceDate);
-      if (occurrenceTime) formData.append("occurrence_time", occurrenceTime);
-      files.forEach((file) => formData.append("evidence", file));
 
-      await api.post("/complaints", formData, true);
+    if (!typeId || !subtypeId) {
+      setError("Complaint Type and Sub-Type are required");
+      return;
+    }
+    if (source === "cpgrams" && !portalRegNo.trim()) {
+      setError("Portal Registration Number is required for CPGRAMS complaints");
+      return;
+    }
+
+    try {
+      await createComplaint({
+        complaint_source: source,
+        portal_registration_number: source === "cpgrams" ? portalRegNo : undefined,
+        manual_dak_reference_number: source === "manual" ? dakRefNo || undefined : undefined,
+        eoffice_computer_number: source === "manual" ? eofficeNo || undefined : undefined,
+        unit_id: Number(unitId),
+        division_id: divisionId || undefined,
+        train_id: trainId || undefined,
+        station_id: stationId || undefined,
+        complaint_type_id: Number(typeId),
+        complaint_subtype_id: Number(subtypeId),
+        description,
+        complainant_name: complainantName || undefined,
+        complainant_mobile: complainantMobile || undefined,
+        complainant_email: complainantEmail || undefined,
+        occurrence_date: occurrenceDate || undefined,
+        occurrence_time: occurrenceTime || undefined,
+        priority,
+        evidence: files.length > 0 ? files : undefined,
+      }).unwrap();
       navigate("/complaints");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to register complaint");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to register complaint");
     }
   }
 
@@ -74,8 +111,8 @@ export default function ComplaintRegistrationPage() {
           <div>
             <h1 className={styles.title}>Complaint Registration</h1>
             <p className={styles.subtitle}>
-              Lodge a new vendor-related grievance or operational issue within the SERVMS
-              network.
+              Register a CPGRAMS or Manual complaint. RailMadad complaints are registered in bulk via Excel
+              import.
             </p>
           </div>
           <div className={styles.headerActions}>
@@ -93,36 +130,139 @@ export default function ComplaintRegistrationPage() {
         <div className={styles.grid}>
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>
-              <InfoIcon /> General Details
+              <InfoIcon /> Complaint Source
+            </h2>
+            <div className={styles.priorityRow}>
+              {(["manual", "cpgrams"] as Source[]).map((s) => (
+                <button
+                  type="button"
+                  key={s}
+                  className={source === s ? styles.priorityTileActive : styles.priorityTile}
+                  onClick={() => setSource(s)}
+                >
+                  <span>{s === "manual" ? "Manual Complaint" : "CPGRAMS"}</span>
+                </button>
+              ))}
+            </div>
+            <div className={styles.fieldRow} style={{ marginTop: 16 }}>
+              {source === "cpgrams" ? (
+                <Field label="Portal Registration Number">
+                  <div className={styles.inputWithIcon}>
+                    <input value={portalRegNo} onChange={(e) => setPortalRegNo(e.target.value)} required />
+                  </div>
+                </Field>
+              ) : (
+                <>
+                  <Field label="Manual Dak Reference Number">
+                    <div className={styles.inputWithIcon}>
+                      <input value={dakRefNo} onChange={(e) => setDakRefNo(e.target.value)} />
+                    </div>
+                  </Field>
+                  <Field label="E-Office Computer Number">
+                    <div className={styles.inputWithIcon}>
+                      <input value={eofficeNo} onChange={(e) => setEofficeNo(e.target.value)} />
+                    </div>
+                  </Field>
+                </>
+              )}
+            </div>
+          </section>
+
+          <aside className={styles.card}>
+            <h2 className={styles.cardTitle}>Location</h2>
+            <Field label="Division">
+              <div className={styles.inputWithIcon}>
+                <select
+                  value={divisionId}
+                  onChange={(e) => {
+                    setDivisionId(e.target.value ? Number(e.target.value) : "");
+                    setTrainId("");
+                    setStationId("");
+                  }}
+                >
+                  <option value="">Select Division</option>
+                  {divisions.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.division_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </Field>
+            <Field label="Train (if applicable)">
+              <div className={styles.inputWithIcon}>
+                <select value={trainId} onChange={(e) => setTrainId(e.target.value ? Number(e.target.value) : "")}>
+                  <option value="">— None —</option>
+                  {trains.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.train_number} — {t.train_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </Field>
+            <Field label="Station (if applicable)">
+              <div className={styles.inputWithIcon}>
+                <select value={stationId} onChange={(e) => setStationId(e.target.value ? Number(e.target.value) : "")}>
+                  <option value="">— None —</option>
+                  {stations.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.station_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </Field>
+          </aside>
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              <CategoryIcon /> Complaint Classification
             </h2>
             <div className={styles.fieldRow}>
-              <Field label="Unit / Location (Searchable)">
+              <Field label="Complaint Type">
                 <div className={styles.inputWithIcon}>
-                  <PinIcon />
-                  <select value={unitId} onChange={(e) => setUnitId(e.target.value ? Number(e.target.value) : "")} required>
-                    <option value="">e.g. Shalimar Station, Platform 2</option>
-                    {units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.unit_name} — {u.station_name}
+                  <select value={typeId} onChange={(e) => setTypeId(e.target.value ? Number(e.target.value) : "")} required>
+                    <option value="">Select Type</option>
+                    {types.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
                       </option>
                     ))}
                   </select>
                 </div>
               </Field>
-              <Field label="Complaint Category">
+              <Field label="Complaint Sub-Type">
                 <div className={styles.inputWithIcon}>
-                  <CategoryIcon />
-                  <select value={category} onChange={(e) => setCategory(e.target.value)} required>
-                    <option value="">Select Category</option>
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
+                  <select
+                    value={subtypeId}
+                    onChange={(e) => setSubtypeId(e.target.value ? Number(e.target.value) : "")}
+                    disabled={!typeId}
+                    required
+                  >
+                    <option value="">{typeId ? "Select Sub-Type" : "Select Type first"}</option>
+                    {subtypes.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.label}
                       </option>
                     ))}
                   </select>
                 </div>
               </Field>
             </div>
+            <Field label="Concerned Unit">
+              <div className={styles.inputWithIcon}>
+                <PinIcon />
+                <select value={unitId} onChange={(e) => setUnitId(e.target.value ? Number(e.target.value) : "")} required>
+                  <option value="">e.g. Shalimar Station, Platform 2</option>
+                  {units.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.unit_name} — {u.station_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </Field>
             <Field label="Detailed Description">
               <textarea
                 value={description}
@@ -134,25 +274,36 @@ export default function ComplaintRegistrationPage() {
           </section>
 
           <aside className={styles.card}>
+            <h2 className={styles.cardTitle}>Complainant Details</h2>
+            <Field label="Complainant Name">
+              <div className={styles.inputWithIcon}>
+                <input value={complainantName} onChange={(e) => setComplainantName(e.target.value)} />
+              </div>
+            </Field>
+            <Field label="Mobile Number">
+              <div className={styles.inputWithIcon}>
+                <input value={complainantMobile} onChange={(e) => setComplainantMobile(e.target.value)} />
+              </div>
+            </Field>
+            <Field label="Email">
+              <div className={styles.inputWithIcon}>
+                <input type="email" value={complainantEmail} onChange={(e) => setComplainantEmail(e.target.value)} />
+              </div>
+            </Field>
+          </aside>
+
+          <aside className={styles.card}>
             <h2 className={styles.cardTitle}>Incident Parameters</h2>
             <Field label="Occurrence Date">
               <div className={styles.inputWithIcon}>
                 <CalendarIcon />
-                <input
-                  type="date"
-                  value={occurrenceDate}
-                  onChange={(e) => setOccurrenceDate(e.target.value)}
-                />
+                <input type="date" value={occurrenceDate} onChange={(e) => setOccurrenceDate(e.target.value)} />
               </div>
             </Field>
             <Field label="Occurrence Time">
               <div className={styles.inputWithIcon}>
                 <ClockIcon />
-                <input
-                  type="time"
-                  value={occurrenceTime}
-                  onChange={(e) => setOccurrenceTime(e.target.value)}
-                />
+                <input type="time" value={occurrenceTime} onChange={(e) => setOccurrenceTime(e.target.value)} />
               </div>
             </Field>
             <span className={styles.fieldLabel}>Priority Level</span>
@@ -211,40 +362,13 @@ export default function ComplaintRegistrationPage() {
               </div>
             )}
           </section>
-
-          <aside className={styles.stack}>
-            <div className={styles.policyCard}>
-              <div className={styles.policyTitle}>
-                <ListCheckIcon /> Registration Policy
-              </div>
-              <ul className={styles.policyList}>
-                <li>Ensure all fields are factual and evidence-backed.</li>
-                <li>Frivolous complaints may lead to administrative action.</li>
-                <li>Investigation typically initiates within 24 business hours.</li>
-              </ul>
-              <div className={styles.policyDivider} />
-              <div className={styles.protectionRow}>
-                <span className={styles.toggleOn} /> Sovereign Data Protection Active
-              </div>
-            </div>
-
-            <div className={styles.locationCard}>
-              <div className={styles.locationHeader}>
-                <span>Location Context</span>
-                <span className={styles.liveBadge}>LIVE TRACKING</span>
-              </div>
-              <div className={styles.mapGraphic}>
-                <div className={styles.mapDiamond}>
-                  <PinFilledIcon />
-                </div>
-                <div className={styles.mapLabel}>S.E. Railway Zone</div>
-              </div>
-            </div>
-          </aside>
         </div>
       </form>
 
-      <p className={styles.footer}>SECURE TRANSACTION ENCRYPTED VIA RAILWAY INTRANET NODES</p>
+      <p className={styles.footer}>
+        {referenceLabel}: used to de-duplicate complaints of the same source · SECURE TRANSACTION ENCRYPTED VIA
+        RAILWAY INTRANET NODES
+      </p>
     </div>
   );
 }
@@ -358,30 +482,8 @@ function ClipIcon() {
 function CloudUploadIcon() {
   return (
     <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M7 18a4 4 0 0 1-.6-7.95A5 5 0 0 1 16 8.5a4 4 0 0 1 .8 7.9"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
+      <path d="M7 18a4 4 0 0 1-.6-7.95A5 5 0 0 1 16 8.5a4 4 0 0 1 .8 7.9" stroke="currentColor" strokeWidth="1.6" />
       <path d="M12 21v-8M9 15l3-3 3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ListCheckIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      <path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function PinFilledIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z" />
-      <circle cx="12" cy="9.5" r="2.4" fill="white" />
     </svg>
   );
 }

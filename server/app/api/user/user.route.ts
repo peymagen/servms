@@ -3,6 +3,8 @@ import { type Request, type Response, type NextFunction } from "express";
 import { validationResult } from "express-validator";
 import * as userController from "./user.controller";
 import { roleAuth } from "../../common/middleware/role-auth.middleware";
+import { requirePermission } from "../../common/middleware/permission.middleware";
+import { signatureUpload } from "../../common/middleware/multer.middleware";
 import {
   createUserValidation,
   updateUserValidation,
@@ -36,15 +38,36 @@ router.post("/login", loginValidation, validate, userController.loginUser);
 router.use(roleAuth());
 
 // CRUD
-router.post("/", createUserValidation, validate, userController.createUser);
-router.get("/", userController.getAllUser);
-router.get("/:id", userController.getUserById);
-router.put("/:id", updateUserValidation, validate, userController.updateUser);
-router.patch("/:id", updateUserValidation, validate, userController.editUser);
-router.delete("/:id", userController.deleteUser);
+router.post(
+  "/",
+  requirePermission("user_management", "create"),
+  signatureUpload.single("signature"),
+  createUserValidation,
+  validate,
+  userController.createUser
+);
+router.get("/", requirePermission("user_management", "view"), userController.getAllUser);
+router.get("/:id", requirePermission("user_management", "view"), userController.getUserById);
+router.put(
+  "/:id",
+  requirePermission("user_management", "edit"),
+  signatureUpload.single("signature"),
+  updateUserValidation,
+  validate,
+  userController.updateUser
+);
+router.patch(
+  "/:id",
+  requirePermission("user_management", "edit"),
+  signatureUpload.single("signature"),
+  updateUserValidation,
+  validate,
+  userController.editUser
+);
+router.delete("/:id", requirePermission("user_management", "delete"), userController.deleteUser);
 
 // Status and password controls
 router.patch("/:id/change-password", changePasswordValidation, validate, userController.changePassword);
-router.patch("/:id/toggle", userController.toggleStatus);
+router.patch("/:id/toggle", requirePermission("user_management", "edit"), userController.toggleStatus);
 
 export default router;

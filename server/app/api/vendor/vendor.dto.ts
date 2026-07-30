@@ -1,5 +1,8 @@
 import { type BaseSchema } from "../../common/dto/base.dto";
 
+export type VerificationStatus = "pending" | "verified" | "rejected" | "expired";
+export type VendorDocumentType = "AADHAAR" | "MEDICAL" | "POLICE_VERIFICATION";
+
 export interface IVendor extends BaseSchema {
   vendor_code: string;
   full_name: string;
@@ -7,9 +10,10 @@ export interface IVendor extends BaseSchema {
   date_of_birth?: string;
   aadhaar_number?: string;
   mobile_number?: string;
-  email?: string;
+  address?: string;
   profile_image?: string;
-  vendor_type?: "stationary" | "statutory";
+  signature_path?: string;
+  vendor_type?: "train_tsv" | "station_pf" | "station_stall" | "station_others";
   contractor_id?: number;
   unit_id?: number;
   station_id?: number;
@@ -17,12 +21,16 @@ export interface IVendor extends BaseSchema {
   vendor_status?: "active" | "pending" | "expired";
   validity_start?: string;
   validity_end?: string;
-  police_verification_status?: "pending" | "completed";
-  police_verification_number?: string;
-  police_verification_date?: string;
-  medical_fitness_status?: "pending" | "completed";
-  medical_fitness_doc?: string;
-  aadhar_linked?: boolean;
+  police_verification_status?: VerificationStatus;
+  police_verification_issue_date?: string;
+  police_verification_valid_till?: string;
+  police_verification_remarks?: string;
+  police_verification_document?: string;
+  medical_verification_status?: VerificationStatus;
+  medical_verification_issue_date?: string;
+  medical_verification_valid_till?: string;
+  medical_verification_remarks?: string;
+  medical_verification_document?: string;
   created_by?: number;
 }
 
@@ -32,9 +40,10 @@ export interface IVendorCreate {
   date_of_birth?: string;
   aadhaar_number?: string;
   mobile_number?: string;
-  email?: string;
+  address?: string;
   profile_image?: string;
-  vendor_type?: "stationary" | "statutory";
+  signature_path?: string;
+  vendor_type?: "train_tsv" | "station_pf" | "station_stall" | "station_others";
   contractor_id?: number;
   unit_id?: number;
   station_id?: number;
@@ -42,12 +51,16 @@ export interface IVendorCreate {
   vendor_status?: "active" | "pending" | "expired";
   validity_start?: string;
   validity_end?: string;
-  police_verification_status?: "pending" | "completed";
-  police_verification_number?: string;
-  police_verification_date?: string;
-  medical_fitness_status?: "pending" | "completed";
-  medical_fitness_doc?: string;
-  aadhar_linked?: number;
+  police_verification_status?: VerificationStatus;
+  police_verification_issue_date?: string;
+  police_verification_valid_till?: string;
+  police_verification_remarks?: string;
+  police_verification_document?: string;
+  medical_verification_status?: VerificationStatus;
+  medical_verification_issue_date?: string;
+  medical_verification_valid_till?: string;
+  medical_verification_remarks?: string;
+  medical_verification_document?: string;
 }
 
 export interface IVendorUpdate {
@@ -56,9 +69,10 @@ export interface IVendorUpdate {
   date_of_birth?: string;
   aadhaar_number?: string;
   mobile_number?: string;
-  email?: string;
+  address?: string;
   profile_image?: string;
-  vendor_type?: "stationary" | "statutory";
+  signature_path?: string;
+  vendor_type?: "train_tsv" | "station_pf" | "station_stall" | "station_others";
   contractor_id?: number;
   unit_id?: number;
   station_id?: number;
@@ -66,10 +80,30 @@ export interface IVendorUpdate {
   vendor_status?: "active" | "pending" | "expired";
   validity_start?: string;
   validity_end?: string;
-  police_verification_status?: "pending" | "completed";
-  police_verification_number?: string;
-  police_verification_date?: string;
-  medical_fitness_status?: "pending" | "completed";
-  medical_fitness_doc?: string;
-  aadhar_linked?: number;
+  police_verification_status?: VerificationStatus;
+  police_verification_issue_date?: string;
+  police_verification_valid_till?: string;
+  police_verification_remarks?: string;
+  police_verification_document?: string;
+  medical_verification_status?: VerificationStatus;
+  medical_verification_issue_date?: string;
+  medical_verification_valid_till?: string;
+  medical_verification_remarks?: string;
+  medical_verification_document?: string;
+}
+
+export interface IVendorVerificationUpdate {
+  status?: VerificationStatus;
+  issue_date?: string;
+  valid_till?: string;
+  remarks?: string;
+}
+
+export interface IVendorDocument extends BaseSchema {
+  vendor_id: number;
+  document_type: VendorDocumentType;
+  document_path: string;
+  original_name?: string;
+  uploaded_by?: number;
+  uploaded_at?: string;
 }

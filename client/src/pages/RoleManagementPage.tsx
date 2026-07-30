@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { api, ApiError } from "../api/client";
+import {
+  useGetRolesQuery,
+  useCreateRoleMutation,
+  useEditRoleMutation,
+  useDeleteRoleMutation,
+  useUpdateRolePermissionsMutation,
+} from "../api/roleApi";
+import { useGetRolePermissionsQuery } from "../api/authApi";
 import { MODULE_LABELS, MODULE_NAMES, type ModuleName, type Role, type RolePermission } from "../types";
 import { roleLabel } from "../types/labels";
 import Field from "../components/ui/Field";
@@ -24,28 +31,20 @@ const PERM_COLUMNS: Array<{ key: PermKey; label: string }> = [
 ];
 
 export default function RoleManagementPage() {
-  const [roles, setRoles] = useState<Role[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<"all" | "admin" | "field">("all");
   const [offset, setOffset] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editRoleTarget, setEditRoleTarget] = useState<Role | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  function load() {
-    setIsLoading(true);
-    api
-      .get<Role[]>("/roles")
-      .then((rows) => {
-        setRoles(rows);
-        if (!selectedRoleId && rows.length > 0) setSelectedRoleId(rows[0].id);
-      })
-      .catch(() => setError("Unable to load roles"))
-      .finally(() => setIsLoading(false));
-  }
+  const { data: roles = [], isFetching: isLoading, error: loadError } = useGetRolesQuery();
+  const [deleteRole] = useDeleteRoleMutation();
+  const error = deleteError ?? (loadError ? "Unable to load roles" : null);
 
-  useEffect(load, []);
+  useEffect(() => {
+    if (!selectedRoleId && roles.length > 0) setSelectedRoleId(roles[0].id);
+  }, [roles, selectedRoleId]);
 
   const totalUsers = roles.reduce((sum, r) => sum + (r.user_count ?? 0), 0);
 
@@ -57,12 +56,12 @@ export default function RoleManagementPage() {
 
   async function handleDelete(role: Role) {
     if (!window.confirm(`Delete role "${roleLabel(role.role_name)}"? This cannot be undone.`)) return;
+    setDeleteError(null);
     try {
-      await api.delete(`/roles/${role.id}`);
+      await deleteRole(role.id).unwrap();
       if (selectedRoleId === role.id) setSelectedRoleId(null);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to delete role");
+    } catch (err: any) {
+      setDeleteError(err?.data?.message ?? err?.message ?? "Unable to delete role");
     }
   }
 
@@ -181,24 +180,13 @@ export default function RoleManagementPage() {
         />
       )}
 
-      {isFormOpen && (
-        <AddRoleModal
-          onClose={() => setIsFormOpen(false)}
-          onCreated={() => {
-            setIsFormOpen(false);
-            load();
-          }}
-        />
-      )}
+      {isFormOpen && <AddRoleModal onClose={() => setIsFormOpen(false)} onCreated={() => setIsFormOpen(false)} />}
 
       {editRoleTarget && (
         <EditRoleModal
           role={editRoleTarget}
           onClose={() => setEditRoleTarget(null)}
-          onSaved={() => {
-            setEditRoleTarget(null);
-            load();
-          }}
+          onSaved={() => setEditRoleTarget(null)}
         />
       )}
     </div>
@@ -217,19 +205,16 @@ function EditRoleModal({
   const [description, setDescription] = useState(role.description ?? "");
   const [rolesStatus, setRolesStatus] = useState(role.roles_status);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editRole, { isLoading: isSubmitting }] = useEditRoleMutation();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
     try {
-      await api.patch(`/roles/${role.id}`, { description: description || undefined, roles_status: rolesStatus });
+      await editRole({ id: role.id, data: { description: description || undefined, roles_status: rolesStatus } }).unwrap();
       onSaved();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to update role");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to update role");
     }
   }
 
@@ -290,21 +275,20 @@ function TrashIcon() {
 }
 
 function PermissionMatrix({ roleId, roleName }: { roleId: number; roleName: string }) {
-  const [permissions, setPermissions] = useState<RolePermission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const { data: serverPermissions = [], isFetching: isLoading, refetch } = useGetRolePermissionsQuery(roleId);
+  const [updateRolePermissions, { isLoading: isSaving }] = useUpdateRolePermissionsMutation();
   const [saved, setSaved] = useState(false);
+  const [permissions, setPermissions] = useState<RolePermission[]>([]);
+
+  useEffect(() => {
+    setPermissions(serverPermissions);
+    setSaved(false);
+  }, [serverPermissions]);
 
   function loadPermissions() {
-    setIsLoading(true);
     setSaved(false);
-    api
-      .get<RolePermission[]>(`/roles/${roleId}/permissions`)
-      .then(setPermissions)
-      .finally(() => setIsLoading(false));
+    refetch();
   }
-
-  useEffect(loadPermissions, [roleId]);
 
   function toggle(moduleName: ModuleName, key: PermKey) {
     setPermissions((prev) =>
@@ -330,23 +314,19 @@ function PermissionMatrix({ roleId, roleName }: { roleId: number; roleName: stri
   }
 
   async function handleSave() {
-    setIsSaving(true);
-    try {
-      await api.patch(`/roles/${roleId}/permissions`, {
-        permissions: permissions.map((p) => ({
-          module_name: p.module_name,
-          can_view: Boolean(p.can_view),
-          can_create: Boolean(p.can_create),
-          can_edit: Boolean(p.can_edit),
-          can_delete: Boolean(p.can_delete),
-          can_approve_reject: Boolean(p.can_approve_reject),
-          can_export: Boolean(p.can_export),
-        })),
-      });
-      setSaved(true);
-    } finally {
-      setIsSaving(false);
-    }
+    await updateRolePermissions({
+      roleId,
+      permissions: permissions.map((p) => ({
+        module_name: p.module_name,
+        can_view: Boolean(p.can_view),
+        can_create: Boolean(p.can_create),
+        can_edit: Boolean(p.can_edit),
+        can_delete: Boolean(p.can_delete),
+        can_approve_reject: Boolean(p.can_approve_reject),
+        can_export: Boolean(p.can_export),
+      })),
+    }).unwrap();
+    setSaved(true);
   }
 
   return (
@@ -410,19 +390,16 @@ function AddRoleModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [roleName, setRoleName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createRole, { isLoading: isSubmitting }] = useCreateRoleMutation();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
     try {
-      await api.post("/roles", { role_name: roleName, description: description || undefined });
+      await createRole({ role_name: roleName, description: description || undefined }).unwrap();
       onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to create role");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to create role");
     }
   }
 

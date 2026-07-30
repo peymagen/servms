@@ -3,6 +3,7 @@ import { type NextFunction, type Request, type Response } from "express";
 import { validationResult } from "express-validator";
 import * as unitController from "./unit.controller";
 import { roleAuth } from "../../common/middleware/role-auth.middleware";
+import { requirePermission } from "../../common/middleware/permission.middleware";
 import { upload } from "../../common/middleware/multer.middleware";
 import { createUnitValidation, updateUnitValidation } from "./unit.validation";
 
@@ -26,12 +27,13 @@ const router = Router();
 
 router.use(roleAuth());
 
-router.get("/metrics", unitController.getUnitMetrics);
-router.get("/", unitController.getUnits);
-router.get("/:id", unitController.getUnitById);
+router.get("/metrics", requirePermission("unit_management", "view"), unitController.getUnitMetrics);
+router.get("/", requirePermission("unit_management", "view"), unitController.getUnits);
+router.get("/:id", requirePermission("unit_management", "view"), unitController.getUnitById);
 
 router.post(
   "/",
+  requirePermission("unit_management", "create"),
   upload.single("sketch_map_file"),
   createUnitValidation,
   validate,
@@ -39,11 +41,12 @@ router.post(
 );
 router.patch(
   "/:id",
+  requirePermission("unit_management", "edit"),
   upload.single("sketch_map_file"),
   updateUnitValidation,
   validate,
   unitController.editUnit
 );
-router.delete("/:id", unitController.deleteUnit);
+router.delete("/:id", requirePermission("unit_management", "delete"), unitController.deleteUnit);
 
 export default router;

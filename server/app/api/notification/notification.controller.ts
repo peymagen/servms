@@ -3,13 +3,14 @@ import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
 import { type NotificationModule } from "./notification.service";
+import { isDivisionScoped } from "../../common/constants/roles";
 
 const VALID_MODULES: NotificationModule[] = ["vendor_master", "complaints", "penalties", "user_management"];
 
 export const getNotifications = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user as any;
   let divisionId: number | undefined = undefined;
-  if (user?.role_name === "admin" && user.division_id) {
+  if (isDivisionScoped(user?.role_name) && user.division_id) {
     divisionId = Number(user.division_id);
   }
 

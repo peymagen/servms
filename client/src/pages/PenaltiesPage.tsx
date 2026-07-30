@@ -1,7 +1,29 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { api, ApiError } from "../api/client";
-import { getContractorsLite, getDivisions } from "../api/masters";
-import type { Contractor, Division, Penalty } from "../types";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useAuth } from "../context/AuthContext";
+import {
+  useGetPenaltiesQuery,
+  useGetPenaltyMetricsQuery,
+  useCreatePenaltyMutation,
+  useEditPenaltyMutation,
+  useApprovePenaltyMutation,
+  useRejectPenaltyMutation,
+  useRevokePenaltyMutation,
+  useUpdatePenaltyRecoveryMutation,
+  useLazyGetPenaltiesQuery,
+} from "../api/penaltyApi";
+import {
+  useGetContractorsLiteQuery,
+  useGetDivisionsQuery,
+  useGetVendorsLiteQuery,
+  useGetComplaintsLiteQuery,
+  useGetInspectionsLiteQuery,
+} from "../api/mastersApi";
+import type {
+  Penalty,
+  PenaltyApprovalStatus,
+  PenaltyRecoveryStatus,
+  PenaltyReferenceType,
+} from "../types";
 import Field from "../components/ui/Field";
 import StatCard from "../components/ui/StatCard";
 import Pagination from "../components/ui/Pagination";
@@ -24,38 +46,61 @@ function formatDate(value: string | null | undefined): string {
 
 const LIMIT = 10;
 
-const STATUS_LABELS: Record<Penalty["penalties_status"], string> = {
-  pending: "Pending",
-  recovered: "Recovered",
-  waived: "Waived",
+const RECOVERY_ORDER: PenaltyRecoveryStatus[] = ["pending", "partially_recovered", "recovered", "closed"];
+
+const APPROVAL_LABELS: Record<PenaltyApprovalStatus, string> = {
+  pending_approval: "Pending Approval",
+  approved: "Approved",
+  rejected: "Rejected",
+  revoked: "Revoked",
 };
 
-interface Metrics {
-  totalCases: number;
-  totalImposed: number;
-  totalRecovered: number;
-  outstandingAmount: number;
-  recoveryRate: number;
-  alerts: Array<{ penalty_code: string; contractor_name: string; amount: string; reason: string }>;
+const RECOVERY_LABELS: Record<PenaltyRecoveryStatus, string> = {
+  pending: "Pending",
+  partially_recovered: "Partially Recovered",
+  recovered: "Recovered",
+  closed: "Closed",
+};
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 const currency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
+function approvalBadgeClass(status: PenaltyApprovalStatus): string {
+  if (status === "approved") return styles.statusGood;
+  if (status === "pending_approval") return styles.statusWarn;
+  return styles.statusBad;
+}
+
+function recoveryBadgeClass(status: PenaltyRecoveryStatus): string {
+  if (status === "recovered" || status === "closed") return styles.statusGood;
+  if (status === "partially_recovered") return styles.statusWarn;
+  return styles.statusBad;
+}
+
 export default function PenaltiesPage() {
-  const [penalties, setPenalties] = useState<Penalty[]>([]);
-  const [total, setTotal] = useState(0);
+  const { can } = useAuth();
+  const canApprove = can("penalty_management", "approve_reject");
+  const canEdit = can("penalty_management", "edit");
+  const canCreate = can("penalty_management", "create");
+
   const [offset, setOffset] = useState(0);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [approvalFilter, setApprovalFilter] = useState<PenaltyApprovalStatus | "">("");
+  const [recoveryFilter, setRecoveryFilter] = useState<PenaltyRecoveryStatus | "">("");
   const [divisionFilter, setDivisionFilter] = useState<number | "">("");
+  const [contractorFilter, setContractorFilter] = useState<number | "">("");
+  const [vendorFilter, setVendorFilter] = useState<number | "">("");
+  const [dueDateFrom, setDueDateFrom] = useState("");
+  const [dueDateTo, setDueDateTo] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [contractors, setContractors] = useState<Contractor[]>([]);
-  const [divisions, setDivisions] = useState<Division[]>([]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [viewPenalty, setViewPenalty] = useState<Penalty | null>(null);
   const [editPenaltyTarget, setEditPenaltyTarget] = useState<Penalty | null>(null);
@@ -69,24 +114,34 @@ export default function PenaltiesPage() {
     return params;
   }
 
-  function load() {
-    setIsLoading(true);
-    api
-      .get<{ total: number; rows: Penalty[] }>(`/penalties?${buildParams(LIMIT, offset).toString()}`)
-      .then((res) => {
-        setPenalties(res.rows);
-        setTotal(res.total);
-      })
-      .catch(() => setError("Unable to load penalties"))
-      .finally(() => setIsLoading(false));
-  }
+  const filters = useMemo(
+    () => ({
+      limit: LIMIT,
+      offset,
+      search: search || undefined,
+      approval_status: approvalFilter || undefined,
+      recovery_status: recoveryFilter || undefined,
+      division_id: divisionFilter || undefined,
+      contractor_id: contractorFilter || undefined,
+      vendor_id: vendorFilter || undefined,
+      due_date_from: dueDateFrom || undefined,
+      due_date_to: dueDateTo || undefined,
+    }),
+    [offset, search, approvalFilter, recoveryFilter, divisionFilter, contractorFilter, vendorFilter, dueDateFrom, dueDateTo]
+  );
 
-  useEffect(load, [offset, search, statusFilter, divisionFilter]);
-  useEffect(() => {
-    api.get<Metrics>("/penalties/metrics").then(setMetrics).catch(() => {});
-    getContractorsLite().then(setContractors).catch(() => {});
-    getDivisions().then(setDivisions).catch(() => {});
-  }, []);
+  const { data: listData, isFetching } = useGetPenaltiesQuery(filters);
+  const { data: metrics } = useGetPenaltyMetricsQuery();
+  const { data: contractors = [] } = useGetContractorsLiteQuery();
+  const { data: divisions = [] } = useGetDivisionsQuery();
+  const { data: vendors = [] } = useGetVendorsLiteQuery(contractorFilter || undefined);
+  const [triggerExport] = useLazyGetPenaltiesQuery();
+
+  const [approvePenalty, { isLoading: isApproving }] = useApprovePenaltyMutation();
+  const [rejectPenalty, { isLoading: isRejecting }] = useRejectPenaltyMutation();
+
+  const penalties = listData?.rows ?? [];
+  const total = listData?.total ?? 0;
 
   async function handleExport() {
     setIsExporting(true);
@@ -106,10 +161,9 @@ export default function PenaltiesPage() {
       ];
       const rows = res.rows.map((p) => [
         p.penalty_code,
+        p.reference_type ? `${p.reference_type}${p.complaint_code ? `: ${p.complaint_code}` : ""}` : "",
         p.contractor_name ?? p.vendor_name ?? "",
         p.unit_name ?? "",
-        derivePenaltyType(p.reason),
-        p.reason,
         p.amount,
         formatDate(p.issued_date),
         p.penalties_status !== "pending" ? formatDate(p.resolution_date) : "",
@@ -160,28 +214,22 @@ export default function PenaltiesPage() {
         <div>
           <h1 className={styles.title}>Penalty Management & Recovery Ledger</h1>
           <p className={styles.subtitle}>
-            Real-time oversight of financial penalties, recovery tracking, and outstanding
-            settlements.
+            Impose, approve, and track penalties from complaints or inspections through to
+            recovery.
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button
-            type="button"
-            className={styles.cancelBtn}
-            onClick={() => setShowAdvanced((s) => !s)}
-          >
+          <button type="button" className={styles.cancelBtn} onClick={() => setShowAdvanced((s) => !s)}>
             ⚏ {showAdvanced ? "Fewer Filters" : "Advanced Filters"}
           </button>
           <button className={styles.cancelBtn} onClick={handleExport} disabled={isExporting}>
             {isExporting ? "Exporting…" : "⬆ Export Ledger"}
           </button>
-          <button
-            className={styles.addBtn}
-            onClick={() => setIsFormOpen(true)}
-            disabled={contractors.length === 0}
-          >
-            + New Penalty Order
-          </button>
+          {canCreate && (
+            <button className={styles.addBtn} onClick={() => setIsFormOpen(true)} disabled={contractors.length === 0}>
+              + New Penalty Order
+            </button>
+          )}
         </div>
       </div>
 
@@ -189,7 +237,15 @@ export default function PenaltiesPage() {
         <StatCard label="Total Penalties Imposed" value={metrics ? currency.format(metrics.totalImposed) : "—"} />
         <StatCard label="Total Recovered" value={metrics ? currency.format(metrics.totalRecovered) : "—"} />
         <StatCard label="Outstanding Amount" value={metrics ? currency.format(metrics.outstandingAmount) : "—"} />
+        <StatCard label="Overdue Amount" value={metrics ? currency.format(metrics.overdueAmount) : "—"} />
         <StatCard label="Recovery Rate" value={metrics ? `${metrics.recoveryRate}%` : "—"} />
+      </div>
+
+      <div className={styles.statGrid} style={{ marginTop: -4 }}>
+        <StatCard label="Pending — Within 7 Days" value={metrics?.pendingCategories.within7Days ?? "—"} />
+        <StatCard label="Pending — Within 14 Days" value={metrics?.pendingCategories.within14Days ?? "—"} />
+        <StatCard label="Pending — Within 30 Days" value={metrics?.pendingCategories.within30Days ?? "—"} />
+        <StatCard label="Pending — Over 30 Days" value={metrics?.pendingCategories.over30Days ?? "—"} />
       </div>
 
       <div
@@ -217,40 +273,120 @@ export default function PenaltiesPage() {
         </div>
 
         {showAdvanced && (
-          <div className={styles.filterRow}>
-            <LabeledField label="Status">
-              <select
-                className={styles.select}
-                value={statusFilter}
-                onChange={(e) => {
-                  setOffset(0);
-                  setStatusFilter(e.target.value);
-                }}
-              >
-                <option value="">All</option>
-                <option value="pending">Pending</option>
-                <option value="recovered">Recovered</option>
-                <option value="waived">Waived</option>
-              </select>
-            </LabeledField>
-            <LabeledField label="Division">
-              <select
-                className={styles.select}
-                value={divisionFilter}
-                onChange={(e) => {
-                  setOffset(0);
-                  setDivisionFilter(e.target.value ? Number(e.target.value) : "");
-                }}
-              >
-                <option value="">All Divisions</option>
-                {divisions.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.division_name}
-                  </option>
-                ))}
-              </select>
-            </LabeledField>
-          </div>
+          <>
+            <div className={styles.filterRow}>
+              <LabeledField label="Approval Status">
+                <select
+                  className={styles.select}
+                  value={approvalFilter}
+                  onChange={(e) => {
+                    setOffset(0);
+                    setApprovalFilter(e.target.value as PenaltyApprovalStatus | "");
+                  }}
+                >
+                  <option value="">All</option>
+                  {Object.entries(APPROVAL_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </LabeledField>
+              <LabeledField label="Recovery Status">
+                <select
+                  className={styles.select}
+                  value={recoveryFilter}
+                  onChange={(e) => {
+                    setOffset(0);
+                    setRecoveryFilter(e.target.value as PenaltyRecoveryStatus | "");
+                  }}
+                >
+                  <option value="">All</option>
+                  {Object.entries(RECOVERY_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </LabeledField>
+              <LabeledField label="Division">
+                <select
+                  className={styles.select}
+                  value={divisionFilter}
+                  onChange={(e) => {
+                    setOffset(0);
+                    setDivisionFilter(e.target.value ? Number(e.target.value) : "");
+                  }}
+                >
+                  <option value="">All Divisions</option>
+                  {divisions.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.division_name}
+                    </option>
+                  ))}
+                </select>
+              </LabeledField>
+              <LabeledField label="Contractor">
+                <select
+                  className={styles.select}
+                  value={contractorFilter}
+                  onChange={(e) => {
+                    setOffset(0);
+                    setContractorFilter(e.target.value ? Number(e.target.value) : "");
+                    setVendorFilter("");
+                  }}
+                >
+                  <option value="">All Contractors</option>
+                  {contractors.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.company_name}
+                    </option>
+                  ))}
+                </select>
+              </LabeledField>
+              <LabeledField label="Vendor">
+                <select
+                  className={styles.select}
+                  value={vendorFilter}
+                  onChange={(e) => {
+                    setOffset(0);
+                    setVendorFilter(e.target.value ? Number(e.target.value) : "");
+                  }}
+                >
+                  <option value="">All Vendors</option>
+                  {vendors.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.full_name}
+                    </option>
+                  ))}
+                </select>
+              </LabeledField>
+            </div>
+            <div className={styles.filterRow}>
+              <LabeledField label="Due Date From">
+                <input
+                  type="date"
+                  className={styles.select}
+                  value={dueDateFrom}
+                  onChange={(e) => {
+                    setOffset(0);
+                    setDueDateFrom(e.target.value);
+                  }}
+                />
+              </LabeledField>
+              <LabeledField label="Due Date To">
+                <input
+                  type="date"
+                  className={styles.select}
+                  value={dueDateTo}
+                  onChange={(e) => {
+                    setOffset(0);
+                    setDueDateTo(e.target.value);
+                  }}
+                />
+              </LabeledField>
+            </div>
+          </>
         )}
       </div>
 
@@ -262,9 +398,7 @@ export default function PenaltiesPage() {
             <tr>
               <th>Ref No</th>
               <th>Contractor / Vendor</th>
-              <th>Unit / Location</th>
-              <th>Penalty Type</th>
-              <th>Reason</th>
+              <th>Unit</th>
               <th>Amount</th>
               <th>Date Raised</th>
               <th>Date Resolved</th>
@@ -273,7 +407,7 @@ export default function PenaltiesPage() {
             </tr>
           </thead>
           <tbody>
-            {isLoading ? (
+            {isFetching ? (
               <tr>
                 <td colSpan={10} className={styles.emptyCell}>
                   Loading…
@@ -291,11 +425,12 @@ export default function PenaltiesPage() {
                   <td className={styles.strong}>{p.penalty_code}</td>
                   <td>{p.contractor_name ?? p.vendor_name ?? "—"}</td>
                   <td>{p.unit_name ?? "—"}</td>
+                  <td>{currency.format(p.amount)}</td>
+                  <td>{formatDate(p.due_date)}</td>
                   <td>
-                    <span className={styles.roleTag}>{derivePenaltyType(p.reason)}</span>
-                  </td>
-                  <td className={styles.sub} style={{ maxWidth: 220 }}>
-                    {p.reason}
+                    <span className={approvalBadgeClass(p.approval_status)}>
+                      {APPROVAL_LABELS[p.approval_status]}
+                    </span>
                   </td>
                   <td>{currency.format(p.amount)}</td>
                   <td>{formatDate(p.issued_date)}</td>
@@ -303,16 +438,8 @@ export default function PenaltiesPage() {
                     {p.penalties_status !== "pending" ? formatDate(p.resolution_date) : "—"}
                   </td>
                   <td>
-                    <span
-                      className={
-                        p.penalties_status === "recovered"
-                          ? styles.statusGood
-                          : p.penalties_status === "waived"
-                          ? styles.statusWarn
-                          : styles.statusBad
-                      }
-                    >
-                      {STATUS_LABELS[p.penalties_status]}
+                    <span className={recoveryBadgeClass(p.recovery_status)}>
+                      {RECOVERY_LABELS[p.recovery_status]}
                     </span>
                   </td>
                   <td>
@@ -349,14 +476,17 @@ export default function PenaltiesPage() {
       </div>
 
       {isFormOpen && (
-        <NewPenaltyModal
-          contractors={contractors}
-          onClose={() => setIsFormOpen(false)}
-          onCreated={() => {
-            setIsFormOpen(false);
-            load();
-          }}
-        />
+        <NewPenaltyModal contractors={contractors} onClose={() => setIsFormOpen(false)} onCreated={() => setIsFormOpen(false)} />
+      )}
+
+      {viewPenalty && <ViewPenaltyModal penalty={viewPenalty} onClose={() => setViewPenalty(null)} />}
+
+      {editPenaltyTarget && (
+        <EditPenaltyModal penalty={editPenaltyTarget} onClose={() => setEditPenaltyTarget(null)} />
+      )}
+
+      {recoveryTarget && (
+        <RecoveryModal penalty={recoveryTarget} onClose={() => setRecoveryTarget(null)} />
       )}
 
       {viewPenalty && (
@@ -525,33 +655,44 @@ function NewPenaltyModal({
   onClose,
   onCreated,
 }: {
-  contractors: Contractor[];
+  contractors: { id: number; company_name: string }[];
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const [createPenalty, { isLoading: isSubmitting }] = useCreatePenaltyMutation();
+  const [referenceType, setReferenceType] = useState<PenaltyReferenceType | "">("");
+  const [complaintId, setComplaintId] = useState<number | "">("");
+  const [inspectionId, setInspectionId] = useState<number | "">("");
   const [contractorId, setContractorId] = useState<number | "">("");
+  const [vendorId, setVendorId] = useState<number | "">("");
   const [unitId, setUnitId] = useState("");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: vendors = [] } = useGetVendorsLiteQuery(contractorId || undefined);
+  const { data: complaints = [] } = useGetComplaintsLiteQuery(undefined, { skip: referenceType !== "complaint" });
+  const { data: inspections = [] } = useGetInspectionsLiteQuery(undefined, { skip: referenceType !== "inspection" });
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
     try {
-      await api.post("/penalties", {
-        contractor_id: contractorId,
+      await createPenalty({
+        reference_type: referenceType || undefined,
+        complaint_id: referenceType === "complaint" && complaintId ? Number(complaintId) : undefined,
+        inspection_id: referenceType === "inspection" && inspectionId ? Number(inspectionId) : undefined,
+        contractor_id: Number(contractorId),
+        vendor_id: vendorId ? Number(vendorId) : undefined,
         unit_id: unitId ? Number(unitId) : undefined,
         amount: Number(amount),
         reason,
-      });
+        due_date: dueDate || undefined,
+      }).unwrap();
       onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to create penalty");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to create penalty");
     }
   }
 
@@ -560,10 +701,47 @@ function NewPenaltyModal({
       <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <h2 className={styles.modalTitle}>New Penalty Order</h2>
         <div className={styles.formGrid}>
+          <Field label="Origin (optional)">
+            <select
+              value={referenceType}
+              onChange={(e) => setReferenceType(e.target.value as PenaltyReferenceType | "")}
+            >
+              <option value="">None</option>
+              <option value="complaint">Complaint</option>
+              <option value="inspection">Inspection</option>
+            </select>
+          </Field>
+          {referenceType === "complaint" && (
+            <Field label="Complaint">
+              <select value={complaintId} onChange={(e) => setComplaintId(e.target.value ? Number(e.target.value) : "")}>
+                <option value="">Select complaint</option>
+                {complaints.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.complaint_code}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {referenceType === "inspection" && (
+            <Field label="Inspection">
+              <select value={inspectionId} onChange={(e) => setInspectionId(e.target.value ? Number(e.target.value) : "")}>
+                <option value="">Select inspection</option>
+                {inspections.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.unit_name ?? `Unit #${i.unit_id}`} — {formatDate(i.inspection_date)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Contractor">
             <select
               value={contractorId}
-              onChange={(e) => setContractorId(e.target.value ? Number(e.target.value) : "")}
+              onChange={(e) => {
+                setContractorId(e.target.value ? Number(e.target.value) : "");
+                setVendorId("");
+              }}
               required
             >
               <option value="">Select contractor</option>
@@ -574,24 +752,31 @@ function NewPenaltyModal({
               ))}
             </select>
           </Field>
+          <Field label="Vendor (optional)">
+            <select value={vendorId} onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : "")}>
+              <option value="">None</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.full_name}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="Unit ID (optional)">
             <input type="number" value={unitId} onChange={(e) => setUnitId(e.target.value)} />
           </Field>
           <Field label="Amount (₹)">
-            <input
-              type="number"
-              min="1"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-            />
+            <input type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+          </Field>
+          <Field label="Due Date">
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </Field>
           <div className={styles.fieldWide}>
             <Field label="Reason">
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="e.g. HYGIENE LAPSE: Insects found in food preparation area."
+                placeholder="e.g. Insects found in food preparation area."
                 required
               />
             </Field>

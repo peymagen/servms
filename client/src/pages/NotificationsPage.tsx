@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { api, ApiError } from "../api/client";
+import { useState, type ReactNode } from "react";
+import { useGetNotificationsQuery, type ModuleFilter } from "../api/notificationApi";
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   getReadIds,
@@ -11,34 +11,7 @@ import {
 } from "../utils/notificationPrefs";
 import styles from "./NotificationsPage.module.css";
 
-type NotificationModule = "vendor_master" | "complaints" | "penalties" | "user_management";
 type NotificationSeverity = "critical" | "warning" | "info";
-type ModuleFilter = "all" | NotificationModule;
-
-interface NotificationItem {
-  id: string;
-  module: NotificationModule;
-  moduleLabel: string;
-  severity: NotificationSeverity;
-  title: string;
-  description: string;
-  time: string;
-}
-
-interface NotificationCounts {
-  all: number;
-  vendor_master: number;
-  complaints: number;
-  penalties: number;
-  user_management: number;
-}
-
-interface NotificationsResponse {
-  counts: NotificationCounts;
-  total: number;
-  hasMore: boolean;
-  rows: NotificationItem[];
-}
 
 const MODULES: { key: ModuleFilter; label: string; icon: ReactNode }[] = [
   { key: "all", label: "All Notifications", icon: <IconLayers /> },
@@ -46,6 +19,7 @@ const MODULES: { key: ModuleFilter; label: string; icon: ReactNode }[] = [
   { key: "vendor_master", label: "Vendor Master", icon: <IconBriefcase /> },
   { key: "complaints", label: "Complaints", icon: <IconAlert /> },
   { key: "penalties", label: "Penalties", icon: <IconPenalty /> },
+  { key: "inspections", label: "Inspections", icon: <IconClipboard /> },
 ];
 
 const BADGE_LABEL: Record<NotificationSeverity, string> = {
@@ -59,10 +33,10 @@ const PAGE_SIZE = 6;
 export default function NotificationsPage() {
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
-  const [data, setData] = useState<NotificationsResponse | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(() => getReadIds());
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const { data, error: loadError, isFetching: isLoading } = useGetNotificationsQuery({ module: moduleFilter, limit });
+  const error = loadError ? "Unable to load notifications" : null;
 
   const [prefs, setPrefs] = useState<NotificationPreferences>(() => loadNotificationPreferences());
   const [draft, setDraft] = useState({
@@ -72,15 +46,6 @@ export default function NotificationsPage() {
     digest: prefs.digest,
   });
   const [savedNote, setSavedNote] = useState(false);
-
-  useEffect(() => {
-    setIsLoading(true);
-    api
-      .get<NotificationsResponse>(`/notifications?module=${moduleFilter}&limit=${limit}`)
-      .then(setData)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Unable to load notifications"))
-      .finally(() => setIsLoading(false));
-  }, [moduleFilter, limit]);
 
   function selectModule(key: ModuleFilter) {
     setModuleFilter(key);
@@ -444,6 +409,16 @@ function IconPenalty() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
       <path d="M12 3v18M8 6h6.5a2.5 2.5 0 0 1 0 5H8" stroke="currentColor" strokeWidth="1.6" />
       <path d="M8 13h7a2.5 2.5 0 0 1 0 5H8" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+function IconClipboard() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <rect x="5" y="4" width="14" height="17" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M8.5 11h7M8.5 15h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }

@@ -2,38 +2,60 @@ import { type IUserCreate, type IUserUpdate } from "./user.dto";
 import { pool } from "../../common/services/sql.service";
 import { type RowDataPacket, type ResultSetHeader } from "mysql2";
 
+// ─── CARD SIGNING AUTHORITY ELIGIBILITY ─────────────────────────────────────────
+// Only JS/SS-graded Admin-tier or Sub Admin-tier users (HQ or Divisional) may be
+// granted Card Signing Authority — Divisional/HQ Admin included, since a division's
+// signing authority is commonly its own Divisional Admin, not just its Sub Admin.
+const SIGNING_ELIGIBLE_ROLES = ["hq_admin", "hq_sub_admin", "divisional_admin", "divisional_sub_admin"];
+
+const assertCardSigningEligibility = async (
+  roleId: number | undefined,
+  designationGrade: string | null | undefined,
+  cardSigningAuthority: boolean | undefined
+) => {
+  if (!cardSigningAuthority) return;
+  if (!roleId) {
+    throw new Error("A role is required to grant Card Signing Authority");
+  }
+  const [rows] = await pool.execute<RowDataPacket[]>("SELECT role_name FROM roles WHERE id = ?", [roleId]);
+  const roleName = rows[0]?.role_name;
+  if (!roleName || !SIGNING_ELIGIBLE_ROLES.includes(roleName)) {
+    throw new Error("Only HQ/Divisional Admin or Sub Admin roles can be granted Card Signing Authority");
+  }
+  if (!designationGrade || !["JS", "SS"].includes(designationGrade)) {
+    throw new Error("Card Signing Authority requires a JS or SS designation grade");
+  }
+};
+
 // ─── CREATE ────────────────────────────────────────────────────────────────────
 export const createUser = async (data: IUserCreate) => {
+  await assertCardSigningEligibility(data.role_id, data.designation_grade, data.card_signing_authority);
+
   const columns: string[] = ["employee_id", "username", "full_name", "password_hash", "role_id"];
   const values: any[] = [data.employee_id, data.username, data.full_name, data.password, data.role_id];
 
-  if (data.email !== undefined && data.email !== null) {
-    columns.push("email");
-    values.push(data.email);
+  const optionalFields: Array<[keyof IUserCreate, string]> = [
+    ["hrms_id", "hrms_id"],
+    ["email", "email"],
+    ["mobile", "mobile"],
+    ["division_id", "division_id"],
+    ["zone_id", "zone_id"],
+    ["station_id", "station_id"],
+    ["profile_image", "profile_image"],
+    ["signature_path", "signature_path"],
+    ["users_status", "users_status"],
+    ["designation", "designation"],
+    ["designation_grade", "designation_grade"],
+  ];
+  for (const [key, column] of optionalFields) {
+    if (data[key] !== undefined && data[key] !== null) {
+      columns.push(column);
+      values.push(data[key]);
+    }
   }
-  if (data.mobile !== undefined && data.mobile !== null) {
-    columns.push("mobile");
-    values.push(data.mobile);
-  }
-  if (data.division_id !== undefined && data.division_id !== null) {
-    columns.push("division_id");
-    values.push(data.division_id);
-  }
-  if (data.station_id !== undefined && data.station_id !== null) {
-    columns.push("station_id");
-    values.push(data.station_id);
-  }
-  if (data.profile_image !== undefined && data.profile_image !== null) {
-    columns.push("profile_image");
-    values.push(data.profile_image);
-  }
-  if (data.users_status !== undefined && data.users_status !== null) {
-    columns.push("users_status");
-    values.push(data.users_status);
-  }
-  if (data.designation !== undefined && data.designation !== null) {
-    columns.push("designation");
-    values.push(data.designation);
+  if (data.card_signing_authority !== undefined) {
+    columns.push("card_signing_authority");
+    values.push(data.card_signing_authority ? 1 : 0);
   }
 
   const placeholders = columns.map(() => "?").join(", ");
@@ -45,22 +67,29 @@ export const createUser = async (data: IUserCreate) => {
 
 // ─── FULL UPDATE (PUT) ─────────────────────────────────────────────────────────
 export const updateUser = async (id: string, data: IUserCreate) => {
+  await assertCardSigningEligibility(data.role_id, data.designation_grade, data.card_signing_authority);
+
   const query = `
     UPDATE users
-    SET employee_id = ?, username = ?, full_name = ?, role_id = ?, division_id = ?, station_id = ?, email = ?, mobile = ?, users_status = ?, designation = ?
+    SET employee_id = ?, hrms_id = ?, username = ?, full_name = ?, role_id = ?, division_id = ?, zone_id = ?, station_id = ?,
+        email = ?, mobile = ?, users_status = ?, designation = ?, designation_grade = ?, card_signing_authority = ?
     WHERE id = ?
   `;
   const values = [
     data.employee_id,
+    data.hrms_id ?? null,
     data.username,
     data.full_name,
     data.role_id,
     data.division_id ?? null,
+    data.zone_id ?? null,
     data.station_id ?? null,
     data.email ?? null,
     data.mobile ?? null,
     data.users_status ?? "active",
     data.designation ?? null,
+    data.designation_grade ?? null,
+    data.card_signing_authority ? 1 : 0,
     id
   ];
   await pool.execute(query, values);
@@ -69,56 +98,49 @@ export const updateUser = async (id: string, data: IUserCreate) => {
 
 // ─── PARTIAL UPDATE (PATCH) ────────────────────────────────────────────────────
 export const editUser = async (id: string, data: IUserUpdate) => {
+  if (data.card_signing_authority !== undefined) {
+    const roleId = data.role_id ?? (await getUserById(id) as any)?.role_id;
+    const designationGrade = data.designation_grade !== undefined
+      ? data.designation_grade
+      : (await getUserById(id) as any)?.designation_grade;
+    await assertCardSigningEligibility(roleId, designationGrade, data.card_signing_authority);
+  }
+
   const updates: string[] = [];
   const values: any[] = [];
 
   if ((data as any).password_hash) {
     updates.push("password_hash = ?");
     values.push((data as any).password_hash);
+    updates.push("is_temp_password = ?");
+    values.push((data as any).is_temp_password ? 1 : 0);
   }
-  if (data.employee_id !== undefined) {
-    updates.push("employee_id = ?");
-    values.push(data.employee_id);
+  const directFields: Array<[keyof IUserUpdate, string]> = [
+    ["employee_id", "employee_id"],
+    ["hrms_id", "hrms_id"],
+    ["username", "username"],
+    ["full_name", "full_name"],
+    ["designation", "designation"],
+    ["designation_grade", "designation_grade"],
+    ["role_id", "role_id"],
+    ["division_id", "division_id"],
+    ["zone_id", "zone_id"],
+    ["station_id", "station_id"],
+    ["email", "email"],
+    ["mobile", "mobile"],
+    ["profile_image", "profile_image"],
+    ["signature_path", "signature_path"],
+    ["users_status", "users_status"],
+  ];
+  for (const [key, column] of directFields) {
+    if (data[key] !== undefined) {
+      updates.push(`${column} = ?`);
+      values.push(data[key]);
+    }
   }
-  if (data.username !== undefined) {
-    updates.push("username = ?");
-    values.push(data.username);
-  }
-  if (data.full_name !== undefined) {
-    updates.push("full_name = ?");
-    values.push(data.full_name);
-  }
-  if (data.designation !== undefined) {
-    updates.push("designation = ?");
-    values.push(data.designation);
-  }
-  if (data.role_id !== undefined) {
-    updates.push("role_id = ?");
-    values.push(data.role_id);
-  }
-  if (data.division_id !== undefined) {
-    updates.push("division_id = ?");
-    values.push(data.division_id);
-  }
-  if (data.station_id !== undefined) {
-    updates.push("station_id = ?");
-    values.push(data.station_id);
-  }
-  if (data.email !== undefined) {
-    updates.push("email = ?");
-    values.push(data.email);
-  }
-  if (data.mobile !== undefined) {
-    updates.push("mobile = ?");
-    values.push(data.mobile);
-  }
-  if (data.profile_image !== undefined) {
-    updates.push("profile_image = ?");
-    values.push(data.profile_image);
-  }
-  if (data.users_status !== undefined) {
-    updates.push("users_status = ?");
-    values.push(data.users_status);
+  if (data.card_signing_authority !== undefined) {
+    updates.push("card_signing_authority = ?");
+    values.push(data.card_signing_authority ? 1 : 0);
   }
 
   if (updates.length === 0) {
@@ -138,18 +160,23 @@ export const deleteUser = async (id: string) => {
   return { id, deleted: true };
 };
 
+const USER_SELECT_COLUMNS = `
+      u.id, u.employee_id, u.hrms_id, u.username, u.full_name, u.designation, u.designation_grade,
+      u.card_signing_authority, u.email, u.mobile, u.is_temp_password, u.users_status, u.last_login_at, u.created_at,
+      u.role_id, u.division_id, u.zone_id, u.station_id, u.profile_image, u.signature_path,
+      r.role_name,
+      d.division_name,
+      z.zone_name,
+      s.station_name`;
+
 // ─── GET BY ID ─────────────────────────────────────────────────────────────────
 export const getUserById = async (id: string) => {
   const query = `
-    SELECT
-      u.id, u.employee_id, u.username, u.full_name, u.designation, u.email, u.mobile, u.users_status, u.last_login_at, u.created_at,
-      u.role_id, u.division_id, u.station_id,
-      r.role_name,
-      d.division_name,
-      s.station_name
+    SELECT${USER_SELECT_COLUMNS}
     FROM users u
     LEFT JOIN roles     r ON r.id = u.role_id
     LEFT JOIN divisions d ON d.id = u.division_id
+    LEFT JOIN zones     z ON z.id = u.zone_id
     LEFT JOIN stations  s ON s.id = u.station_id
     WHERE u.id = ?
   `;
@@ -164,15 +191,11 @@ export const getAllUsers = async (divisionId?: number) => {
   if (divisionId) params.push(divisionId);
 
   const query = `
-    SELECT
-      u.id, u.employee_id, u.username, u.full_name, u.designation, u.email, u.mobile, u.users_status, u.last_login_at, u.created_at,
-      u.role_id, u.division_id, u.station_id,
-      r.role_name,
-      d.division_name,
-      s.station_name
+    SELECT${USER_SELECT_COLUMNS}
     FROM users u
     LEFT JOIN roles     r ON r.id = u.role_id
     LEFT JOIN divisions d ON d.id = u.division_id
+    LEFT JOIN zones     z ON z.id = u.zone_id
     LEFT JOIN stations  s ON s.id = u.station_id
     ${whereSql}
     ORDER BY u.created_at DESC
@@ -211,8 +234,10 @@ export const updateLastLogin = async (id: string) => {
 };
 
 // ─── CHANGE PASSWORD ───────────────────────────────────────────────────────────
+// Clears is_temp_password — a self-service password change always ends the
+// "must change temporary password" state, regardless of how it was set.
 export const changePassword = async (id: string, newPasswordHash: string) => {
-  await pool.execute("UPDATE users SET password_hash = ? WHERE id = ?", [newPasswordHash, id]);
+  await pool.execute("UPDATE users SET password_hash = ?, is_temp_password = 0 WHERE id = ?", [newPasswordHash, id]);
   return { id, passwordChanged: true };
 };
 

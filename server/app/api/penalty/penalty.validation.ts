@@ -1,40 +1,59 @@
 import { body, param } from "express-validator";
 
 export const createPenaltyValidation = [
+  body("reference_type")
+    .optional()
+    .isIn(["complaint", "inspection"]).withMessage("reference_type must be complaint or inspection"),
+
+  body("complaint_id").optional().isInt().withMessage("complaint_id must be a valid integer"),
+  body("inspection_id").optional().isInt().withMessage("inspection_id must be a valid integer"),
+
   body("contractor_id")
     .notEmpty().withMessage("contractor_id is required")
     .isInt().withMessage("contractor_id must be a valid integer"),
 
+  body("vendor_id").optional().isInt().withMessage("vendor_id must be a valid integer"),
+  body("unit_id").optional().isInt().withMessage("unit_id must be a valid integer"),
+
   body("amount")
     .notEmpty().withMessage("Penalty amount is required")
-    .isFloat({ min: 0 }).withMessage("Amount must be a positive number"),
+    .isFloat({ min: 0.01 }).withMessage("Amount must be a positive number"),
 
   body("reason")
     .trim()
     .notEmpty().withMessage("Reason for imposing penalty is required"),
 
-  body("penalties_status")
-    .optional()
-    .isIn(["pending", "recovered", "waived"]).withMessage("Invalid status value"),
-
-  body("issued_date")
-    .optional()
-    .isDate().withMessage("Must be a valid date"),
+  body("due_date").optional().isDate().withMessage("Must be a valid date"),
+  body("issued_date").optional().isDate().withMessage("Must be a valid date"),
 ];
 
 export const updatePenaltyValidation = [
   param("id").isInt().withMessage("id param must be an integer"),
 
-  body("penalties_status")
-    .optional()
-    .isIn(["pending", "recovered", "waived"]).withMessage("Invalid status value"),
+  body("amount").optional().isFloat({ min: 0.01 }).withMessage("Amount must be a positive number"),
+  body("reason").optional().trim().notEmpty().withMessage("Reason cannot be empty"),
+  body("due_date").optional().isDate().withMessage("Must be a valid date"),
+  body("remarks").optional().isString(),
+];
 
-  body("amount")
-    .optional()
-    .isFloat({ min: 0 }).withMessage("Amount must be a positive number"),
+export const revokePenaltyValidation = [
+  param("id").isInt().withMessage("id param must be an integer"),
+  body("reason").trim().notEmpty().withMessage("A revocation reason is required"),
+];
 
-  body("reason")
-    .optional()
-    .trim()
-    .notEmpty().withMessage("Reason cannot be empty"),
+export const updateRecoveryValidation = [
+  param("id").isInt().withMessage("id param must be an integer"),
+
+  body("recovery_status")
+    .notEmpty().withMessage("recovery_status is required")
+    .isIn(["pending", "partially_recovered", "recovered", "closed"])
+    .withMessage("Invalid recovery status value"),
+
+  body("recovery_amount").optional().isFloat({ min: 0 }).withMessage("Recovery amount must be a positive number"),
+  body("recovery_date").optional().isDate().withMessage("Must be a valid date"),
+  body("mr_number").optional().isString(),
+  body("mr_date").optional().isDate().withMessage("Must be a valid date"),
+  body("order_number").optional().isString(),
+  body("order_date").optional().isDate().withMessage("Must be a valid date"),
+  body("remarks").optional().isString(),
 ];

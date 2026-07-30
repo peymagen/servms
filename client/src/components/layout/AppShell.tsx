@@ -1,29 +1,33 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { roleLabel } from "../../types/labels";
-import { api } from "../../api/client";
+import { useGetNotificationsQuery } from "../../api/notificationApi";
 import { getReadIds } from "../../utils/notificationPrefs";
+import type { ModuleName } from "../../types";
 import styles from "./AppShell.module.css";
 
 interface NavItem {
   to: string;
   label: string;
   icon: ReactNode;
+  module?: ModuleName;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: <IconGrid /> },
-  { to: "/users", label: "User Management", icon: <IconUsers /> },
-  { to: "/roles", label: "Role Management", icon: <IconShieldCheck /> },
-  { to: "/locations", label: "Location Masters", icon: <IconPin /> },
-  { to: "/vendors", label: "Vendor Management", icon: <IconBriefcase /> },
-  { to: "/contractors", label: "Contractor Management", icon: <IconBuilding /> },
-  { to: "/id-cards", label: "ID Card / QR", icon: <IconIdCard /> },
-  { to: "/renewals", label: "Vendor Renewals", icon: <IconRefresh /> },
-  { to: "/complaints", label: "Complaints", icon: <IconAlert /> },
-  { to: "/penalties", label: "Penalties", icon: <IconPenalty /> },
-  { to: "/reports", label: "Reports", icon: <IconReport /> },
+  { to: "/dashboard", label: "Dashboard", icon: <IconGrid />, module: "dashboard" },
+  { to: "/users", label: "User Management", icon: <IconUsers />, module: "user_management" },
+  { to: "/roles", label: "Role Management", icon: <IconShieldCheck />, module: "role_management" },
+  { to: "/locations", label: "Location Masters", icon: <IconPin />, module: "location_management" },
+  { to: "/vendors", label: "Vendor Management", icon: <IconBriefcase />, module: "vendor_management" },
+  { to: "/contractors", label: "Contractor Management", icon: <IconBuilding />, module: "contractor_management" },
+  { to: "/id-cards", label: "ID Card / QR", icon: <IconIdCard />, module: "id_card_management" },
+  { to: "/renewals", label: "Vendor Renewals", icon: <IconRefresh />, module: "vendor_management" },
+  { to: "/complaints", label: "Complaints", icon: <IconAlert />, module: "complaint_management" },
+  { to: "/inspections", label: "Inspections", icon: <IconClipboard />, module: "inspection_management" },
+  { to: "/penalties", label: "Penalties", icon: <IconPenalty />, module: "penalty_management" },
+  { to: "/audit-logs", label: "Audit Logs", icon: <IconShieldCheck />, module: "audit_logs" },
+  { to: "/reports", label: "Reports", icon: <IconReport />, module: "reports" },
 ];
 
 const FOOTER_NAV_ITEMS: NavItem[] = [
@@ -32,20 +36,20 @@ const FOOTER_NAV_ITEMS: NavItem[] = [
 ];
 
 export default function AppShell({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, logout, can } = useAuth();
   const navigate = useNavigate();
-  const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    if (!user) return;
-    api
-      .get<{ rows: { id: string }[] }>("/notifications?module=all&limit=50")
-      .then((res) => {
-        const readIds = getReadIds();
-        setUnreadCount(res.rows.filter((r) => !readIds.has(r.id)).length);
-      })
-      .catch(() => {});
-  }, [user]);
+  const visibleNavItems = useMemo(
+    () => NAV_ITEMS.filter((item) => !item.module || can(item.module, "view")),
+    [can]
+  );
+
+  const { data: notificationsData } = useGetNotificationsQuery({ module: "all", limit: 50 }, { skip: !user });
+  const unreadCount = useMemo(() => {
+    if (!notificationsData) return 0;
+    const readIds = getReadIds();
+    return notificationsData.rows.filter((r) => !readIds.has(r.id)).length;
+  }, [notificationsData]);
 
   if (!user) return null;
 
@@ -63,7 +67,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className={styles.nav}>
-          {NAV_ITEMS.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -259,6 +263,16 @@ function IconPenalty() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
       <path d="M12 3v18M8 6h6.5a2.5 2.5 0 0 1 0 5H8" stroke="currentColor" strokeWidth="1.6" />
       <path d="M8 13h7a2.5 2.5 0 0 1 0 5H8" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+function IconClipboard() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <rect x="5" y="4" width="14" height="17" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M8.5 11h7M8.5 15h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }

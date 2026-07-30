@@ -1,42 +1,48 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { api, ApiError } from "../api/client";
-import { getDivisions, getStations, getRolesLite } from "../api/masters";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useGetUsersQuery, useCreateUserMutation, useToggleUserStatusMutation } from "../api/userApi";
+import { useGetDivisionsQuery, useGetStationsQuery, useGetRolesLiteQuery, useGetZonesQuery } from "../api/mastersApi";
 import { roleLabel } from "../types/labels";
-import type { Division, ManagedUser, Station, Role } from "../types";
+import { useAuth } from "../context/AuthContext";
+import type { DesignationGrade } from "../types";
 import Field from "../components/ui/Field";
 import Pagination from "../components/ui/Pagination";
 import styles from "../styles/listPage.module.css";
 
 const LIMIT = 10;
 
+// Only these role_name slugs can grant Card Signing Authority, and only when
+// designation_grade is JS or SS — mirrors the server-side rule in user.service.ts.
+const SUB_ADMIN_ROLES = ["hq_sub_admin", "divisional_sub_admin"];
+const SIGNING_ELIGIBLE_GRADES: DesignationGrade[] = ["JS", "SS"];
+
+// Roles that see the "Active Users" / "Total Active in Last 7 Days" stat cards (per UAT doc).
+const STATS_VISIBLE_ROLES = ["super_admin_hq", "hq_admin", "divisional_admin"];
+
+const DESIGNATION_GRADE_LABELS: Record<DesignationGrade, string> = {
+  JAG: "JAG",
+  SG: "SG",
+  SR_SUPERVISOR: "Sr. Supervisor",
+  JS: "JS",
+  SS: "SS",
+  OTHER: "Other",
+};
+
 export default function UserManagementPage() {
-  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const { user: currentUser } = useAuth();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<number | "">("");
   const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">("");
   const [divisionFilter, setDivisionFilter] = useState<number | "">("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [offset, setOffset] = useState(0);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [divisions, setDivisions] = useState<Division[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [toggleError, setToggleError] = useState<string | null>(null);
 
-  function load() {
-    setIsLoading(true);
-    api
-      .get<ManagedUser[]>("/users")
-      .then(setUsers)
-      .catch(() => setError("Unable to load users"))
-      .finally(() => setIsLoading(false));
-  }
-
-  useEffect(load, []);
-  useEffect(() => {
-    getRolesLite().then(setRoles).catch(() => {});
-    getDivisions().then(setDivisions).catch(() => {});
-  }, []);
+  const { data: users = [], isFetching: isLoading, error: loadError } = useGetUsersQuery();
+  const { data: roles = [] } = useGetRolesLiteQuery();
+  const { data: divisions = [] } = useGetDivisionsQuery();
+  const [toggleUserStatus] = useToggleUserStatusMutation();
+  const error = toggleError ?? (loadError ? "Unable to load users" : null);
 
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
@@ -62,26 +68,34 @@ export default function UserManagementPage() {
 
   const activeCount = users.filter((u) => u.users_status === "active").length;
   const inactiveCount = users.length - activeCount;
-  const activePct = users.length > 0 ? Math.round((activeCount / users.length) * 100) : 0;
+  const activeLast7Days = useMemo(() => {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return users.filter(
+      (u) => u.users_status === "active" && u.last_login_at && new Date(u.last_login_at).getTime() >= cutoff
+    ).length;
+  }, [users]);
+  const showStats = !!currentUser && STATS_VISIBLE_ROLES.includes(currentUser.role_name);
 
   async function toggleStatus(id: number) {
+    setToggleError(null);
     try {
-      await api.patch(`/users/${id}/toggle`);
-      load();
+      await toggleUserStatus(id).unwrap();
     } catch {
-      setError("Unable to toggle status");
+      setToggleError("Unable to toggle status");
     }
   }
 
   function handleExportCsv() {
-    const headers = ["Employee ID", "Full Name", "Username", "Designation", "Role", "Division", "Status", "Last Login"];
+    const headers = ["Employee ID", "HRMS ID", "Full Name", "Username", "Designation", "Role", "Division", "Zone", "Status", "Last Login"];
     const rows = filteredUsers.map((u) => [
       u.employee_id,
+      u.hrms_id ?? "",
       u.full_name,
       u.username,
       u.designation ?? "",
       roleLabel(u.role_name),
       u.division_name ?? "",
+      u.zone_name ?? "",
       u.users_status,
       u.last_login_at ? new Date(u.last_login_at).toLocaleString() : "Never",
     ]);
@@ -107,7 +121,7 @@ export default function UserManagementPage() {
         <div>
           <h1 className={styles.title}>User Management</h1>
           <p className={styles.subtitle}>
-            Manage SERVMS personnel across HQ Admin, Divisional Admin, and Inspector roles.
+            Manage SERVMS personnel across the HQ and Divisional role hierarchy.
           </p>
         </div>
         <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>
@@ -214,6 +228,7 @@ export default function UserManagementPage() {
               <th>Designation</th>
               <th>Role</th>
               <th>Division</th>
+              <th>Signing Authority</th>
               <th>Status</th>
               <th>Last Login</th>
               <th>Actions</th>
@@ -222,13 +237,13 @@ export default function UserManagementPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className={styles.emptyCell}>
+                <td colSpan={8} className={styles.emptyCell}>
                   Loading…
                 </td>
               </tr>
             ) : pagedUsers.length === 0 ? (
               <tr>
-                <td colSpan={7} className={styles.emptyCell}>
+                <td colSpan={8} className={styles.emptyCell}>
                   No users found.
                 </td>
               </tr>
@@ -250,7 +265,8 @@ export default function UserManagementPage() {
                   <td>
                     <span className={styles.roleTag}>{roleLabel(u.role_name)}</span>
                   </td>
-                  <td>{u.division_name ?? "—"}</td>
+                  <td>{u.division_name ?? u.zone_name ?? "—"}</td>
+                  <td>{u.card_signing_authority ? "Yes" : "—"}</td>
                   <td>
                     <span
                       className={
@@ -274,45 +290,26 @@ export default function UserManagementPage() {
         <Pagination total={filteredUsers.length} limit={LIMIT} offset={offset} onOffsetChange={setOffset} />
       </div>
 
-      <div className={styles.statGrid} style={{ marginTop: 20 }}>
-        <div className={styles.statCard}>
-          <div className={styles.statLabel}>User Analytics</div>
-          <div className={styles.statValue}>{activeCount}</div>
-          <div style={{ height: 6, background: "var(--color-bg)", borderRadius: 999, marginTop: 8, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${activePct}%`, background: "var(--color-primary)" }} />
+      {showStats && (
+        <div className={styles.statGrid} style={{ marginTop: 20 }}>
+          <div className={styles.statCard}>
+            <div className={styles.statLabel}>Active Users</div>
+            <div className={styles.statValue}>{activeCount}</div>
+            <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 6 }}>
+              {inactiveCount} inactive of {users.length} total registered users.
+            </div>
           </div>
-          <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 6 }}>
-            {activePct}% of total registered users are currently active.
+          <div className={styles.statCard}>
+            <div className={styles.statLabel}>Total Active in Last 7 Days</div>
+            <div className={styles.statValue}>{String(activeLast7Days).padStart(2, "0")}</div>
+            <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 6 }}>
+              Users who logged in within the past 7 days.
+            </div>
           </div>
         </div>
-        <div className={styles.statCard}>
-          <div className={styles.statLabel}>Pending Requests</div>
-          <div className={styles.statValue}>{String(inactiveCount).padStart(2, "0")}</div>
-          <div style={{ fontSize: 11, color: "var(--color-text-muted)", margin: "6px 0" }}>
-            Users deactivated / awaiting reactivation approval.
-          </div>
-          <button
-            type="button"
-            className={styles.pageBtn}
-            onClick={() => {
-              setOffset(0);
-              setStatusFilter("inactive");
-            }}
-          >
-            Review Requests
-          </button>
-        </div>
-      </div>
-
-      {isFormOpen && (
-        <AddUserModal
-          onClose={() => setIsFormOpen(false)}
-          onCreated={() => {
-            setIsFormOpen(false);
-            load();
-          }}
-        />
       )}
+
+      {isFormOpen && <AddUserModal onClose={() => setIsFormOpen(false)} onCreated={() => setIsFormOpen(false)} />}
     </div>
   );
 }
@@ -334,49 +331,63 @@ function AddUserModal({
   onCreated: () => void;
 }) {
   const [employeeId, setEmployeeId] = useState("");
+  const [hrmsId, setHrmsId] = useState("");
   const [username, setUsername] = useState("");
+  const [usernameTouched, setUsernameTouched] = useState(false);
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [designation, setDesignation] = useState("");
+  const [designationGrade, setDesignationGrade] = useState<DesignationGrade | "">("");
+  const [cardSigningAuthority, setCardSigningAuthority] = useState(false);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [roleId, setRoleId] = useState<number | "">("");
   const [divisionId, setDivisionId] = useState<number | "">("");
+  const [zoneId, setZoneId] = useState<number | "">("");
   const [stationId, setStationId] = useState<number | "">("");
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [divisions, setDivisions] = useState<Division[]>([]);
-  const [stations, setStations] = useState<Station[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    getRolesLite().then(setRoles).catch(() => {});
-    getDivisions().then(setDivisions).catch(() => {});
-    getStations().then(setStations).catch(() => {});
-  }, []);
+  const { data: roles = [] } = useGetRolesLiteQuery();
+  const { data: divisions = [] } = useGetDivisionsQuery();
+  const { data: stations = [] } = useGetStationsQuery();
+  const { data: zones = [] } = useGetZonesQuery();
+  const [createUser, { isLoading: isSubmitting }] = useCreateUserMutation();
+
+  const selectedRole = roles.find((r) => r.id === roleId);
+  const isSubAdminRole = !!selectedRole && SUB_ADMIN_ROLES.includes(selectedRole.role_name);
+  const isSigningEligible =
+    isSubAdminRole && !!designationGrade && SIGNING_ELIGIBLE_GRADES.includes(designationGrade as DesignationGrade);
+
+  function handleEmployeeIdChange(value: string) {
+    setEmployeeId(value);
+    if (!usernameTouched) setUsername(value);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
     try {
-      await api.post("/users", {
+      await createUser({
         employee_id: employeeId,
         username,
         password,
         full_name: fullName,
+        hrms_id: hrmsId || undefined,
         designation: designation || undefined,
+        designation_grade: designationGrade || undefined,
+        card_signing_authority: isSigningEligible && cardSigningAuthority,
         email: email || undefined,
         mobile: mobile || undefined,
-        role_id: roleId,
-        division_id: divisionId || null,
-        station_id: stationId || null,
-      });
+        role_id: Number(roleId),
+        division_id: divisionId ? Number(divisionId) : undefined,
+        zone_id: zoneId ? Number(zoneId) : undefined,
+        station_id: stationId ? Number(stationId) : undefined,
+        signature: signatureFile ?? undefined,
+      }).unwrap();
       onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to create user");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to create user");
     }
   }
 
@@ -386,11 +397,21 @@ function AddUserModal({
         <h2 className={styles.modalTitle}>Add New User</h2>
 
         <div className={styles.formGrid}>
-          <Field label="Employee ID">
-            <input value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} required />
+          <Field label="Employee Number">
+            <input value={employeeId} onChange={(e) => handleEmployeeIdChange(e.target.value)} required />
           </Field>
           <Field label="Username">
-            <input value={username} onChange={(e) => setUsername(e.target.value)} required />
+            <input
+              value={username}
+              onChange={(e) => {
+                setUsernameTouched(true);
+                setUsername(e.target.value);
+              }}
+              required
+            />
+          </Field>
+          <Field label="HRMS ID">
+            <input value={hrmsId} onChange={(e) => setHrmsId(e.target.value)} />
           </Field>
           <Field label="Temporary Password">
             <input
@@ -407,11 +428,24 @@ function AddUserModal({
           <Field label="Designation">
             <input value={designation} onChange={(e) => setDesignation(e.target.value)} />
           </Field>
+          <Field label="Designation Grade">
+            <select
+              value={designationGrade}
+              onChange={(e) => setDesignationGrade(e.target.value as DesignationGrade | "")}
+            >
+              <option value="">Select grade</option>
+              {(Object.keys(DESIGNATION_GRADE_LABELS) as DesignationGrade[]).map((g) => (
+                <option key={g} value={g}>
+                  {DESIGNATION_GRADE_LABELS[g]}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="Email (optional)">
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
-          <Field label="Mobile (optional)">
-            <input value={mobile} onChange={(e) => setMobile(e.target.value)} />
+          <Field label="Mobile Number">
+            <input value={mobile} onChange={(e) => setMobile(e.target.value)} required />
           </Field>
           <Field label="Role">
             <select
@@ -423,6 +457,16 @@ function AddUserModal({
               {roles.map((r) => (
                 <option key={r.id} value={r.id}>
                   {roleLabel(r.role_name)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Zone (optional)">
+            <select value={zoneId} onChange={(e) => setZoneId(e.target.value ? Number(e.target.value) : "")}>
+              <option value="">None</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.zone_name}
                 </option>
               ))}
             </select>
@@ -452,6 +496,28 @@ function AddUserModal({
                 </option>
               ))}
             </select>
+          </Field>
+          <Field label="Card Signing Authority">
+            <select
+              value={isSigningEligible && cardSigningAuthority ? "yes" : "no"}
+              onChange={(e) => setCardSigningAuthority(e.target.value === "yes")}
+              disabled={!isSigningEligible}
+            >
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+            {!isSigningEligible && (
+              <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+                Only JS/SS-graded HQ or Divisional Sub Admins can be signing authorities.
+              </span>
+            )}
+          </Field>
+          <Field label="Signature Upload" wide>
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png"
+              onChange={(e) => setSignatureFile(e.target.files?.[0] ?? null)}
+            />
           </Field>
         </div>
 

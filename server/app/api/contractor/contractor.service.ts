@@ -21,8 +21,8 @@ export const createContractor = async (data: any, userId: number) => {
       contractor_code, company_name, primary_contact_name, primary_contact_mobile, official_email,
       registered_address, pan_number, gstin, epf_registration, license_number, license_validity_date,
       annual_registration_fee, irctc_licensed, logo_image, division_id, contractors_status, fee_status,
-      joined_date, created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      joined_date, award_date, tenure_months, annual_contract_value, created_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const values = [
@@ -44,6 +44,9 @@ export const createContractor = async (data: any, userId: number) => {
     data.contractors_status ?? "pending_approval",
     data.fee_status ?? "paid",
     new Date().toISOString().split("T")[0],
+    data.award_date ?? null,
+    data.tenure_months ?? null,
+    data.annual_contract_value ?? null,
     userId,
   ];
 
@@ -130,6 +133,7 @@ export const editContractor = async (id: string, data: any) => {
     "registered_address", "pan_number", "gstin", "epf_registration", "license_number",
     "license_validity_date", "annual_registration_fee", "irctc_licensed", "logo_image",
     "division_id", "contractors_status", "fee_status", "compliance_rate", "penalty_index",
+    "award_date", "tenure_months", "annual_contract_value",
   ];
 
   const updates: string[] = [];
@@ -156,6 +160,57 @@ export const editContractor = async (id: string, data: any) => {
 export const deleteContractor = async (id: string) => {
   await pool.execute("UPDATE contractors SET status = 0 WHERE id = ?", [id]);
   return { id, deleted: true };
+};
+
+// ─── STATUS CHANGE (dedicated action so it's a distinct, gated audit event) ─────
+export const changeContractorStatus = async (id: string, status: string) => {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    "SELECT contractors_status FROM contractors WHERE id = ? AND status = 1",
+    [id]
+  );
+  if (!rows[0]) throw new Error("Contractor not found");
+  const previousStatus = rows[0].contractors_status;
+
+  await pool.execute("UPDATE contractors SET contractors_status = ? WHERE id = ?", [status, id]);
+  return { id: Number(id), previousStatus, newStatus: status };
+};
+
+// ─── UNIT LINKING (multiple units per contractor via units.contractor_id) ───────
+export const getContractorUnits = async (contractorId: string) => {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT u.id, u.unit_code, u.unit_name, u.station_id, st.station_name, u.units_status
+     FROM units u
+     LEFT JOIN stations st ON st.id = u.station_id
+     WHERE u.contractor_id = ?
+     ORDER BY u.unit_name ASC`,
+    [contractorId]
+  );
+  return rows;
+};
+
+export const assignUnit = async (contractorId: string, unitId: number) => {
+  const [unitRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT id, unit_name, contractor_id FROM units WHERE id = ?",
+    [unitId]
+  );
+  if (!unitRows[0]) throw new Error("Unit not found");
+  if (unitRows[0].contractor_id && Number(unitRows[0].contractor_id) !== Number(contractorId)) {
+    throw new Error("This unit is already linked to a different contractor");
+  }
+
+  await pool.execute("UPDATE units SET contractor_id = ? WHERE id = ?", [contractorId, unitId]);
+  return { unit_id: unitId, contractor_id: Number(contractorId), previous_contractor_id: unitRows[0].contractor_id };
+};
+
+export const unassignUnit = async (contractorId: string, unitId: number) => {
+  const [unitRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT id, contractor_id FROM units WHERE id = ? AND contractor_id = ?",
+    [unitId, contractorId]
+  );
+  if (!unitRows[0]) throw new Error("Unit is not linked to this contractor");
+
+  await pool.execute("UPDATE units SET contractor_id = NULL WHERE id = ?", [unitId]);
+  return { unit_id: unitId, previous_contractor_id: Number(contractorId) };
 };
 
 // ─── GET CONTRACTOR METRICS ─────────────────────────────────────────────────────

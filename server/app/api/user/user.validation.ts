@@ -39,11 +39,27 @@ export const createUserValidation = [
 
   body("users_status")
     .optional()
-    .isIn(["active", "inactive", "suspended"]).withMessage("Invalid status value"),
+    .isIn(["active", "inactive", "suspended", "pending_approval"]).withMessage("Invalid status value"),
 
   body("designation")
     .optional({ nullable: true })
     .trim(),
+
+  body("hrms_id")
+    .optional({ nullable: true })
+    .trim(),
+
+  body("zone_id")
+    .optional({ nullable: true })
+    .isInt().withMessage("zone_id must be an integer"),
+
+  body("designation_grade")
+    .optional({ nullable: true })
+    .isIn(["JAG", "SG", "SR_SUPERVISOR", "JS", "SS", "OTHER"]).withMessage("Invalid designation grade"),
+
+  body("card_signing_authority")
+    .optional()
+    .toBoolean(),
 ];
 
 export const updateUserValidation = [
@@ -88,11 +104,27 @@ export const updateUserValidation = [
 
   body("users_status")
     .optional()
-    .isIn(["active", "inactive", "suspended"]).withMessage("Invalid status value"),
+    .isIn(["active", "inactive", "suspended", "pending_approval"]).withMessage("Invalid status value"),
 
   body("designation")
     .optional({ nullable: true })
     .trim(),
+
+  body("hrms_id")
+    .optional({ nullable: true })
+    .trim(),
+
+  body("zone_id")
+    .optional({ nullable: true })
+    .isInt().withMessage("zone_id must be an integer"),
+
+  body("designation_grade")
+    .optional({ nullable: true })
+    .isIn(["JAG", "SG", "SR_SUPERVISOR", "JS", "SS", "OTHER"]).withMessage("Invalid designation grade"),
+
+  body("card_signing_authority")
+    .optional()
+    .toBoolean(),
 ];
 
 export const loginValidation = [

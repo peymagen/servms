@@ -1,42 +1,7 @@
-import { useEffect, useState } from "react";
-import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useGetDashboardStatsQuery } from "../api/dashboardApi";
 import { roleLabel } from "../types/labels";
 import styles from "./DashboardPage.module.css";
-
-interface DivisionPerf {
-  divisionName: string;
-  score: number;
-  vendorCount: number;
-}
-
-interface DivisionServiceRow {
-  id: number;
-  code: string;
-  name: string;
-  vendors: number;
-  compliance: number;
-  score: string;
-}
-
-interface Alert {
-  type: string;
-  title: string;
-  description: string;
-  time: string;
-}
-
-interface DashboardStats {
-  totalRegisteredVendors: number;
-  activeContractors: number;
-  penaltiesRecovered: number;
-  pendingPenaltyOrders: number;
-  pendingComplaints: number;
-  divisionWisePerformance: DivisionPerf[];
-  inspectionSummary: { satisfactory: number; minorIssues: number; criticalFailures: number };
-  recentCriticalAlerts: Alert[];
-  divisionServicePerformance: DivisionServiceRow[];
-}
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -47,15 +12,8 @@ const currency = new Intl.NumberFormat("en-IN", {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api
-      .get<DashboardStats>("/dashboard/stats")
-      .then(setStats)
-      .catch(() => setError("Unable to load dashboard stats"));
-  }, []);
+  const { data: stats, error: loadError } = useGetDashboardStatsQuery();
+  const error = loadError ? "Unable to load dashboard stats" : null;
 
   const maxScore = Math.max(1, ...(stats?.divisionWisePerformance.map((d) => d.score) ?? [0]));
 

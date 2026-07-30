@@ -44,7 +44,7 @@ export const initPassport = (): void => {
           const dbUser = await userService.getUserByUsername(username);
           console.log("Database user found:", dbUser); // Debug log
           if (!dbUser) {
-            done(createError(401, "User not found!"), false);
+            done(null, false, { message: "User not found!" });
             return;
           }
 
@@ -55,7 +55,7 @@ export const initPassport = (): void => {
 
           const validate = await isValidPassword(password, storedPassword);
           if (!validate) {
-            done(createError(401, "Invalid username or password"), false);
+            done(null, false, { message: "Invalid username or password" });
             return;
           }
 
@@ -74,7 +74,7 @@ export const initPassport = (): void => {
 
 export const createUserTokens = (user: Omit<IUser, "password">) => {
   const jwtSecret = process.env.JWT_SECRET ?? "";
-  const token = jwt.sign(user, jwtSecret);
+  const token = jwt.sign(user, jwtSecret, { expiresIn: "12h" });
   return { accessToken: token, refreshToken: "" };
 };
 

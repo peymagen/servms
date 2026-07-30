@@ -113,14 +113,15 @@ export const getDashboardStats = async (userDivisionId?: number) => {
     vendorCount: d.vendors,
   }));
 
-  // Inspection result breakdown
+  // Inspection result breakdown — uses inspections.division_id directly (added
+  // by the Inspection Management Module migration) rather than an inner join
+  // through units->stations, which previously silently excluded any inspection
+  // whose unit was train/cluster-located rather than station-located.
   const [inspRows] = await pool.execute<RowDataPacket[]>(
     `SELECT result, COUNT(*) as count
      FROM inspections i
-     JOIN units u ON u.id = i.unit_id
-     JOIN stations st ON st.id = u.station_id
-     WHERE i.status = 1
-     ${userDivisionId ? "AND st.division_id = ?" : ""}
+     WHERE i.status = 1 AND result IS NOT NULL
+     ${userDivisionId ? "AND i.division_id = ?" : ""}
      GROUP BY result`,
     userDivisionId ? [userDivisionId] : []
   );
