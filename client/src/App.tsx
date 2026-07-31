@@ -40,7 +40,7 @@ function protectedPage(page: ReactNode) {
     </ProtectedRoute>
   );
 }
-
+//App
 function App() {
   return (
     <AuthProvider>
