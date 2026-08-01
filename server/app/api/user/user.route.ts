@@ -70,4 +70,11 @@ router.delete("/:id", requirePermission("user_management", "delete"), userContro
 router.patch("/:id/change-password", changePasswordValidation, validate, userController.changePassword);
 router.patch("/:id/toggle", requirePermission("user_management", "edit"), userController.toggleStatus);
 
+// ─── Approval workflow (Divisional/HQ Admin only, via can_approve_reject) ───────
+// Dedicated actions so a sub-admin (who holds can_edit but not
+// can_approve_reject) can never move a user out of pending_approval via the
+// generic PATCH /:id path.
+router.post("/:id/approve", requirePermission("user_management", "approve_reject"), userController.approveUser);
+router.post("/:id/reject", requirePermission("user_management", "approve_reject"), userController.rejectUser);
+
 export default router;

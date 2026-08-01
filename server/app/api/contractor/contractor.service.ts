@@ -82,7 +82,12 @@ export const getContractors = async (filters: {
     countParams.push(filters.division_id);
   }
 
-  if (filters.status) {
+  if (filters.status === "inactive") {
+    // "Inactive" isn't a single stored status — it's the Dashboard module's
+    // rollup of every non-active, non-blacklisted status. Keep in sync with
+    // dashboard.service.ts's getContractorsSummary if that definition changes.
+    whereClauses.push("c.contractors_status NOT IN ('active','blacklisted')");
+  } else if (filters.status) {
     whereClauses.push("c.contractors_status = ?");
     params.push(filters.status);
     countParams.push(filters.status);

@@ -9,6 +9,7 @@ import {
 import { useGetRolePermissionsQuery } from "../api/authApi";
 import { MODULE_LABELS, MODULE_NAMES, type ModuleName, type Role, type RolePermission } from "../types";
 import { roleLabel } from "../types/labels";
+import { useAuth } from "../context/AuthContext";
 import Field from "../components/ui/Field";
 import StatCard from "../components/ui/StatCard";
 import Pagination from "../components/ui/Pagination";
@@ -31,6 +32,10 @@ const PERM_COLUMNS: Array<{ key: PermKey; label: string }> = [
 ];
 
 export default function RoleManagementPage() {
+  const { can } = useAuth();
+  const canCreate = can("role_management", "create");
+  const canEdit = can("role_management", "edit");
+  const canDelete = can("role_management", "delete");
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<"all" | "admin" | "field">("all");
   const [offset, setOffset] = useState(0);
@@ -74,9 +79,11 @@ export default function RoleManagementPage() {
             Define and manage system access levels and permissions for SERVMS personnel.
           </p>
         </div>
-        <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>
-          + Add New Role
-        </button>
+        {canCreate && (
+          <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>
+            + Add New Role
+          </button>
+        )}
       </div>
 
       <div className={styles.statGrid}>
@@ -147,22 +154,26 @@ export default function RoleManagementPage() {
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        className={styles.pageBtn}
-                        title="Edit role"
-                        onClick={() => setEditRoleTarget(r)}
-                      >
-                        <EditIcon />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.pageBtn}
-                        title="Delete role"
-                        onClick={() => handleDelete(r)}
-                      >
-                        <TrashIcon />
-                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className={styles.pageBtn}
+                          title="Edit role"
+                          onClick={() => setEditRoleTarget(r)}
+                        >
+                          <EditIcon />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          className={styles.pageBtn}
+                          title="Delete role"
+                          onClick={() => handleDelete(r)}
+                        >
+                          <TrashIcon />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -275,6 +286,8 @@ function TrashIcon() {
 }
 
 function PermissionMatrix({ roleId, roleName }: { roleId: number; roleName: string }) {
+  const { can } = useAuth();
+  const canEdit = can("role_management", "edit");
   const { data: serverPermissions = [], isFetching: isLoading, refetch } = useGetRolePermissionsQuery(roleId);
   const [updateRolePermissions, { isLoading: isSaving }] = useUpdateRolePermissionsMutation();
   const [saved, setSaved] = useState(false);
@@ -339,13 +352,15 @@ function PermissionMatrix({ roleId, roleName }: { roleId: number; roleName: stri
           <button type="button" className={styles.cancelBtn} onClick={loadPermissions} disabled={isLoading}>
             Reset to Default
           </button>
-          <button className={styles.addBtn} onClick={handleSave} disabled={isSaving || isLoading}>
-            {isSaving ? "Saving…" : saved ? "Saved ✓" : "Save Changes"}
-          </button>
+          {canEdit && (
+            <button className={styles.addBtn} onClick={handleSave} disabled={isSaving || isLoading}>
+              {isSaving ? "Saving…" : saved ? "Saved ✓" : "Save Changes"}
+            </button>
+          )}
         </div>
       </div>
       <div style={{ padding: "10px 16px 0", display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-        <input type="checkbox" checked={allChecked} onChange={toggleSelectAll} disabled={isLoading} />
+        <input type="checkbox" checked={allChecked} onChange={toggleSelectAll} disabled={isLoading || !canEdit} />
         <span>Select All</span>
       </div>
       <table className={styles.table} style={{ marginTop: 12 }}>
@@ -374,6 +389,7 @@ function PermissionMatrix({ roleId, roleName }: { roleId: number; roleName: stri
                       type="checkbox"
                       checked={Boolean(perm[c.key])}
                       onChange={() => toggle(perm.module_name, c.key)}
+                      disabled={!canEdit}
                     />
                   </td>
                 ))}

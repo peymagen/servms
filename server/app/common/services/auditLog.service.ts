@@ -20,7 +20,8 @@ export type AuditAction =
   | "PASSWORD_RESET"
   | "STATUS_CHANGE"
   | "ASSIGN"
-  | "IMPORT";
+  | "IMPORT"
+  | "VIEW";
 
 interface AuditLogInput {
   req: Request;
@@ -54,13 +55,18 @@ export const logAudit = async ({
 }: AuditLogInput): Promise<void> => {
   const user = req.user as any;
   try {
+    // Stores the ACTING user's own division_id (not the affected record's) —
+    // every permission/scoping check already confines a divisional user's
+    // actions to their own division, so this is simplest-correct. HQ-role
+    // actions get NULL, matching HQ's already-unscoped view everywhere else.
     await pool.execute(
       `INSERT INTO audit_logs
-        (user_id, role_name, action, module_name, record_id, old_data, new_data, details, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (user_id, role_name, division_id, action, module_name, record_id, old_data, new_data, details, ip_address, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         user?.id ?? null,
         user?.role_name ?? null,
+        user?.division_id ?? null,
         action,
         module,
         recordId != null ? String(recordId) : null,

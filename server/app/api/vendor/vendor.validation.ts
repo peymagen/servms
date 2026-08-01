@@ -54,10 +54,16 @@ const verificationFields = (prefix: "police_verification" | "medical_verificatio
   body(`${prefix}_remarks`).optional({ nullable: true }).trim(),
 ];
 
+const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+
 export const createVendorValidation = [
   body("full_name")
     .trim()
     .notEmpty().withMessage("Vendor full name is required"),
+
+  body("blood_group")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(BLOOD_GROUPS).withMessage("Invalid blood group value"),
 
   body("aadhaar_number")
     .optional({ nullable: true })
@@ -142,6 +148,10 @@ export const updateVendorValidation = [
     .trim()
     .notEmpty().withMessage("Mobile number cannot be empty"),
 
+  body("blood_group")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(BLOOD_GROUPS).withMessage("Invalid blood group value"),
+
   body("division_id")
     .optional()
     .isInt().withMessage("division_id must be an integer"),
@@ -169,6 +179,17 @@ export const updateVendorValidation = [
 
   ...verificationFields("police_verification"),
   ...verificationFields("medical_verification"),
+];
+
+export const changeStatusValidation = [
+  param("id").isInt().withMessage("id param must be a valid integer"),
+  body("vendor_status")
+    .notEmpty().withMessage("vendor_status is required")
+    // "blacklisted" is only settable through this dedicated status-change action,
+    // not via createVendorValidation/updateVendorValidation, mirroring the
+    // contractor module's changeStatusValidation.
+    .isIn(["active", "pending", "expired", "blacklisted"]).withMessage("Invalid status value"),
+  body("reason").optional().isString(),
 ];
 
 export const transferUnitValidation = [

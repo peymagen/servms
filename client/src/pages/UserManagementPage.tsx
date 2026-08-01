@@ -28,7 +28,9 @@ const DESIGNATION_GRADE_LABELS: Record<DesignationGrade, string> = {
 };
 
 export default function UserManagementPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, can } = useAuth();
+  const canCreate = can("user_management", "create");
+  const canEdit = can("user_management", "edit");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<number | "">("");
   const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">("");
@@ -124,9 +126,11 @@ export default function UserManagementPage() {
             Manage SERVMS personnel across the HQ and Divisional role hierarchy.
           </p>
         </div>
-        <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>
-          + Add New User
-        </button>
+        {canCreate && (
+          <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>
+            + Add New User
+          </button>
+        )}
       </div>
 
       <div
@@ -278,9 +282,11 @@ export default function UserManagementPage() {
                   </td>
                   <td>{u.last_login_at ? new Date(u.last_login_at).toLocaleString() : "Never"}</td>
                   <td>
-                    <button className={styles.pageBtn} onClick={() => toggleStatus(u.id)}>
-                      Toggle
-                    </button>
+                    {canEdit && (
+                      <button className={styles.pageBtn} onClick={() => toggleStatus(u.id)}>
+                        Toggle
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

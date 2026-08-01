@@ -99,7 +99,10 @@ export const changeStatusValidation = [
   param("id").isInt().withMessage("id param must be a valid integer"),
   body("contractors_status")
     .notEmpty().withMessage("contractors_status is required")
-    .isIn(["active", "pending_approval", "suspended", "expired"]).withMessage("Invalid status value"),
+    // "blacklisted" is only settable through this dedicated status-change action,
+    // not via createContractorValidation/updateContractorValidation, since it's
+    // meant to be a deliberate gated decision rather than an incidental edit.
+    .isIn(["active", "pending_approval", "suspended", "expired", "blacklisted"]).withMessage("Invalid status value"),
   body("reason").optional().isString(),
 ];
 

@@ -55,10 +55,10 @@ export const getIdCards = async (filters: {
 
   const query = `
     SELECT
-      v.id as vendor_id, v.vendor_code, v.full_name, v.vendor_type, v.profile_image,
+      v.id as vendor_id, v.vendor_code, v.full_name, v.vendor_type, v.profile_image, v.blood_group,
       v.validity_start, v.validity_end, v.police_verification_status, v.medical_verification_status,
       v.police_verification_valid_till, v.medical_verification_valid_till,
-      c.company_name as contractor_name,
+      c.company_name as contractor_name, c.primary_contact_mobile as contractor_mobile,
       u.unit_name, st.station_name, d.division_name,
       ic.id, ic.template, ic.id_number, ic.issued_date, ic.cards_status,
       ic.approval_status, ic.requested_by, ic.requested_at, ic.approved_by, ic.approved_at,
@@ -147,7 +147,8 @@ export const approveIdCard = async (vendorId: string, approverUserId: number, ac
   }
 
   const [vendorRows] = await pool.execute<RowDataPacket[]>(
-    `SELECT v.*, c.company_name as contractor_name, u.unit_name, st.station_name, d.division_name
+    `SELECT v.*, c.company_name as contractor_name, c.primary_contact_mobile as contractor_mobile,
+            u.unit_name, st.station_name, d.division_name
      FROM vendors v
      LEFT JOIN contractors c ON c.id = v.contractor_id
      LEFT JOIN units u ON u.id = v.unit_id
@@ -163,6 +164,7 @@ export const approveIdCard = async (vendorId: string, approverUserId: number, ac
     throw new Error("You can only approve ID cards for vendors in your own division");
   }
 
+  const issuedDate = new Date().toISOString().split("T")[0];
   const verificationUrl = `${FE_BASE_URL}/verify/${card.id_number}`;
   const qrPayload: IQrPayload = {
     vendor_name: vendor.full_name,
@@ -179,6 +181,12 @@ export const approveIdCard = async (vendorId: string, approverUserId: number, ac
     card_number: card.id_number,
     card_status: "active",
     verification_url: verificationUrl,
+    blood_group: vendor.blood_group,
+    department: vendor.division_name,
+    contractor_mobile: vendor.contractor_mobile,
+    contract_valid_from: vendor.validity_start,
+    contract_valid_to: vendor.validity_end,
+    date_of_issue: issuedDate,
   };
 
   const pdfBytes = await renderIdCardPdf(
@@ -188,13 +196,19 @@ export const approveIdCard = async (vendorId: string, approverUserId: number, ac
       vendorCode: vendor.vendor_code,
       vendorTypeLabel: VENDOR_TYPE_LABELS[vendor.vendor_type] ?? vendor.vendor_type,
       contractorName: vendor.contractor_name,
+      contractorMobile: vendor.contractor_mobile,
       unitName: vendor.unit_name,
       stationName: vendor.station_name,
       divisionName: vendor.division_name,
+      department: vendor.division_name,
+      bloodGroup: vendor.blood_group,
       photoPath: vendor.profile_image,
+      vendorSignaturePath: vendor.signature_path,
       cardNumber: card.id_number,
       cardStatus: "active",
-      issuedDate: new Date().toISOString().split("T")[0],
+      contractValidFrom: vendor.validity_start,
+      contractValidTo: vendor.validity_end,
+      issuedDate,
       expiryDate: card.expiry_date ? new Date(card.expiry_date).toISOString().split("T")[0] : null,
       signingAuthorityName: approver.full_name,
       signingAuthorityDesignation: approver.designation,
@@ -214,7 +228,7 @@ export const approveIdCard = async (vendorId: string, approverUserId: number, ac
       cards_status = 'active', signature_applied = 1, qr_code_data = ?, pdf_path = ?,
       issued_date = ?, last_checked_at = NULL
      WHERE vendor_id = ?`,
-    [approverUserId, JSON.stringify(qrPayload), pdfPath, new Date().toISOString().split("T")[0], vendorId]
+    [approverUserId, JSON.stringify(qrPayload), pdfPath, issuedDate, vendorId]
   );
 
   return { vendor_id: Number(vendorId), id_number: card.id_number, pdf_path: pdfPath };
@@ -257,7 +271,7 @@ export const getIdCardPdfPath = async (vendorId: string): Promise<string | null>
 export const verifyIdCard = async (idNumberOrCode: string) => {
   const query = `
     SELECT
-      v.vendor_code, v.full_name, v.vendor_type, v.address, v.aadhaar_number,
+      v.vendor_code, v.full_name, v.vendor_type, v.address, v.aadhaar_number, v.blood_group,
       v.validity_start, v.validity_end,
       v.police_verification_status, v.police_verification_valid_till,
       v.medical_verification_status, v.medical_verification_valid_till,

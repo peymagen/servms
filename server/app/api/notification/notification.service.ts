@@ -39,8 +39,16 @@ export const getNotifications = async (opts: {
   divisionId?: number;
   module?: NotificationModule | "all";
   limit?: number;
+  // Inspector (self-scoped) / Dealing Section (assignee-scoped) narrow the
+  // Inspections feed to only their own/assigned inspections — the other
+  // feeds (vendor/complaint/penalty/user) aren't touched by these two, since
+  // neither role has a defined ownership concept over those modules.
+  inspectorId?: number;
+  assignedToUserId?: number;
 }) => {
   const divisionId = opts.divisionId;
+  const inspectorId = opts.inspectorId;
+  const assignedToUserId = opts.assignedToUserId;
   const items: NotificationItem[] = [];
 
   // ── Vendor Master: contractor licenses expiring within 30 days (or already expired) ──
@@ -274,14 +282,29 @@ export const getNotifications = async (opts: {
   });
 
   // ── Inspections: submitted / assigned / ATR submitted awaiting review ──
+  const inspectionScopeParams: any[] = [];
+  let inspectionScopeSql = "";
+  if (divisionId) {
+    inspectionScopeSql += " AND i.division_id = ?";
+    inspectionScopeParams.push(divisionId);
+  }
+  if (inspectorId) {
+    inspectionScopeSql += " AND i.inspector_id = ?";
+    inspectionScopeParams.push(inspectorId);
+  }
+  if (assignedToUserId) {
+    inspectionScopeSql += " AND i.assigned_to_user_id = ?";
+    inspectionScopeParams.push(assignedToUserId);
+  }
+
   const [inspectionRows] = await pool.execute<RowDataPacket[]>(
     `SELECT i.id, i.inspection_no, i.priority, i.inspection_status, i.submitted_at, i.created_at
      FROM inspections i
      WHERE i.status = 1 AND i.inspection_status IN ('submitted', 'assigned', 'atr_submitted', 'under_review')
-       ${divisionId ? "AND i.division_id = ?" : ""}
+       ${inspectionScopeSql}
      ORDER BY i.created_at DESC
      LIMIT 15`,
-    divisionId ? [divisionId] : []
+    inspectionScopeParams
   );
   inspectionRows.forEach((row) => {
     const eventAt = new Date(row.submitted_at ?? row.created_at);
@@ -310,10 +333,10 @@ export const getNotifications = async (opts: {
      JOIN inspections i ON i.id = ia.inspection_id AND i.status = 1
      LEFT JOIN units tu ON tu.id = ia.to_unit_id
      WHERE ia.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-       ${divisionId ? "AND i.division_id = ?" : ""}
+       ${inspectionScopeSql}
      ORDER BY ia.created_at DESC
      LIMIT 15`,
-    divisionId ? [divisionId] : []
+    inspectionScopeParams
   );
   inspectionAssignRows.forEach((row) => {
     const createdAt = new Date(row.created_at);
@@ -335,10 +358,10 @@ export const getNotifications = async (opts: {
      FROM inspection_action_taken_reports atr
      JOIN inspections i ON i.id = atr.inspection_id AND i.status = 1
      WHERE atr.status = 1 AND atr.review_status IN ('accepted', 'rejected') AND atr.decided_at >= DATE_SUB(NOW(), INTERVAL 14 DAY)
-       ${divisionId ? "AND i.division_id = ?" : ""}
+       ${inspectionScopeSql}
      ORDER BY atr.decided_at DESC
      LIMIT 15`,
-    divisionId ? [divisionId] : []
+    inspectionScopeParams
   );
   inspectionAtrRows.forEach((row) => {
     const decidedAt = new Date(row.decided_at ?? row.created_at);
@@ -358,10 +381,10 @@ export const getNotifications = async (opts: {
     `SELECT i.id, i.inspection_no, i.closed_at
      FROM inspections i
      WHERE i.status = 1 AND i.inspection_status = 'closed' AND i.closed_at >= DATE_SUB(NOW(), INTERVAL 14 DAY)
-       ${divisionId ? "AND i.division_id = ?" : ""}
+       ${inspectionScopeSql}
      ORDER BY i.closed_at DESC
      LIMIT 15`,
-    divisionId ? [divisionId] : []
+    inspectionScopeParams
   );
   inspectionClosedRows.forEach((row) => {
     const closedAt = new Date(row.closed_at);

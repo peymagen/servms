@@ -249,3 +249,32 @@ export const toggleStatus = async (id: string) => {
   await pool.execute("UPDATE users SET users_status = ? WHERE id = ?", [newStatus, id]);
   return { id, users_status: newStatus };
 };
+
+// ─── APPROVE / REJECT (dedicated gated actions, separate from generic edit) ────
+// A sub-admin-created user sits in `pending_approval` until an Admin (the only
+// role with user_management.approve_reject) moves them out of it — this used to
+// only be reachable via a generic PATCH /:id gated on can_edit, which sub-admins
+// also hold, letting them silently self-approve.
+export const approveUser = async (id: string) => {
+  const user = await getUserById(id);
+  if (!user) throw new Error("User not found");
+  const previousStatus = (user as any).users_status;
+  if (previousStatus !== "pending_approval") {
+    throw new Error("Only users pending approval can be approved");
+  }
+  await pool.execute("UPDATE users SET users_status = 'active' WHERE id = ?", [id]);
+  return { id: Number(id), previousStatus, newStatus: "active" };
+};
+
+export const rejectUser = async (id: string, reason?: string) => {
+  const user = await getUserById(id);
+  if (!user) throw new Error("User not found");
+  const previousStatus = (user as any).users_status;
+  if (previousStatus !== "pending_approval") {
+    throw new Error("Only users pending approval can be rejected");
+  }
+  // Rejected users are deactivated rather than deleted, preserving the create
+  // record and audit trail — mirrors the soft-delete convention used elsewhere.
+  await pool.execute("UPDATE users SET users_status = 'inactive' WHERE id = ?", [id]);
+  return { id: Number(id), previousStatus, newStatus: "inactive", reason };
+};

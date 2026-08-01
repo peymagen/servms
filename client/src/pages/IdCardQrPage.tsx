@@ -9,7 +9,7 @@ import {
   useApproveIdCardMutation,
   useRejectIdCardMutation,
 } from "../api/idcardApi";
-import { CARD_TEMPLATE_LABELS, VENDOR_TYPE_LABELS, type CardExpirySource, type CardTemplate, type IdCard } from "../types";
+import { VENDOR_TYPE_LABELS, type CardExpirySource, type IdCard } from "../types";
 import StatCard from "../components/ui/StatCard";
 import styles from "./IdCardQrPage.module.css";
 
@@ -41,7 +41,6 @@ export default function IdCardQrPage() {
   const [error, setError] = useState<string | null>(null);
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [showRejectForm, setShowRejectForm] = useState(false);
-  const [template, setTemplate] = useState<CardTemplate>("template_a");
   const [expirySource, setExpirySource] = useState<CardExpirySource>("medical");
   const [rejectReason, setRejectReason] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -79,11 +78,14 @@ export default function IdCardQrPage() {
       vendor_name: selectedCard.full_name,
       vendor_type: VENDOR_TYPE_LABELS[selectedCard.vendor_type],
       contractor: selectedCard.contractor_name ?? null,
+      contractor_mobile: selectedCard.contractor_mobile ?? null,
       unit: selectedCard.unit_name ?? null,
       id_card_validity: selectedCard.expiry_date ?? null,
       card_number: selectedCard.id_number,
       card_status: selectedCard.cards_status,
       issuing_authority_name: selectedCard.approved_by_name ?? null,
+      blood_group: selectedCard.blood_group ?? null,
+      department: selectedCard.division_name ?? null,
       verification_url: `${window.location.origin}/verify/${selectedCard.id_number}`,
     };
     QRCode.toDataURL(JSON.stringify(payload), { width: 400, margin: 1 })
@@ -98,7 +100,7 @@ export default function IdCardQrPage() {
     if (!selectedCard) return;
     setError(null);
     try {
-      await requestCard({ vendorId: selectedCard.vendor_id, template, expiry_source: expirySource }).unwrap();
+      await requestCard({ vendorId: selectedCard.vendor_id, template: "template_a", expiry_source: expirySource }).unwrap();
       setShowRequestForm(false);
     } catch (err: any) {
       setError(err?.data?.message ?? err?.message ?? "Unable to submit issue request");
@@ -204,12 +206,12 @@ export default function IdCardQrPage() {
                         <strong>{VENDOR_TYPE_LABELS[selectedCard.vendor_type]}</strong>
                       </div>
                       <div className={styles.idCardRow}>
-                        <span>ID Number</span>
-                        <strong>{selectedCard.id_number}</strong>
+                        <span>Blood Group</span>
+                        <strong>{selectedCard.blood_group ?? "—"}</strong>
                       </div>
                       <div className={styles.idCardRow}>
-                        <span>Template</span>
-                        <strong>{CARD_TEMPLATE_LABELS[selectedCard.template]}</strong>
+                        <span>ID Number</span>
+                        <strong>{selectedCard.id_number}</strong>
                       </div>
                       <div className={styles.idCardRow}>
                         <span>Card Validity</span>
@@ -232,7 +234,6 @@ export default function IdCardQrPage() {
                   {selectedCard.approval_status === "pending_approval" && (
                     <p>
                       Requested by {selectedCard.requested_by_name ?? "—"} on {formatDate(selectedCard.requested_at)}
-                      {" · "}Template: {CARD_TEMPLATE_LABELS[selectedCard.template]}
                     </p>
                   )}
                   {selectedCard.approval_status === "rejected" && selectedCard.rejection_reason && (
@@ -273,16 +274,6 @@ export default function IdCardQrPage() {
 
               {showRequestForm && (
                 <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
-                  <label>
-                    Template
-                    <select value={template} onChange={(e) => setTemplate(e.target.value as CardTemplate)}>
-                      {Object.entries(CARD_TEMPLATE_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                   <label>
                     ID Card Expiry Driver
                     <select value={expirySource} onChange={(e) => setExpirySource(e.target.value as CardExpirySource)}>

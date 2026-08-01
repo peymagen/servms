@@ -4,7 +4,7 @@ import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import createHttpError from "http-errors";
 import { type Request, type Response } from "express";
-import { isDivisionScoped, isSelfScoped, isAssigneeScoped } from "../../common/constants/roles";
+import { isDivisionScoped, isSelfScoped, isAssigneeScoped, assertRecordAccessible } from "../../common/constants/roles";
 import { logAudit } from "../../common/services/auditLog.service";
 
 const str = (v: unknown) => (v !== undefined && v !== "" ? String(v) : undefined);
@@ -67,6 +67,7 @@ export const getInspectionById = asyncHandler(async (req: Request, res: Response
     res.status(404).send(createResponse(null, "Inspection not found"));
     return;
   }
+  assertRecordAccessible(req.user as any, result, { ownerField: "inspector_id", assigneeField: "assigned_to_user_id" });
   res.send(createResponse(result));
 });
 

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   useGetContractorsQuery,
@@ -25,6 +25,7 @@ const STATUS_LABELS: Record<Contractor["contractors_status"], string> = {
   pending_approval: "Pending Approval",
   suspended: "Suspended",
   expired: "Expired",
+  blacklisted: "Blacklisted",
 };
 
 function statusBadgeClass(status: Contractor["contractors_status"]): string {
@@ -49,10 +50,18 @@ export default function ContractorManagementPage() {
   const canChangeStatus = can("contractor_management", "approve_reject");
 
   const [offset, setOffset] = useState(0);
+  // Seeds initial filters from the URL once (e.g. the Dashboard's Registered
+  // Contractors card links here as `/contractors?status=blacklisted&division_id=2`).
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Contractor["contractors_status"] | "">("");
-  const [divisionFilter, setDivisionFilter] = useState<number | "">("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<Contractor["contractors_status"] | "">(
+    () => (searchParams.get("status") as Contractor["contractors_status"] | "") || ""
+  );
+  const [divisionFilter, setDivisionFilter] = useState<number | "">(() => {
+    const raw = searchParams.get("division_id");
+    return raw ? Number(raw) : "";
+  });
+  const [showAdvanced, setShowAdvanced] = useState(() => searchParams.has("status"));
   const [detailContractor, setDetailContractor] = useState<Contractor | null>(null);
 
   const filters = useMemo(
@@ -134,6 +143,10 @@ export default function ContractorManagementPage() {
                 }}
               >
                 <option value="">All</option>
+                {/* "inactive" is the Dashboard's rollup of pending_approval/suspended/expired
+                    (see contractor.service.ts's getContractors), not a real Contractor status,
+                    so it's added here rather than to STATUS_LABELS (used for per-row badges). */}
+                <option value="inactive">Inactive (Non-Active)</option>
                 {Object.entries(STATUS_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}

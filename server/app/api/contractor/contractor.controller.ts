@@ -1,6 +1,6 @@
 import * as contractorService from "./contractor.service";
 import { createResponse } from "../../common/helper/response.hepler";
-import { isDivisionScoped } from "../../common/constants/roles";
+import { isDivisionScoped, assertRecordAccessible } from "../../common/constants/roles";
 import { logAudit } from "../../common/services/auditLog.service";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
@@ -50,6 +50,7 @@ export const getContractorById = asyncHandler(async (req: Request, res: Response
     res.status(404).send(createResponse(null, "Contractor not found"));
     return;
   }
+  assertRecordAccessible(req.user as any, result);
   res.send(createResponse(result));
 });
 

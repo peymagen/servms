@@ -1,4 +1,5 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   useGetUnitsQuery,
   useGetUnitMetricsQuery,
@@ -128,11 +129,20 @@ function TrashIcon() {
 /* ═══════════════════════════════ UNITS TAB ═══════════════════════════════ */
 
 function UnitsTab() {
+  // Seeds initial filters from the URL once (e.g. the Dashboard's Registered
+  // Units card links here as `/locations?status=idle&division_id=2`) without
+  // migrating this page to fully URL-synced state.
+  const [searchParams] = useSearchParams();
   const [offset, setOffset] = useState(0);
   const [search, setSearch] = useState("");
-  const [divisionFilter, setDivisionFilter] = useState<number | "">("");
+  const [divisionFilter, setDivisionFilter] = useState<number | "">(() => {
+    const raw = searchParams.get("division_id");
+    return raw ? Number(raw) : "";
+  });
   const [locationTypeFilter, setLocationTypeFilter] = useState<UnitLocationType | "">("");
-  const [statusFilter, setStatusFilter] = useState<"" | "active" | "inspection_pending">("");
+  const [statusFilter, setStatusFilter] = useState<"" | "active" | "idle" | "inactive" | "inspection_pending">(
+    () => (searchParams.get("status") as "" | "active" | "idle" | "inactive" | "inspection_pending") || ""
+  );
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [contractTypeFilter, setContractTypeFilter] = useState("");
 
@@ -267,6 +277,22 @@ function UnitsTab() {
                 onClick={() => {
                   setOffset(0);
                   setStatusFilter((s) => (s === "inspection_pending" ? "" : "inspection_pending"));
+                }}
+              />
+              <TabButton
+                label="Idle"
+                active={statusFilter === "idle"}
+                onClick={() => {
+                  setOffset(0);
+                  setStatusFilter((s) => (s === "idle" ? "" : "idle"));
+                }}
+              />
+              <TabButton
+                label="Inactive"
+                active={statusFilter === "inactive"}
+                onClick={() => {
+                  setOffset(0);
+                  setStatusFilter((s) => (s === "inactive" ? "" : "inactive"));
                 }}
               />
             </div>

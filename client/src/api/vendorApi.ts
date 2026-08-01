@@ -31,6 +31,7 @@ export interface VendorFormData {
   aadhaar_number?: string;
   mobile_number: string;
   address?: string;
+  blood_group?: string;
   vendor_type?: VendorType;
   contractor_id?: number;
   unit_id?: number;

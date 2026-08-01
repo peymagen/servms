@@ -191,7 +191,7 @@ export interface Contractor {
   irctc_licensed: boolean | number;
   compliance_rate: number | null;
   penalty_index: number | null;
-  contractors_status: "active" | "pending_approval" | "suspended" | "expired";
+  contractors_status: "active" | "pending_approval" | "suspended" | "expired" | "blacklisted";
   fee_status: "paid" | "overdue";
   division_id: number | null;
   division_name?: string | null;
@@ -258,6 +258,9 @@ export const VENDOR_TYPE_LABELS: Record<VendorType, string> = {
   station_others: "Station Others",
 };
 
+export const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
+export type BloodGroup = (typeof BLOOD_GROUPS)[number];
+
 export interface Vendor {
   id: number;
   vendor_code: string;
@@ -269,6 +272,7 @@ export interface Vendor {
   address: string | null;
   profile_image: string | null;
   signature_path: string | null;
+  blood_group: string | null;
   vendor_type: VendorType;
   contractor_id: number | null;
   contractor_name?: string | null;
@@ -278,7 +282,7 @@ export interface Vendor {
   station_name?: string | null;
   division_id: number | null;
   division_name?: string | null;
-  vendor_status: "active" | "pending" | "expired";
+  vendor_status: "active" | "pending" | "expired" | "blacklisted";
   validity_start: string | null;
   validity_end: string | null;
   police_verification_status: VerificationStatus;
@@ -665,6 +669,8 @@ export interface IdCard {
   medical_verification_status?: string | null;
   medical_verification_valid_till?: string | null;
   contractor_name?: string | null;
+  contractor_mobile?: string | null;
+  blood_group?: string | null;
 }
 
 export interface IdCardVerification {
@@ -691,6 +697,7 @@ export interface IdCardVerification {
   medical_verification_valid_till: string | null;
   issuing_authority_name: string | null;
   issuing_authority_designation: string | null;
+  blood_group: string | null;
 }
 
 export interface VendorRenewal {

@@ -25,12 +25,18 @@ export interface IdCardRenderData {
   vendorCode: string;
   vendorTypeLabel: string;
   contractorName: string | null;
+  contractorMobile: string | null;
   unitName: string | null;
   stationName: string | null;
   divisionName: string | null;
+  department: string | null;
+  bloodGroup: string | null;
   photoPath: string | null;
+  vendorSignaturePath: string | null;
   cardNumber: string;
   cardStatus: string;
+  contractValidFrom: string | null;
+  contractValidTo: string | null;
   issuedDate: string | null;
   expiryDate: string | null;
   signingAuthorityName: string | null;
@@ -38,11 +44,19 @@ export interface IdCardRenderData {
   signaturePath: string | null;
 }
 
-const NAVY = rgb(0.075, 0.16, 0.35);
-const TEAL = rgb(0.06, 0.35, 0.32);
+const ORANGE = rgb(0.91, 0.42, 0.09);
+const ORANGE_LIGHT = rgb(0.99, 0.92, 0.83);
 const WHITE = rgb(1, 1, 1);
-const DARK = rgb(0.15, 0.15, 0.18);
-const MUTED = rgb(0.4, 0.4, 0.44);
+const DARK = rgb(0.12, 0.1, 0.08);
+const MUTED = rgb(0.38, 0.34, 0.3);
+
+// Physical card size per Annexure-II spec: 87mm x 54mm PVC card, held portrait.
+const MM = 2.834645669;
+const CARD_W = 54 * MM;
+const CARD_H = 87 * MM;
+const MARGIN = 20;
+const GAP = 20;
+const STRIP_W = 0.7 * 10 * MM; // 0.7cm "ON CONTRACT" side strip
 
 async function embedImage(doc: PDFDocument, img: { bytes: Buffer; isPng: boolean } | null) {
   if (!img) return null;
@@ -53,175 +67,194 @@ async function embedImage(doc: PDFDocument, img: { bytes: Buffer; isPng: boolean
   }
 }
 
-function drawWrappedText(
-  page: PDFPage,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  font: PDFFont,
-  size: number,
-  color = DARK
-) {
-  const words = text.split(" ");
-  let line = "";
-  let cursorY = y;
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (font.widthOfTextAtSize(test, size) > maxWidth && line) {
-      page.drawText(line, { x, y: cursorY, size, font, color });
-      line = word;
-      cursorY -= size + 2;
-    } else {
-      line = test;
-    }
-  }
-  if (line) page.drawText(line, { x, y: cursorY, size, font, color });
-  return cursorY;
+function fmtDate(value: string | null): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-// Renders one of the two UAT card templates to a single-page PDF and returns the bytes.
-// Template A: portrait badge, navy header. Template B: landscape card, teal accent.
+function drawCentered(page: PDFPage, text: string, centerX: number, y: number, font: PDFFont, size: number, color = DARK) {
+  const width = font.widthOfTextAtSize(text, size);
+  page.drawText(text, { x: centerX - width / 2, y, size, font, color });
+}
+
+async function embedAll(doc: PDFDocument, data: IdCardRenderData) {
+  const photo = await embedImage(doc, loadImageBytes(data.photoPath));
+  const vendorSignature = await embedImage(doc, loadImageBytes(data.vendorSignaturePath));
+  const authoritySignature = await embedImage(doc, loadImageBytes(data.signaturePath));
+  return { photo, vendorSignature, authoritySignature };
+}
+
 export const renderIdCardPdf = async (
-  template: CardTemplate,
+  _template: CardTemplate,
   data: IdCardRenderData,
   qrPayload: IQrPayload
 ): Promise<Uint8Array> => {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
 
   const qrPng = await QRCode.toBuffer(JSON.stringify(qrPayload), { margin: 1, width: 200 });
   const qrImage = await doc.embedPng(qrPng);
-  const photo = await embedImage(doc, loadImageBytes(data.photoPath));
-  const signature = await embedImage(doc, loadImageBytes(data.signaturePath));
+  const { photo, vendorSignature, authoritySignature } = await embedAll(doc, data);
 
-  if (template === "template_b") {
-    return renderLandscape(doc, font, bold, qrImage, photo, signature, data);
-  }
-  return renderPortrait(doc, font, bold, qrImage, photo, signature, data);
+  const pageW = MARGIN * 2 + CARD_W * 2 + GAP;
+  const pageH = MARGIN * 2 + CARD_H;
+  const page = doc.addPage([pageW, pageH]);
+
+  const frontX = MARGIN;
+  const backX = MARGIN + CARD_W + GAP;
+  const cardY = MARGIN;
+
+  drawCardFrame(page, frontX, cardY);
+  drawFrontFace(page, frontX, cardY, font, bold, photo, vendorSignature, authoritySignature, data);
+
+  drawCardFrame(page, backX, cardY);
+  drawBackFace(page, backX, cardY, font, bold, italic, qrImage, data);
+
+  return doc.save();
 };
 
-async function renderPortrait(
-  doc: PDFDocument,
-  font: PDFFont,
-  bold: PDFFont,
-  qrImage: Awaited<ReturnType<PDFDocument["embedPng"]>>,
-  photo: Awaited<ReturnType<PDFDocument["embedPng"]>> | null,
-  signature: Awaited<ReturnType<PDFDocument["embedPng"]>> | null,
-  data: IdCardRenderData
-): Promise<Uint8Array> {
-  const W = 243;
-  const H = 380;
-  const page = doc.addPage([W, H]);
-
-  page.drawRectangle({ x: 0, y: H - 56, width: W, height: 56, color: NAVY });
-  page.drawText("SOUTH EASTERN RAILWAY", { x: 14, y: H - 24, size: 9, font: bold, color: WHITE });
-  page.drawText("VENDOR IDENTITY CARD", { x: 14, y: H - 38, size: 11, font: bold, color: WHITE });
-
-  const photoBoxY = H - 140;
-  page.drawRectangle({ x: (W - 84) / 2, y: photoBoxY, width: 84, height: 84, color: rgb(0.9, 0.9, 0.92) });
-  if (photo) {
-    const scale = Math.min(84 / photo.width, 84 / photo.height);
-    page.drawImage(photo, {
-      x: (W - photo.width * scale) / 2,
-      y: photoBoxY + (84 - photo.height * scale) / 2,
-      width: photo.width * scale,
-      height: photo.height * scale,
-    });
-  }
-
-  page.drawText(data.fullName, { x: 14, y: photoBoxY - 18, size: 12, font: bold, color: DARK });
-  page.drawText(data.vendorTypeLabel, { x: 14, y: photoBoxY - 32, size: 8, font, color: MUTED });
-
-  let y = photoBoxY - 52;
-  const rows: [string, string][] = [
-    ["Vendor Code", data.vendorCode],
-    ["Contractor", data.contractorName ?? "—"],
-    ["Unit", data.unitName ?? "—"],
-    ["Station / Division", `${data.stationName ?? "—"} / ${data.divisionName ?? "—"}`],
-    ["Card Number", data.cardNumber],
-    ["Valid Until", data.expiryDate ?? "—"],
-  ];
-  for (const [label, value] of rows) {
-    page.drawText(label.toUpperCase(), { x: 14, y, size: 6.5, font: bold, color: MUTED });
-    y -= 9;
-    y = drawWrappedText(page, value, 14, y, W - 28, font, 8.5) - 6;
-  }
-
-  page.drawImage(qrImage, { x: W - 74, y: 40, width: 60, height: 60 });
-
-  if (signature) {
-    const scale = Math.min(50 / signature.width, 20 / signature.height);
-    page.drawImage(signature, { x: 14, y: 46, width: signature.width * scale, height: signature.height * scale });
-  }
-  page.drawText(data.signingAuthorityName ?? "—", { x: 14, y: 32, size: 7, font: bold, color: DARK });
-  page.drawText(data.signingAuthorityDesignation ?? "Issuing Authority", { x: 14, y: 22, size: 6, font, color: MUTED });
-  page.drawLine({ start: { x: 14, y: 44 }, end: { x: 70, y: 44 }, thickness: 0.5, color: MUTED });
-
-  page.drawText(`Status: ${data.cardStatus.toUpperCase()}`, { x: 14, y: 8, size: 6, font: bold, color: NAVY });
-
-  return doc.save();
+function drawCardFrame(page: PDFPage, x: number, y: number) {
+  page.drawRectangle({ x, y, width: CARD_W, height: CARD_H, color: WHITE, borderColor: ORANGE, borderWidth: 1.5 });
+  drawSideStrip(page, x, y, CARD_H);
 }
 
-async function renderLandscape(
-  doc: PDFDocument,
+function drawSideStrip(page: PDFPage, x: number, y: number, height: number) {
+  page.drawRectangle({ x, y, width: STRIP_W, height, color: ORANGE });
+}
+
+function drawStripLabel(page: PDFPage, x: number, y: number, height: number, font: PDFFont) {
+  const letters = "ON CONTRACT".replace(/\s/g, "").split("");
+  const size = 7.5;
+  const usable = height - 16;
+  const lineHeight = usable / letters.length;
+  let cursorY = y + height - 12 - lineHeight * 0.6;
+  for (const letter of letters) {
+    const w = font.widthOfTextAtSize(letter, size);
+    page.drawText(letter, { x: x + STRIP_W / 2 - w / 2, y: cursorY, size, font, color: WHITE });
+    cursorY -= lineHeight;
+  }
+}
+
+function drawFrontFace(
+  page: PDFPage,
+  x: number,
+  y: number,
   font: PDFFont,
   bold: PDFFont,
-  qrImage: Awaited<ReturnType<PDFDocument["embedPng"]>>,
   photo: Awaited<ReturnType<PDFDocument["embedPng"]>> | null,
-  signature: Awaited<ReturnType<PDFDocument["embedPng"]>> | null,
+  vendorSignature: Awaited<ReturnType<PDFDocument["embedPng"]>> | null,
+  authoritySignature: Awaited<ReturnType<PDFDocument["embedPng"]>> | null,
   data: IdCardRenderData
-): Promise<Uint8Array> {
-  const W = 380;
-  const H = 243;
-  const page = doc.addPage([W, H]);
+) {
+  drawStripLabel(page, x, y, CARD_H, bold);
 
-  page.drawRectangle({ x: 0, y: 0, width: 10, height: H, color: TEAL });
-  page.drawRectangle({ x: 0, y: H - 34, width: W, height: 34, color: TEAL });
-  page.drawText("SOUTH EASTERN RAILWAY — VENDOR IDENTITY CARD", { x: 20, y: H - 22, size: 10, font: bold, color: WHITE });
+  const contentX = x + STRIP_W;
+  const contentW = CARD_W - STRIP_W;
+  const centerX = contentX + contentW / 2;
 
-  const photoBoxX = 20;
-  const photoBoxY = H - 120;
-  page.drawRectangle({ x: photoBoxX, y: photoBoxY, width: 76, height: 76, color: rgb(0.9, 0.9, 0.92) });
+  drawCentered(page, "Entry Pass", centerX, y + CARD_H - 20, bold, 13, ORANGE);
+  drawCentered(page, data.department ?? "Name of Office", centerX, y + CARD_H - 32, font, 7, MUTED);
+
+  const photoSize = Math.min(contentW - 16, 90);
+  const photoX = centerX - photoSize / 2;
+  const photoY = y + CARD_H - 48 - photoSize;
+  page.drawRectangle({ x: photoX, y: photoY, width: photoSize, height: photoSize, color: ORANGE_LIGHT, borderColor: ORANGE, borderWidth: 1 });
   if (photo) {
-    const scale = Math.min(76 / photo.width, 76 / photo.height);
+    const scale = Math.min(photoSize / photo.width, photoSize / photo.height);
     page.drawImage(photo, {
-      x: photoBoxX + (76 - photo.width * scale) / 2,
-      y: photoBoxY + (76 - photo.height * scale) / 2,
+      x: photoX + (photoSize - photo.width * scale) / 2,
+      y: photoY + (photoSize - photo.height * scale) / 2,
       width: photo.width * scale,
       height: photo.height * scale,
     });
   }
 
-  const detailX = 110;
-  page.drawText(data.fullName, { x: detailX, y: H - 50, size: 13, font: bold, color: DARK });
-  page.drawText(data.vendorTypeLabel, { x: detailX, y: H - 64, size: 8, font, color: MUTED });
+  let cursorY = photoY - 10;
+  if (vendorSignature) {
+    const maxW = contentW - 20;
+    const scale = Math.min(maxW / vendorSignature.width, 16 / vendorSignature.height);
+    page.drawImage(vendorSignature, {
+      x: centerX - (vendorSignature.width * scale) / 2,
+      y: cursorY - 14,
+      width: vendorSignature.width * scale,
+      height: vendorSignature.height * scale,
+    });
+  }
+  page.drawLine({ start: { x: contentX + 10, y: cursorY - 16 }, end: { x: contentX + contentW - 10, y: cursorY - 16 }, thickness: 0.5, color: MUTED });
+  drawCentered(page, "Signature of card holder", centerX, cursorY - 26, font, 5.5, MUTED);
 
-  let y = H - 82;
-  const rows: [string, string][] = [
-    ["Vendor Code", data.vendorCode],
-    ["Contractor", data.contractorName ?? "—"],
-    ["Unit / Station", `${data.unitName ?? "—"} / ${data.stationName ?? "—"}`],
-    ["Card Number", data.cardNumber],
-    ["Valid Until", data.expiryDate ?? "—"],
+  cursorY -= 40;
+  page.drawText(`Name: ${data.fullName}`, { x: contentX + 8, y: cursorY, size: 8, font: bold, color: DARK });
+
+  cursorY -= 28;
+  if (authoritySignature) {
+    const maxW = contentW - 20;
+    const scale = Math.min(maxW / authoritySignature.width, 16 / authoritySignature.height);
+    page.drawImage(authoritySignature, {
+      x: centerX - (authoritySignature.width * scale) / 2,
+      y: cursorY,
+      width: authoritySignature.width * scale,
+      height: authoritySignature.height * scale,
+    });
+  }
+  page.drawLine({ start: { x: contentX + 10, y: cursorY - 2 }, end: { x: contentX + contentW - 10, y: cursorY - 2 }, thickness: 0.5, color: MUTED });
+  drawCentered(page, "(Signature)", centerX, cursorY - 11, font, 5.5, MUTED);
+  drawCentered(page, data.signingAuthorityDesignation ?? "Designation of Issuing Authority", centerX, cursorY - 19, font, 5.5, MUTED);
+}
+
+function drawBackFace(
+  page: PDFPage,
+  x: number,
+  y: number,
+  font: PDFFont,
+  bold: PDFFont,
+  italic: PDFFont,
+  qrImage: Awaited<ReturnType<PDFDocument["embedPng"]>>,
+  data: IdCardRenderData
+) {
+  drawStripLabel(page, x, y, CARD_H, bold);
+
+  const contentX = x + STRIP_W;
+  const contentW = CARD_W - STRIP_W;
+  const centerX = contentX + contentW / 2;
+
+  const qrSize = 2 * 10 * MM * (contentW / (4.25 * 10 * MM)); // scaled to fit content width
+  const qrBoxSize = Math.min(qrSize, contentW * 0.42);
+  const qrY = y + CARD_H - 14 - qrBoxSize;
+  page.drawImage(qrImage, { x: contentX + 6, y: qrY, width: qrBoxSize, height: qrBoxSize });
+
+  const bgBoxSize = qrBoxSize * 0.75;
+  const bgX = contentX + contentW - bgBoxSize - 6;
+  const bgY = qrY + (qrBoxSize - bgBoxSize) / 2;
+  page.drawRectangle({ x: bgX, y: bgY, width: bgBoxSize, height: bgBoxSize, color: ORANGE_LIGHT, borderColor: ORANGE, borderWidth: 1 });
+  drawCentered(page, data.bloodGroup ?? "—", bgX + bgBoxSize / 2, bgY + bgBoxSize / 2 - 6, bold, 14, ORANGE);
+  drawCentered(page, "Blood Group", bgX + bgBoxSize / 2, bgY - 8, font, 4.5, MUTED);
+
+  let cursorY = qrY - 20;
+  drawCentered(page, data.department ?? "—", centerX, cursorY, bold, 9, DARK);
+  cursorY -= 14;
+  drawCentered(page, data.contractorMobile ?? "—", centerX, cursorY, bold, 11, ORANGE);
+
+  cursorY -= 18;
+  const lines = [
+    `Name of Contractor: ${data.contractorName ?? "—"}`,
+    `Validity of Contract: ${fmtDate(data.contractValidFrom)} To ${fmtDate(data.contractValidTo)}`,
+    `Date of Issue: ${fmtDate(data.issuedDate)}`,
+    `Validity: 01 year from the date of issue`,
   ];
-  for (const [label, value] of rows) {
-    page.drawText(`${label}:`, { x: detailX, y, size: 7.5, font: bold, color: MUTED });
-    page.drawText(value, { x: detailX + 78, y, size: 7.5, font, color: DARK });
-    y -= 13;
+  for (const line of lines) {
+    page.drawText(line, { x: contentX + 6, y: cursorY, size: 5.8, font, color: DARK });
+    cursorY -= 10;
   }
 
-  page.drawImage(qrImage, { x: W - 90, y: H - 130, width: 70, height: 70 });
+  cursorY -= 4;
+  page.drawText("Please surrender to issuing authority on", { x: contentX + 6, y: cursorY, size: 4.8, font: italic, color: MUTED });
+  cursorY -= 7;
+  page.drawText("completion/termination of contractual services.", { x: contentX + 6, y: cursorY, size: 4.8, font: italic, color: MUTED });
 
-  if (signature) {
-    const scale = Math.min(60 / signature.width, 22 / signature.height);
-    page.drawImage(signature, { x: detailX, y: 22, width: signature.width * scale, height: signature.height * scale });
-  }
-  page.drawLine({ start: { x: detailX, y: 20 }, end: { x: detailX + 70, y: 20 }, thickness: 0.5, color: MUTED });
-  page.drawText(data.signingAuthorityName ?? "—", { x: detailX, y: 10, size: 7, font: bold, color: DARK });
-  page.drawText(data.signingAuthorityDesignation ?? "Issuing Authority", { x: detailX + 90, y: 10, size: 6, font, color: MUTED });
-  page.drawText(`Status: ${data.cardStatus.toUpperCase()}`, { x: W - 90, y: H - 140, size: 6, font: bold, color: TEAL });
-
-  return doc.save();
+  drawCentered(page, `Card No: ${data.cardNumber}`, centerX, y + 6, font, 5, MUTED);
 }

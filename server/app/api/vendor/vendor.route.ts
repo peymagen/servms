@@ -8,6 +8,7 @@ import { documentUpload } from "../../common/middleware/multer.middleware";
 import {
   createVendorValidation,
   updateVendorValidation,
+  changeStatusValidation,
   updateVerificationValidation,
   uploadDocumentValidation,
   transferUnitValidation,
@@ -64,6 +65,15 @@ router.patch(
   vendorController.editVendor
 );
 router.delete("/:id", requirePermission("vendor_management", "delete"), vendorController.deleteVendor);
+
+// ─── Status change (Divisional/HQ Admin only, via can_approve_reject) ────────────
+router.post(
+  "/:id/status",
+  requirePermission("vendor_management", "approve_reject"),
+  changeStatusValidation,
+  validate,
+  vendorController.changeVendorStatus
+);
 
 // ─── Transfers ─────────────────────────────────────────────────────────────────────
 router.post(

@@ -1,7 +1,7 @@
 import * as userService from "./user.service";
 import { createResponse } from "../../common/helper/response.hepler";
 import { logAudit } from "../../common/services/auditLog.service";
-import { isDivisionScoped } from "../../common/constants/roles";
+import { isDivisionScoped, assertRecordAccessible } from "../../common/constants/roles";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
 import passport from "passport";
@@ -113,6 +113,7 @@ export const getUserById = asyncHandler(async (req: Request, res: Response) => {
     res.status(404).send(createResponse(null, "User not found"));
     return;
   }
+  assertRecordAccessible(req.user as any, result as any);
   res.send(createResponse(result));
 });
 
@@ -137,6 +138,46 @@ export const toggleStatus = asyncHandler(async (req: Request, res: Response) => 
     newData: result,
   });
   res.send(createResponse(result, "User status toggled successfully"));
+});
+
+// ─── APPROVE / REJECT (Divisional/HQ Admin only, via can_approve_reject) ───────
+export const approveUser = asyncHandler(async (req: Request, res: Response) => {
+  const before = await userService.getUserById(req.params.id as string);
+  if (!before) {
+    res.status(404).send(createResponse(null, "User not found"));
+    return;
+  }
+  assertRecordAccessible(req.user as any, before as any);
+  const result = await userService.approveUser(req.params.id as string);
+  await logAudit({
+    req,
+    module: "user_management",
+    recordId: req.params.id,
+    action: "APPROVE",
+    oldData: { users_status: result.previousStatus },
+    newData: { users_status: result.newStatus },
+  });
+  res.send(createResponse(result, "User approved"));
+});
+
+export const rejectUser = asyncHandler(async (req: Request, res: Response) => {
+  const before = await userService.getUserById(req.params.id as string);
+  if (!before) {
+    res.status(404).send(createResponse(null, "User not found"));
+    return;
+  }
+  assertRecordAccessible(req.user as any, before as any);
+  const result = await userService.rejectUser(req.params.id as string, req.body?.reason);
+  await logAudit({
+    req,
+    module: "user_management",
+    recordId: req.params.id,
+    action: "REJECT",
+    oldData: { users_status: result.previousStatus },
+    newData: { users_status: result.newStatus },
+    details: req.body?.reason,
+  });
+  res.send(createResponse(result, "User rejected"));
 });
 
 // ─── CHANGE PASSWORD ───────────────────────────────────────────────────────────

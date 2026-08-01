@@ -3,7 +3,7 @@ import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
 import { type VendorDocumentType } from "./vendor.dto";
-import { isDivisionScoped } from "../../common/constants/roles";
+import { isDivisionScoped, assertRecordAccessible } from "../../common/constants/roles";
 import { logAudit } from "../../common/services/auditLog.service";
 
 // ─── CREATE VENDOR ─────────────────────────────────────────────────────────────
@@ -75,6 +75,7 @@ export const getVendorById = asyncHandler(async (req: Request, res: Response) =>
     res.status(404).send(createResponse(null, "Vendor not found"));
     return;
   }
+  assertRecordAccessible(req.user as any, result);
   res.send(createResponse(result));
 });
 
@@ -92,6 +93,21 @@ export const editVendor = asyncHandler(async (req: Request, res: Response) => {
   const result = await vendorService.editVendor(req.params.id as string, req.body);
   await logAudit({ req, module: "vendor", recordId: req.params.id, action: "UPDATE", oldData, newData: req.body });
   res.send(createResponse(result, "Vendor updated successfully"));
+});
+
+// ─── STATUS CHANGE (dedicated, gated action) ─────────────────────────────────────
+export const changeVendorStatus = asyncHandler(async (req: Request, res: Response) => {
+  const result = await vendorService.changeVendorStatus(req.params.id as string, req.body.vendor_status);
+  await logAudit({
+    req,
+    module: "vendor",
+    recordId: req.params.id,
+    action: "STATUS_CHANGE",
+    oldData: { vendor_status: result.previousStatus },
+    newData: { vendor_status: result.newStatus },
+    details: req.body.reason,
+  });
+  res.send(createResponse(result, "Vendor status updated"));
 });
 
 // ─── DELETE VENDOR ───────────────────────────────────────────────────────────────

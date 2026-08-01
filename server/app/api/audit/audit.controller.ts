@@ -4,15 +4,24 @@ import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
 import { logAudit } from "../../common/services/auditLog.service";
+import { isDivisionScoped } from "../../common/constants/roles";
 
-const readFilters = (req: Request) => ({
-  module: req.query.module ? String(req.query.module) : undefined,
-  recordId: req.query.record_id ? String(req.query.record_id) : undefined,
-  userId: req.query.user_id ? String(req.query.user_id) : undefined,
-  action: req.query.action ? String(req.query.action) : undefined,
-  from: req.query.from ? String(req.query.from) : undefined,
-  to: req.query.to ? String(req.query.to) : undefined,
-});
+// Divisional Admin's division is forced here, server-side, and never taken
+// from the query string — audit_logs previously had no division concept at
+// all, so a Divisional Admin (who does hold audit_logs.view) could see every
+// division's trail, not just their own.
+const readFilters = (req: Request) => {
+  const user = req.user as any;
+  return {
+    module: req.query.module ? String(req.query.module) : undefined,
+    recordId: req.query.record_id ? String(req.query.record_id) : undefined,
+    userId: req.query.user_id ? String(req.query.user_id) : undefined,
+    action: req.query.action ? String(req.query.action) : undefined,
+    from: req.query.from ? String(req.query.from) : undefined,
+    to: req.query.to ? String(req.query.to) : undefined,
+    divisionId: isDivisionScoped(user?.role_name) && user?.division_id ? Number(user.division_id) : undefined,
+  };
+};
 
 export const getAuditLogs = asyncHandler(async (req: Request, res: Response) => {
   const result = await auditService.getAuditLogs({

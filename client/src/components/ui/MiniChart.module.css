@@ -1,0 +1,111 @@
+.barChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  height: 180px;
+  padding-top: 10px;
+}
+
+.barCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.barTrack {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.bar {
+  width: 100%;
+  max-width: 40px;
+  border-radius: 6px 6px 0 0;
+  min-height: 4px;
+  transition: opacity 0.15s ease;
+}
+
+.barCol:hover .bar {
+  opacity: 0.8;
+}
+
+.barValue {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.barLabel {
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.pieRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.pie,
+.doughnut {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.doughnutHole {
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.legendItem:hover {
+  text-decoration: underline;
+}
+
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

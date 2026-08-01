@@ -3,7 +3,7 @@ import * as atrService from "./complaint.atr.service";
 import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
-import { isDivisionScoped } from "../../common/constants/roles";
+import { isDivisionScoped, assertRecordAccessible } from "../../common/constants/roles";
 import { logAudit } from "../../common/services/auditLog.service";
 
 const str = (v: unknown) => (v !== undefined && v !== "" ? String(v) : undefined);
@@ -61,6 +61,7 @@ export const getComplaintById = asyncHandler(async (req: Request, res: Response)
     res.status(404).send(createResponse(null, "Complaint not found"));
     return;
   }
+  assertRecordAccessible(req.user as any, result);
   res.send(createResponse(result));
 });
 
