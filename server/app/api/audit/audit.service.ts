@@ -10,6 +10,9 @@ export interface AuditLogFilters {
   to?: string;
   limit?: number;
   offset?: number;
+  // Forced server-side for Divisional Admin (see audit.controller.ts) — never
+  // client-suppliable, so a divisional user can't request another division's log.
+  divisionId?: number;
 }
 
 export const getAuditLogs = async (filters: AuditLogFilters) => {
@@ -42,6 +45,10 @@ export const getAuditLogs = async (filters: AuditLogFilters) => {
     whereClauses.push("a.created_at <= ?");
     params.push(filters.to);
   }
+  if (filters.divisionId) {
+    whereClauses.push("a.division_id = ?");
+    params.push(filters.divisionId);
+  }
 
   const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
@@ -53,7 +60,7 @@ export const getAuditLogs = async (filters: AuditLogFilters) => {
 
   const query = `
     SELECT
-      a.id, a.user_id, a.role_name, a.action, a.module_name, a.record_id,
+      a.id, a.user_id, a.role_name, a.division_id, a.action, a.module_name, a.record_id,
       a.old_data, a.new_data, a.details, a.ip_address, a.user_agent, a.created_at,
       u.full_name as user_full_name, u.username as user_username
     FROM audit_logs a

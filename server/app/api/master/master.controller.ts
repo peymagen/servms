@@ -5,6 +5,7 @@ import { type Request, type Response } from "express";
 import { type RowDataPacket, type ResultSetHeader } from "mysql2";
 import * as XLSX from "xlsx";
 import fs from "fs";
+import { isDivisionScoped } from "../../common/constants/roles";
 
 // ─── GET DIVISIONS ─────────────────────────────────────────────────────────────
 export const getDivisions = asyncHandler(async (req: Request, res: Response) => {
@@ -139,16 +140,30 @@ export const bulkImportStations = asyncHandler(async (req: Request, res: Respons
 });
 
 // ─── GET UNITS ─────────────────────────────────────────────────────────────────
+// This "lite" picker previously returned every unit org-wide regardless of the
+// caller's role — scoped the same way unit.service.ts's full endpoint is.
 export const getUnits = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user as any;
   const stationId = req.query.station_id;
-  let query = "SELECT * FROM units";
+  const whereClauses = ["1 = 1"];
   const params: any[] = [];
 
+  let query = `
+    SELECT u.* FROM units u
+    LEFT JOIN stations st ON st.id = u.station_id
+    LEFT JOIN trains tr ON tr.id = u.train_id
+    LEFT JOIN location_clusters cl ON cl.id = u.cluster_id
+  `;
+
   if (stationId) {
-    query += " WHERE station_id = ?";
+    whereClauses.push("u.station_id = ?");
     params.push(stationId);
   }
-  query += " ORDER BY unit_name ASC";
+  if (isDivisionScoped(user?.role_name) && user?.division_id) {
+    whereClauses.push("COALESCE(st.division_id, tr.division_id, cl.division_id) = ?");
+    params.push(user.division_id);
+  }
+  query += ` WHERE ${whereClauses.join(" AND ")} ORDER BY u.unit_name ASC`;
 
   const [rows] = await pool.execute(query, params);
   res.send(createResponse(rows));
@@ -156,7 +171,12 @@ export const getUnits = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── GET CONTRACTORS ───────────────────────────────────────────────────────────
 export const getContractors = asyncHandler(async (req: Request, res: Response) => {
-  const divisionId = req.query.division_id;
+  const user = req.user as any;
+  let divisionId = req.query.division_id;
+  if (isDivisionScoped(user?.role_name) && user?.division_id) {
+    divisionId = user.division_id;
+  }
+
   let query = "SELECT * FROM contractors";
   const params: any[] = [];
 
@@ -172,6 +192,7 @@ export const getContractors = asyncHandler(async (req: Request, res: Response) =
 
 // ─── GET VENDORS (lite, optionally scoped to a contractor) ─────────────────────
 export const getVendorsLite = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user as any;
   const contractorId = req.query.contractor_id;
   let query = "SELECT id, vendor_code, full_name, contractor_id, unit_id, division_id FROM vendors WHERE status = 1";
   const params: any[] = [];
@@ -179,6 +200,10 @@ export const getVendorsLite = asyncHandler(async (req: Request, res: Response) =
   if (contractorId) {
     query += " AND contractor_id = ?";
     params.push(contractorId);
+  }
+  if (isDivisionScoped(user?.role_name) && user?.division_id) {
+    query += " AND division_id = ?";
+    params.push(user.division_id);
   }
   query += " ORDER BY full_name ASC";
 
@@ -188,19 +213,35 @@ export const getVendorsLite = asyncHandler(async (req: Request, res: Response) =
 
 // ─── GET COMPLAINTS (lite, for penalty reference picker) ───────────────────────
 export const getComplaintsLite = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user as any;
+  const whereClauses = ["status = 1"];
+  const params: any[] = [];
+  if (isDivisionScoped(user?.role_name) && user?.division_id) {
+    whereClauses.push("division_id = ?");
+    params.push(user.division_id);
+  }
   const [rows] = await pool.execute(
     `SELECT id, complaint_code, category, occurrence_date FROM complaints
-     WHERE status = 1 ORDER BY created_at DESC LIMIT 200`
+     WHERE ${whereClauses.join(" AND ")} ORDER BY created_at DESC LIMIT 200`,
+    params
   );
   res.send(createResponse(rows));
 });
 
 // ─── GET INSPECTIONS (lite, for penalty reference picker) ──────────────────────
 export const getInspectionsLite = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user as any;
+  const whereClauses = ["i.status = 1"];
+  const params: any[] = [];
+  if (isDivisionScoped(user?.role_name) && user?.division_id) {
+    whereClauses.push("i.division_id = ?");
+    params.push(user.division_id);
+  }
   const [rows] = await pool.execute(
     `SELECT i.id, i.unit_id, u.unit_name, i.inspection_date, i.result FROM inspections i
      LEFT JOIN units u ON u.id = i.unit_id
-     WHERE i.status = 1 ORDER BY i.inspection_date DESC LIMIT 200`
+     WHERE ${whereClauses.join(" AND ")} ORDER BY i.inspection_date DESC LIMIT 200`,
+    params
   );
   res.send(createResponse(rows));
 });

@@ -31,6 +31,7 @@ CREATE TABLE `audit_logs` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `user_id` int(10) UNSIGNED DEFAULT NULL,
   `role_name` varchar(50) DEFAULT NULL,
+  `division_id` int(10) UNSIGNED DEFAULT NULL,
   `action` varchar(255) NOT NULL,
   `module_name` varchar(100) DEFAULT NULL,
   `record_id` varchar(50) DEFAULT NULL,
@@ -52,14 +53,34 @@ CREATE TABLE `audit_logs` (
 CREATE TABLE `complaints` (
   `id` int(10) UNSIGNED NOT NULL,
   `complaint_code` varchar(50) NOT NULL,
+  `complaint_source` enum('railmadad','cpgrams','manual') NOT NULL DEFAULT 'manual',
+  `complaint_ref_no` varchar(50) DEFAULT NULL,
+  `portal_registration_number` varchar(50) DEFAULT NULL,
+  `manual_dak_reference_number` varchar(50) DEFAULT NULL,
+  `eoffice_computer_number` varchar(50) DEFAULT NULL,
   `unit_id` int(10) UNSIGNED DEFAULT NULL,
+  `division_id` int(10) UNSIGNED DEFAULT NULL,
+  `train_id` int(10) UNSIGNED DEFAULT NULL,
+  `station_id` int(10) UNSIGNED DEFAULT NULL,
+  `assigned_to_user_id` int(10) UNSIGNED DEFAULT NULL,
   `location_text` varchar(255) DEFAULT NULL,
   `category` varchar(100) DEFAULT NULL,
+  `complaint_type_id` int(10) UNSIGNED DEFAULT NULL,
+  `complaint_subtype_id` int(10) UNSIGNED DEFAULT NULL,
   `description` text DEFAULT NULL,
+  `complainant_name` varchar(150) DEFAULT NULL,
+  `complainant_mobile` varchar(15) DEFAULT NULL,
+  `complainant_email` varchar(150) DEFAULT NULL,
   `occurrence_date` date DEFAULT NULL,
   `occurrence_time` time DEFAULT NULL,
+  `complaint_date` datetime DEFAULT NULL,
+  `resolution_date` datetime DEFAULT NULL,
+  `closed_by` int(10) UNSIGNED DEFAULT NULL,
+  `closed_at` datetime DEFAULT NULL,
+  `import_batch_id` int(10) UNSIGNED DEFAULT NULL,
+  `railmadad_extra` longtext DEFAULT NULL,
   `priority` enum('low','medium','high') NOT NULL DEFAULT 'medium',
-  `complaints_status` enum('open','investigating','resolved','rejected') NOT NULL DEFAULT 'open',
+  `complaints_status` enum('pending','assigned','under_review','action_taken','approved','rejected','closed') NOT NULL DEFAULT 'pending',
   `registered_by` int(10) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -70,12 +91,12 @@ CREATE TABLE `complaints` (
 -- Dumping data for table `complaints`
 --
 
-INSERT INTO `complaints` (`id`, `complaint_code`, `unit_id`, `location_text`, `category`, `description`, `occurrence_date`, `occurrence_time`, `priority`, `complaints_status`, `registered_by`, `created_at`, `updated_at`, `status`) VALUES
-(1, 'CMP-88219', 1, 'Platform Area', 'Food Quality & Hygiene', 'Found stale food and dirty trays served in platform 1 food stall.', '2023-10-24', '12:30:00', 'high', 'open', 7, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(2, 'CMP-88214', 6, 'Platform Area', 'Overcharging', 'Charging ₹30 for a bottle of water which has MRP ₹15.', '2023-10-23', '16:45:00', 'medium', 'investigating', 7, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(3, 'CMP-88198', 8, 'Platform Area', 'Vendor Misbehavior', 'Vendor staff was rude and argumentative when asked for bills.', '2023-10-22', '09:15:00', 'low', 'resolved', 7, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(4, 'CMP-88152', 4, 'Platform Area', 'Unauthorized Vendor', 'An unauthorized vendor selling food on platform without proper ID card.', '2023-10-21', '18:20:00', 'high', 'investigating', 7, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(5, 'CMP-43044', 2, 'Platform Area', 'Food Quality & Hygiene', 'efeogog verrh', '2026-07-08', '05:25:00', 'medium', 'open', 1, '2026-07-11 13:21:44', '2026-07-11 13:21:44', 1);
+INSERT INTO `complaints` (`id`, `complaint_code`, `complaint_source`, `complaint_ref_no`, `portal_registration_number`, `manual_dak_reference_number`, `eoffice_computer_number`, `unit_id`, `division_id`, `train_id`, `station_id`, `assigned_to_user_id`, `location_text`, `category`, `complaint_type_id`, `complaint_subtype_id`, `description`, `complainant_name`, `complainant_mobile`, `complainant_email`, `occurrence_date`, `occurrence_time`, `complaint_date`, `resolution_date`, `closed_by`, `closed_at`, `import_batch_id`, `railmadad_extra`, `priority`, `complaints_status`, `registered_by`, `created_at`, `updated_at`, `status`) VALUES
+(1, 'CMP-88219', 'manual', NULL, NULL, NULL, NULL, 1, 1, NULL, NULL, NULL, 'Platform Area', 'Food Quality & Hygiene', NULL, NULL, 'Found stale food and dirty trays served in platform 1 food stall.', NULL, NULL, NULL, '2023-10-24', '12:30:00', '2023-10-24 12:30:00', NULL, NULL, NULL, NULL, NULL, 'high', 'pending', 7, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(2, 'CMP-88214', 'manual', NULL, NULL, NULL, NULL, 6, 5, NULL, NULL, NULL, 'Platform Area', 'Overcharging', NULL, NULL, 'Charging ₹30 for a bottle of water which has MRP ₹15.', NULL, NULL, NULL, '2023-10-23', '16:45:00', '2023-10-23 16:45:00', NULL, NULL, NULL, NULL, NULL, 'medium', 'under_review', 7, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(3, 'CMP-88198', 'manual', NULL, NULL, NULL, NULL, 8, 4, NULL, NULL, NULL, 'Platform Area', 'Vendor Misbehavior', NULL, NULL, 'Vendor staff was rude and argumentative when asked for bills.', NULL, NULL, NULL, '2023-10-22', '09:15:00', '2023-10-22 09:15:00', NULL, NULL, NULL, NULL, NULL, 'low', 'closed', 7, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(4, 'CMP-88152', 'manual', NULL, NULL, NULL, NULL, 4, 2, NULL, NULL, NULL, 'Platform Area', 'Unauthorized Vendor', NULL, NULL, 'An unauthorized vendor selling food on platform without proper ID card.', NULL, NULL, NULL, '2023-10-21', '18:20:00', '2023-10-21 18:20:00', NULL, NULL, NULL, NULL, NULL, 'high', 'under_review', 7, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(5, 'CMP-43044', 'manual', NULL, NULL, NULL, NULL, 2, 1, NULL, NULL, NULL, 'Platform Area', 'Food Quality & Hygiene', NULL, NULL, 'efeogog verrh', NULL, NULL, NULL, '2026-07-08', '05:25:00', '2026-07-08 05:25:00', NULL, NULL, NULL, NULL, NULL, 'medium', 'pending', 1, '2026-07-11 13:21:44', '2026-07-11 13:21:44', 1);
 
 -- --------------------------------------------------------
 
@@ -102,6 +123,130 @@ INSERT INTO `complaint_evidence` (`id`, `complaint_id`, `file_path`, `file_type`
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `complaint_action_taken_reports`
+--
+
+CREATE TABLE `complaint_action_taken_reports` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `complaint_id` int(10) UNSIGNED NOT NULL,
+  `remarks` text NOT NULL,
+  `submitted_by` int(10) UNSIGNED DEFAULT NULL,
+  `submitted_at` datetime DEFAULT NULL,
+  `review_status` enum('pending_review','sub_admin_reviewed','accepted','rejected','sent_back') NOT NULL DEFAULT 'pending_review',
+  `reviewed_by` int(10) UNSIGNED DEFAULT NULL,
+  `reviewed_at` datetime DEFAULT NULL,
+  `review_remarks` text DEFAULT NULL,
+  `decided_by` int(10) UNSIGNED DEFAULT NULL,
+  `decided_at` datetime DEFAULT NULL,
+  `decision_remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status` tinyint(4) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `fk_atr_complaint` (`complaint_id`),
+  KEY `fk_atr_submitter` (`submitted_by`),
+  KEY `fk_atr_reviewer` (`reviewed_by`),
+  KEY `fk_atr_decider` (`decided_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `complaint_documents`
+--
+
+CREATE TABLE `complaint_documents` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `complaint_id` int(10) UNSIGNED NOT NULL,
+  `atr_id` int(10) UNSIGNED DEFAULT NULL,
+  `document_type` enum('evidence','atr','other') NOT NULL DEFAULT 'evidence',
+  `file_name` varchar(255) NOT NULL,
+  `original_name` varchar(255) NOT NULL,
+  `file_path` varchar(255) NOT NULL,
+  `file_type` varchar(50) DEFAULT NULL,
+  `uploaded_by` int(10) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` tinyint(4) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `fk_doc_complaint` (`complaint_id`),
+  KEY `fk_doc_atr` (`atr_id`),
+  KEY `fk_doc_uploader` (`uploaded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `complaint_documents`
+-- (copied forward from the legacy `complaint_evidence` table, per migration 007)
+--
+
+INSERT INTO `complaint_documents` (`id`, `complaint_id`, `document_type`, `file_name`, `original_name`, `file_path`, `file_type`, `created_at`, `status`) VALUES
+(1, 5, 'evidence', 'evidence-1783776104202.png', 'evidence-1783776104202.png', '/uploads/evidence-1783776104202.png', 'image/png', '2026-07-11 13:21:44', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `complaint_assignments`
+--
+
+CREATE TABLE `complaint_assignments` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `complaint_id` int(10) UNSIGNED NOT NULL,
+  `assignment_type` enum('initial','reassign','transfer') NOT NULL DEFAULT 'initial',
+  `from_unit_id` int(10) UNSIGNED DEFAULT NULL,
+  `to_unit_id` int(10) UNSIGNED DEFAULT NULL,
+  `assigned_to_user_id` int(10) UNSIGNED DEFAULT NULL,
+  `assigned_by` int(10) UNSIGNED DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_assign_complaint` (`complaint_id`),
+  KEY `fk_assign_from_unit` (`from_unit_id`),
+  KEY `fk_assign_to_unit` (`to_unit_id`),
+  KEY `fk_assign_user` (`assigned_to_user_id`),
+  KEY `fk_assign_by` (`assigned_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `complaint_status_history`
+--
+
+CREATE TABLE `complaint_status_history` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `complaint_id` int(10) UNSIGNED NOT NULL,
+  `from_status` varchar(30) DEFAULT NULL,
+  `to_status` varchar(30) NOT NULL,
+  `changed_by` int(10) UNSIGNED DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_hist_complaint` (`complaint_id`),
+  KEY `fk_hist_user` (`changed_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `complaint_import_history`
+--
+
+CREATE TABLE `complaint_import_history` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `file_name` varchar(255) NOT NULL,
+  `imported_by` int(10) UNSIGNED DEFAULT NULL,
+  `total_records` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `imported_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `duplicate_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `failed_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `error_report` longtext DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_import_user` (`imported_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `contractors`
 --
 
@@ -123,12 +268,13 @@ CREATE TABLE `contractors` (
   `logo_image` varchar(255) DEFAULT NULL,
   `compliance_rate` decimal(5,2) DEFAULT 0.00,
   `penalty_index` decimal(5,2) DEFAULT 0.00,
-  `contractors_status` enum('active','pending_approval','suspended','expired') NOT NULL DEFAULT 'pending_approval',
+  `contractors_status` enum('active','pending_approval','suspended','expired','blacklisted') NOT NULL DEFAULT 'pending_approval',
   `fee_status` enum('paid','overdue') NOT NULL DEFAULT 'paid',
   `division_id` int(10) UNSIGNED DEFAULT NULL,
   `joined_date` date DEFAULT NULL,
   `award_date` date DEFAULT NULL,
   `tenure_months` int(10) UNSIGNED DEFAULT NULL,
+  `contract_end_date` date DEFAULT NULL,
   `annual_contract_value` decimal(12,2) DEFAULT NULL,
   `created_by` int(10) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -202,12 +348,31 @@ INSERT INTO `divisions` (`id`, `zone_id`, `division_code`, `division_name`, `cre
 
 CREATE TABLE `inspections` (
   `id` int(10) UNSIGNED NOT NULL,
+  `inspection_no` varchar(20) DEFAULT NULL,
   `unit_id` int(10) UNSIGNED NOT NULL,
   `inspector_id` int(10) UNSIGNED DEFAULT NULL,
+  `inspecting_official_name` varchar(150) DEFAULT NULL,
+  `designation` varchar(150) DEFAULT NULL,
+  `division_id` int(10) UNSIGNED DEFAULT NULL,
+  `place_of_posting` varchar(150) DEFAULT NULL,
+  `station_id` int(10) UNSIGNED DEFAULT NULL,
+  `train_id` int(10) UNSIGNED DEFAULT NULL,
+  `inspection_category_id` int(10) UNSIGNED DEFAULT NULL,
+  `inspection_type_id` int(10) UNSIGNED DEFAULT NULL,
+  `observations` longtext DEFAULT NULL,
+  `deficiencies` longtext DEFAULT NULL,
+  `recommendations` longtext DEFAULT NULL,
+  `priority` enum('low','medium','high') NOT NULL DEFAULT 'medium',
+  `inspection_status` enum('draft','submitted','returned','assigned','atr_submitted','under_review','approved','rejected','closed') NOT NULL DEFAULT 'draft',
+  `assigned_to_user_id` int(10) UNSIGNED DEFAULT NULL,
+  `submitted_at` datetime DEFAULT NULL,
+  `closed_by` int(10) UNSIGNED DEFAULT NULL,
+  `closed_at` datetime DEFAULT NULL,
   `inspection_date` date NOT NULL,
-  `result` enum('satisfactory','minor_issues','critical_failure') NOT NULL,
+  `result` enum('satisfactory','minor_issues','critical_failure') DEFAULT NULL,
   `remarks` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `status` tinyint(4) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -215,13 +380,125 @@ CREATE TABLE `inspections` (
 -- Dumping data for table `inspections`
 --
 
-INSERT INTO `inspections` (`id`, `unit_id`, `inspector_id`, `inspection_date`, `result`, `remarks`, `created_at`, `status`) VALUES
-(1, 1, 3, '2024-05-10', 'satisfactory', 'Hygiene is good.', '2026-07-11 13:05:26', 1),
-(2, 2, 3, '2024-05-12', 'minor_issues', 'Slight dust on counters.', '2026-07-11 13:05:26', 1),
-(3, 3, 6, '2024-05-15', 'satisfactory', 'All vendors have valid cards.', '2026-07-11 13:05:26', 1),
-(4, 4, 3, '2024-05-18', 'critical_failure', 'Unauthorized vendors found.', '2026-07-11 13:05:26', 1),
-(5, 6, 3, '2024-05-20', 'satisfactory', 'Excellent compliance.', '2026-07-11 13:05:26', 1),
-(6, 7, 3, '2024-05-22', 'minor_issues', 'Prices not displayed clearly.', '2026-07-11 13:05:26', 1);
+INSERT INTO `inspections` (`id`, `inspection_no`, `unit_id`, `inspector_id`, `inspecting_official_name`, `designation`, `division_id`, `place_of_posting`, `station_id`, `train_id`, `inspection_category_id`, `inspection_type_id`, `observations`, `deficiencies`, `recommendations`, `priority`, `inspection_status`, `assigned_to_user_id`, `submitted_at`, `closed_by`, `closed_at`, `inspection_date`, `result`, `remarks`, `created_at`, `updated_at`, `status`) VALUES
+(1, NULL, 1, 3, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'medium', 'closed', NULL, NULL, NULL, NULL, '2024-05-10', 'satisfactory', 'Hygiene is good.', '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(2, NULL, 2, 3, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'medium', 'closed', NULL, NULL, NULL, NULL, '2024-05-12', 'minor_issues', 'Slight dust on counters.', '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(3, NULL, 3, 6, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'medium', 'closed', NULL, NULL, NULL, NULL, '2024-05-15', 'satisfactory', 'All vendors have valid cards.', '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(4, NULL, 4, 3, NULL, NULL, 2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'medium', 'closed', NULL, NULL, NULL, NULL, '2024-05-18', 'critical_failure', 'Unauthorized vendors found.', '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(5, NULL, 6, 3, NULL, NULL, 5, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'medium', 'closed', NULL, NULL, NULL, NULL, '2024-05-20', 'satisfactory', 'Excellent compliance.', '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(6, NULL, 7, 3, NULL, NULL, 5, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'medium', 'closed', NULL, NULL, NULL, NULL, '2024-05-22', 'minor_issues', 'Prices not displayed clearly.', '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `inspection_number_counters`
+--
+
+CREATE TABLE `inspection_number_counters` (
+  `year` int(10) UNSIGNED NOT NULL,
+  `last_number` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`year`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `inspection_action_taken_reports`
+--
+
+CREATE TABLE `inspection_action_taken_reports` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `inspection_id` int(10) UNSIGNED NOT NULL,
+  `action_description` longtext NOT NULL,
+  `action_date` date DEFAULT NULL,
+  `completion_status` enum('in_progress','partially_completed','completed') NOT NULL DEFAULT 'in_progress',
+  `remarks` text DEFAULT NULL,
+  `submitted_by` int(10) UNSIGNED DEFAULT NULL,
+  `submitted_at` datetime DEFAULT NULL,
+  `review_status` enum('draft','pending_review','sub_admin_reviewed','accepted','rejected','sent_back') NOT NULL DEFAULT 'draft',
+  `reviewed_by` int(10) UNSIGNED DEFAULT NULL,
+  `reviewed_at` datetime DEFAULT NULL,
+  `review_remarks` text DEFAULT NULL,
+  `decided_by` int(10) UNSIGNED DEFAULT NULL,
+  `decided_at` datetime DEFAULT NULL,
+  `decision_remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status` tinyint(4) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `fk_iatr_inspection` (`inspection_id`),
+  KEY `fk_iatr_submitter` (`submitted_by`),
+  KEY `fk_iatr_reviewer` (`reviewed_by`),
+  KEY `fk_iatr_decider` (`decided_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `inspection_documents`
+--
+
+CREATE TABLE `inspection_documents` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `inspection_id` int(10) UNSIGNED NOT NULL,
+  `atr_id` int(10) UNSIGNED DEFAULT NULL,
+  `document_type` enum('inspection','atr','other') NOT NULL DEFAULT 'inspection',
+  `file_name` varchar(255) NOT NULL,
+  `original_name` varchar(255) NOT NULL,
+  `file_path` varchar(255) NOT NULL,
+  `file_size` int(10) UNSIGNED DEFAULT NULL,
+  `file_type` varchar(50) DEFAULT NULL,
+  `uploaded_by` int(10) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` tinyint(4) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `fk_idoc_inspection` (`inspection_id`),
+  KEY `fk_idoc_atr` (`atr_id`),
+  KEY `fk_idoc_uploader` (`uploaded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `inspection_assignments`
+--
+
+CREATE TABLE `inspection_assignments` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `inspection_id` int(10) UNSIGNED NOT NULL,
+  `assignment_type` enum('initial','reassign','transfer') NOT NULL DEFAULT 'initial',
+  `from_unit_id` int(10) UNSIGNED DEFAULT NULL,
+  `to_unit_id` int(10) UNSIGNED DEFAULT NULL,
+  `assigned_to_user_id` int(10) UNSIGNED DEFAULT NULL,
+  `assigned_by` int(10) UNSIGNED DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_iassign_inspection` (`inspection_id`),
+  KEY `fk_iassign_from_unit` (`from_unit_id`),
+  KEY `fk_iassign_to_unit` (`to_unit_id`),
+  KEY `fk_iassign_user` (`assigned_to_user_id`),
+  KEY `fk_iassign_by` (`assigned_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `inspection_status_history`
+--
+
+CREATE TABLE `inspection_status_history` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `inspection_id` int(10) UNSIGNED NOT NULL,
+  `from_status` varchar(30) DEFAULT NULL,
+  `to_status` varchar(30) NOT NULL,
+  `changed_by` int(10) UNSIGNED DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_ihist_inspection` (`inspection_id`),
+  KEY `fk_ihist_user` (`changed_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -377,7 +654,7 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `module_name`, `can_view`, `can
 (13, 1, 'dashboard', 1, 1, 1, 1, 1, 1, 1),
 (14, 1, 'admin_module', 1, 1, 1, 1, 1, 1, 1),
 -- Divisional Admin — full operational access within own division, no delete, view-only role/audit
-(15, 2, 'user_management', 1, 1, 1, 0, 1, 1, 1),
+(15, 2, 'user_management', 1, 1, 1, 1, 1, 1, 1),
 (16, 2, 'role_management', 1, 1, 1, 1, 1, 1, 1),
 (17, 2, 'vendor_management', 1, 1, 1, 0, 1, 1, 1),
 (18, 2, 'contractor_management', 1, 1, 1, 0, 1, 1, 1),
@@ -407,7 +684,7 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `module_name`, `can_view`, `can
 (41, 3, 'dashboard', 1, 0, 0, 0, 0, 0, 1),
 (42, 3, 'admin_module', 0, 0, 0, 0, 0, 0, 1),
 -- HQ Admin — full HQ-level access across all zones, no delete
-(43, 5, 'user_management', 1, 1, 1, 0, 1, 1, 1),
+(43, 5, 'user_management', 1, 1, 1, 1, 1, 1, 1),
 (44, 5, 'role_management', 1, 1, 1, 1, 1, 1, 1),
 (45, 5, 'vendor_management', 1, 1, 1, 0, 1, 1, 1),
 (46, 5, 'contractor_management', 1, 1, 1, 0, 1, 1, 1),
@@ -418,18 +695,21 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `module_name`, `can_view`, `can
 (51, 5, 'complaint_management', 1, 1, 1, 0, 1, 1, 1),
 (52, 5, 'inspection_management', 1, 1, 1, 0, 1, 1, 1),
 (53, 5, 'audit_logs', 1, 0, 0, 0, 0, 1, 1),
-(54, 5, 'reports', 1, 1, 1, 0, 1, 1, 1),
-(55, 5, 'dashboard', 1, 0, 0, 0, 0, 0, 1),
+(54, 5, 'reports', 1, 1, 1, 1, 1, 1, 1),
+(55, 5, 'dashboard', 1, 0, 0, 0, 0, 1, 1),
 (56, 5, 'admin_module', 1, 1, 1, 0, 1, 1, 1),
--- HQ Sub Admin — limited HQ-level access, no approve/delete/export, no role/admin/audit access
-(57, 6, 'user_management', 1, 1, 1, 0, 0, 0, 1),
+-- HQ Sub Admin — limited HQ-level access, no delete/export, no role/admin/audit access.
+-- Exception: id_card_management DOES grant approve_reject — UAT: ID cards are
+-- approved by the Sub Admin, narrowed further at the app layer to
+-- users.card_signing_authority=1 (see idcard module).
+(57, 6, 'user_management', 1, 1, 0, 0, 0, 0, 1),
 (58, 6, 'role_management', 0, 0, 0, 0, 0, 0, 1),
 (59, 6, 'vendor_management', 1, 1, 1, 0, 0, 0, 1),
 (60, 6, 'contractor_management', 1, 1, 1, 0, 0, 0, 1),
 (61, 6, 'unit_management', 1, 1, 1, 0, 0, 0, 1),
 (62, 6, 'location_management', 1, 1, 1, 0, 0, 0, 1),
 (63, 6, 'id_card_management', 1, 1, 1, 0, 1, 0, 1),
-(64, 6, 'penalty_management', 1, 1, 1, 0, 0, 0, 1),
+(64, 6, 'penalty_management', 1, 0, 0, 0, 0, 0, 1),
 (65, 6, 'complaint_management', 1, 1, 1, 0, 0, 0, 1),
 (66, 6, 'inspection_management', 1, 1, 1, 0, 0, 0, 1),
 (67, 6, 'audit_logs', 0, 0, 0, 0, 0, 0, 1),
@@ -437,14 +717,14 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `module_name`, `can_view`, `can
 (69, 6, 'dashboard', 1, 0, 0, 0, 0, 0, 1),
 (70, 6, 'admin_module', 0, 0, 0, 0, 0, 0, 1),
 -- Divisional Sub Admin — limited access within a division
-(71, 7, 'user_management', 1, 1, 1, 0, 0, 0, 1),
+(71, 7, 'user_management', 1, 1, 0, 0, 0, 0, 1),
 (72, 7, 'role_management', 0, 0, 0, 0, 0, 0, 1),
 (73, 7, 'vendor_management', 1, 1, 1, 0, 0, 0, 1),
 (74, 7, 'contractor_management', 1, 1, 1, 0, 0, 0, 1),
 (75, 7, 'unit_management', 1, 1, 1, 0, 0, 0, 1),
 (76, 7, 'location_management', 1, 1, 1, 0, 0, 0, 1),
 (77, 7, 'id_card_management', 1, 1, 1, 0, 1, 0, 1),
-(78, 7, 'penalty_management', 1, 1, 1, 0, 0, 0, 1),
+(78, 7, 'penalty_management', 1, 0, 0, 0, 0, 0, 1),
 (79, 7, 'complaint_management', 1, 1, 1, 0, 0, 0, 1),
 (80, 7, 'inspection_management', 1, 1, 1, 0, 0, 0, 1),
 (81, 7, 'audit_logs', 0, 0, 0, 0, 0, 0, 1),
@@ -459,7 +739,7 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `module_name`, `can_view`, `can
 (89, 8, 'unit_management', 1, 0, 0, 0, 0, 0, 1),
 (90, 8, 'location_management', 1, 0, 0, 0, 0, 0, 1),
 (91, 8, 'id_card_management', 1, 0, 0, 0, 0, 0, 1),
-(92, 8, 'penalty_management', 1, 0, 1, 0, 0, 0, 1),
+(92, 8, 'penalty_management', 1, 0, 0, 0, 0, 0, 1),
 (93, 8, 'complaint_management', 1, 0, 1, 0, 0, 0, 1),
 (94, 8, 'inspection_management', 1, 0, 1, 0, 0, 0, 1),
 (95, 8, 'audit_logs', 0, 0, 0, 0, 0, 0, 1),
@@ -470,7 +750,7 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `module_name`, `can_view`, `can
 (99, 9, 'user_management', 0, 0, 0, 0, 0, 0, 1),
 (100, 9, 'role_management', 0, 0, 0, 0, 0, 0, 1),
 (101, 9, 'vendor_management', 1, 0, 0, 0, 0, 0, 1),
-(102, 9, 'contractor_management', 0, 0, 0, 0, 0, 0, 1),
+(102, 9, 'contractor_management', 1, 0, 0, 0, 0, 0, 1),
 (103, 9, 'unit_management', 1, 0, 0, 0, 0, 0, 1),
 (104, 9, 'location_management', 1, 0, 0, 0, 0, 0, 1),
 (105, 9, 'id_card_management', 0, 0, 0, 0, 0, 0, 1),
@@ -575,6 +855,7 @@ CREATE TABLE `cluster_members` (
 CREATE TABLE `dropdown_options` (
   `id` int(10) UNSIGNED NOT NULL,
   `category` varchar(100) NOT NULL,
+  `parent_id` int(10) UNSIGNED DEFAULT NULL,
   `division_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'NULL = global option, applies to all divisions',
   `value` varchar(100) NOT NULL,
   `label` varchar(150) NOT NULL,
@@ -589,15 +870,91 @@ CREATE TABLE `dropdown_options` (
 -- Dumping data for table `dropdown_options`
 --
 
-INSERT INTO `dropdown_options` (`id`, `category`, `division_id`, `value`, `label`, `sort_order`, `created_by`, `created_at`, `updated_at`, `status`) VALUES
-(1, 'contract_category', NULL, 'catering', 'Catering', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
-(2, 'contract_category', NULL, 'retail_stall', 'Retail Stall', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
-(3, 'contract_category', NULL, 'parking', 'Parking', 3, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
-(4, 'contract_category', NULL, 'advertisement', 'Advertisement', 4, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
-(5, 'contract_category', NULL, 'cleaning', 'Cleaning', 5, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
-(6, 'contract_category', NULL, 'security', 'Security', 6, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
-(7, 'contract_category', NULL, 'maintenance', 'Maintenance', 7, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
-(8, 'contract_category', NULL, 'other', 'Other', 99, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1);
+INSERT INTO `dropdown_options` (`id`, `category`, `parent_id`, `division_id`, `value`, `label`, `sort_order`, `created_by`, `created_at`, `updated_at`, `status`) VALUES
+(1, 'contract_category', NULL, NULL, 'catering', 'Catering', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(2, 'contract_category', NULL, NULL, 'retail_stall', 'Retail Stall', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(3, 'contract_category', NULL, NULL, 'parking', 'Parking', 3, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(4, 'contract_category', NULL, NULL, 'advertisement', 'Advertisement', 4, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(5, 'contract_category', NULL, NULL, 'cleaning', 'Cleaning', 5, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(6, 'contract_category', NULL, NULL, 'security', 'Security', 6, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(7, 'contract_category', NULL, NULL, 'maintenance', 'Maintenance', 7, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(8, 'contract_category', NULL, NULL, 'other', 'Other', 99, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+-- Complaint Type (migration 007, seeded from the RailMadad export's distinct types)
+(9, 'complaint_type', NULL, NULL, 'water_availability', 'Water Availability', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(10, 'complaint_type', NULL, NULL, 'security', 'Security', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(11, 'complaint_type', NULL, NULL, 'miscellaneous', 'Miscellaneous', 3, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(12, 'complaint_type', NULL, NULL, 'cleanliness', 'Cleanliness', 4, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(13, 'complaint_type', NULL, NULL, 'staff_behaviour', 'Staff Behaviour', 5, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(14, 'complaint_type', NULL, NULL, 'luggage_parcels', 'Luggage / Parcels', 6, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(15, 'complaint_type', NULL, NULL, 'unreserved_ticketing', 'Unreserved Ticketing', 7, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(16, 'complaint_type', NULL, NULL, 'reserved_ticketing', 'Reserved Ticketing', 8, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(17, 'complaint_type', NULL, NULL, 'catering_vending', 'Catering & Vending Services', 9, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(18, 'complaint_type', NULL, NULL, 'coach_maintenance', 'Coach - Maintenance', 10, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(19, 'complaint_type', NULL, NULL, 'women_special_needs', 'Facilities for Women with Special needs', 11, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(20, 'complaint_type', NULL, NULL, 'passenger_amenities', 'Passenger Amenities', 12, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(21, 'complaint_type', NULL, NULL, 'divyangjan_facilities', 'Divyangjan Facilities', 13, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(22, 'complaint_type', NULL, NULL, 'punctuality', 'Punctuality', 14, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(23, 'complaint_type', NULL, NULL, 'bed_roll', 'Bed Roll', 15, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(24, 'complaint_type', NULL, NULL, 'corruption_bribery', 'Corruption / Bribery', 16, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(25, 'complaint_type', NULL, NULL, 'electrical_equipment', 'Electrical Equipment', 17, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(26, 'complaint_type', NULL, NULL, 'coach_cleanliness', 'Coach - Cleanliness', 18, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+-- Complaint Sub-type (migration 007), parent_id references the complaint_type row above
+(27, 'complaint_subtype', 9, NULL, 'packaged_drinking_water', 'Packaged Drinking Water / Rail Neer', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(28, 'complaint_subtype', 9, NULL, 'others', 'Others', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(29, 'complaint_subtype', 10, NULL, 'unauthorized_person_ladies_coach', 'Unauthorized person in Ladies/Disabled Coach/SLR/Reserve Coach', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(30, 'complaint_subtype', 10, NULL, 'theft_of_belongings', 'Theft of Passengers Belongings/Snatching', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(31, 'complaint_subtype', 10, NULL, 'others', 'Others', 3, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(32, 'complaint_subtype', 11, NULL, 'miscellaneous', 'Miscellaneous', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(33, 'complaint_subtype', 12, NULL, 'waiting_retiring_room', 'Waiting Room / Retiring Room', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(34, 'complaint_subtype', 12, NULL, 'platform', 'Platform', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(35, 'complaint_subtype', 13, NULL, 'staff_behaviour', 'Staff Behaviour', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(36, 'complaint_subtype', 14, NULL, 'delivery', 'Delivery', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(37, 'complaint_subtype', 14, NULL, 'overcharging', 'Overcharging', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(38, 'complaint_subtype', 14, NULL, 'others', 'Others', 3, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(39, 'complaint_subtype', 15, NULL, 'atvm', 'ATVM', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(40, 'complaint_subtype', 15, NULL, 'uts_app_handset_change', 'UTS App Mobile Handset Change', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(41, 'complaint_subtype', 15, NULL, 'inadequate_counters', 'Inadequate Counters', 3, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(42, 'complaint_subtype', 15, NULL, 'overcharging', 'Overcharging', 4, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(43, 'complaint_subtype', 15, NULL, 'others', 'Others', 5, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(44, 'complaint_subtype', 16, NULL, 'others', 'Others', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(45, 'complaint_subtype', 17, NULL, 'food_water_not_available', 'Food & Water Not Available', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(46, 'complaint_subtype', 17, NULL, 'overcharging', 'Overcharging', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(47, 'complaint_subtype', 18, NULL, 'others', 'Others', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(48, 'complaint_subtype', 19, NULL, 'baby_food', 'Baby Food', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(49, 'complaint_subtype', 19, NULL, 'others', 'Others', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(50, 'complaint_subtype', 20, NULL, 'parking', 'Parking', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(51, 'complaint_subtype', 20, NULL, 'pa_system', 'PA (Public Announcement) System', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(52, 'complaint_subtype', 20, NULL, 'benches_sheds', 'Benches/Sheds', 3, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(53, 'complaint_subtype', 20, NULL, 'others', 'Others', 4, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(54, 'complaint_subtype', 21, NULL, 'coach_unavailability', 'Divyangjan coach unavailability', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(55, 'complaint_subtype', 21, NULL, 'others', 'Others', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(56, 'complaint_subtype', 22, NULL, 'ntes_app', 'NTES APP', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(57, 'complaint_subtype', 22, NULL, 'others', 'Others', 2, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(58, 'complaint_subtype', 23, NULL, 'others', 'Others', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(59, 'complaint_subtype', 24, NULL, 'corruption_bribery', 'Corruption / Bribery', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(60, 'complaint_subtype', 25, NULL, 'air_conditioner', 'Air Conditioner', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+(61, 'complaint_subtype', 26, NULL, 'coach_interior', 'Coach Interior', 1, NULL, '2026-07-30 00:00:00', '2026-07-30 00:00:00', 1),
+-- Inspection Category (migration 008)
+(62, 'inspection_category', NULL, NULL, 'safety', 'Safety', 1, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(63, 'inspection_category', NULL, NULL, 'vigilance', 'Vigilance', 2, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(64, 'inspection_category', NULL, NULL, 'passenger_amenities', 'Passenger Amenities', 3, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(65, 'inspection_category', NULL, NULL, 'cleanliness', 'Cleanliness', 4, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(66, 'inspection_category', NULL, NULL, 'contract_compliance', 'Contract Compliance', 5, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(67, 'inspection_category', NULL, NULL, 'security', 'Security', 6, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+-- Inspection Type (migration 008), parent_id references the inspection_category row above
+(68, 'inspection_type', 62, NULL, 'fire_safety', 'Fire Safety', 1, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(69, 'inspection_type', 62, NULL, 'electrical_safety', 'Electrical Safety', 2, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(70, 'inspection_type', 62, NULL, 'structural_safety', 'Structural Safety', 3, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(71, 'inspection_type', 63, NULL, 'surprise_check', 'Surprise Check', 1, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(72, 'inspection_type', 63, NULL, 'financial_irregularity', 'Financial Irregularity', 2, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(73, 'inspection_type', 64, NULL, 'water_availability', 'Water Availability', 1, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(74, 'inspection_type', 64, NULL, 'seating_shelter', 'Seating / Shelter', 2, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(75, 'inspection_type', 65, NULL, 'unit_cleanliness', 'Unit Cleanliness', 1, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(76, 'inspection_type', 65, NULL, 'surrounding_cleanliness', 'Surrounding Cleanliness', 2, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(77, 'inspection_type', 66, NULL, 'licence_validity', 'Licence Validity', 1, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(78, 'inspection_type', 66, NULL, 'unauthorized_activity', 'Unauthorized Activity', 2, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(79, 'inspection_type', 67, NULL, 'unauthorized_vendor', 'Unauthorized Vendor', 1, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1),
+(80, 'inspection_type', 67, NULL, 'id_card_check', 'ID Card Check', 2, NULL, '2026-07-31 00:00:00', '2026-07-31 00:00:00', 1);
 
 -- --------------------------------------------------------
 
@@ -625,6 +982,8 @@ CREATE TABLE `units` (
   `monthly_fee` decimal(10,2) DEFAULT 0.00,
   `license_period_start` date DEFAULT NULL,
   `license_period_end` date DEFAULT NULL,
+  `electric_bill_valid_till` date DEFAULT NULL,
+  `fssai_valid_till` date DEFAULT NULL,
   `units_status` enum('active','expiring','inactive','inspection_pending') NOT NULL DEFAULT 'active',
   `created_by` int(10) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -719,7 +1078,7 @@ CREATE TABLE `vendors` (
   `unit_id` int(10) UNSIGNED DEFAULT NULL,
   `station_id` int(10) UNSIGNED DEFAULT NULL,
   `division_id` int(10) UNSIGNED DEFAULT NULL,
-  `vendor_status` enum('active','pending','expired') NOT NULL DEFAULT 'pending',
+  `vendor_status` enum('active','pending','expired','blacklisted') NOT NULL DEFAULT 'pending',
   `validity_start` date DEFAULT NULL,
   `validity_end` date DEFAULT NULL,
   `police_verification_status` enum('pending','verified','rejected','expired') NOT NULL DEFAULT 'pending',
@@ -861,6 +1220,84 @@ CREATE TABLE `zones` (
 INSERT INTO `zones` (`id`, `zone_name`, `created_at`, `status`) VALUES
 (1, 'South Eastern Railway', '2026-07-11 13:05:25', 1);
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `report_templates`
+--
+
+CREATE TABLE `report_templates` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` varchar(150) NOT NULL,
+  `description` text DEFAULT NULL,
+  `module_key` varchar(50) NOT NULL,
+  `fields` longtext NOT NULL COMMENT 'JSON array of registry field keys',
+  `filters` longtext DEFAULT NULL COMMENT 'JSON array of {field, operator, value}',
+  `sort` longtext DEFAULT NULL COMMENT 'JSON {field, direction}',
+  `group_by` longtext DEFAULT NULL COMMENT 'JSON array of registry field keys',
+  `is_shared` tinyint(1) NOT NULL DEFAULT 0 COMMENT '0 = private to creator, 1 = visible to any user with reports:view',
+  `usage_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `last_used_at` datetime DEFAULT NULL,
+  `created_by` int(10) UNSIGNED DEFAULT NULL,
+  `updated_by` int(10) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status` tinyint(4) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `idx_report_template_module` (`module_key`),
+  KEY `fk_report_template_creator` (`created_by`),
+  KEY `fk_report_template_updater` (`updated_by`),
+  CONSTRAINT `fk_report_template_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_report_template_updater` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `report_exports`
+--
+
+CREATE TABLE `report_exports` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `report_template_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'NULL = ad-hoc export, not tied to a saved template',
+  `module_key` varchar(50) NOT NULL,
+  `export_format` enum('xlsx','csv') NOT NULL DEFAULT 'xlsx',
+  `filters_snapshot` longtext DEFAULT NULL,
+  `row_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `file_name` varchar(255) DEFAULT NULL,
+  `exported_by` int(10) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_report_export_template` (`report_template_id`),
+  KEY `fk_report_export_user` (`exported_by`),
+  KEY `idx_report_export_module` (`module_key`),
+  CONSTRAINT `fk_report_export_template` FOREIGN KEY (`report_template_id`) REFERENCES `report_templates` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_report_export_user` FOREIGN KEY (`exported_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `report_import_logs`
+--
+
+CREATE TABLE `report_import_logs` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `master_key` varchar(50) NOT NULL,
+  `file_name` varchar(255) NOT NULL,
+  `imported_by` int(10) UNSIGNED DEFAULT NULL,
+  `total_records` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `imported_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `duplicate_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `failed_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `error_report` longtext DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_report_import_master` (`master_key`),
+  KEY `fk_report_import_user` (`imported_by`),
+  CONSTRAINT `fk_report_import_user` FOREIGN KEY (`imported_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Indexes for dumped tables
 --
@@ -871,7 +1308,8 @@ INSERT INTO `zones` (`id`, `zone_name`, `created_at`, `status`) VALUES
 ALTER TABLE `audit_logs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_audit_user` (`user_id`),
-  ADD KEY `idx_audit_module_record` (`module_name`,`record_id`);
+  ADD KEY `idx_audit_module_record` (`module_name`,`record_id`),
+  ADD KEY `idx_audit_division_id` (`division_id`);
 
 --
 -- Indexes for table `complaints`
@@ -879,8 +1317,17 @@ ALTER TABLE `audit_logs`
 ALTER TABLE `complaints`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `complaint_code` (`complaint_code`),
+  ADD UNIQUE KEY `uq_complaint_source_ref` (`complaint_source`,`complaint_ref_no`),
   ADD KEY `fk_complaint_unit` (`unit_id`),
-  ADD KEY `fk_complaint_user` (`registered_by`);
+  ADD KEY `fk_complaint_user` (`registered_by`),
+  ADD KEY `fk_complaint_division` (`division_id`),
+  ADD KEY `fk_complaint_train` (`train_id`),
+  ADD KEY `fk_complaint_station` (`station_id`),
+  ADD KEY `fk_complaint_assigned_user` (`assigned_to_user_id`),
+  ADD KEY `fk_complaint_type` (`complaint_type_id`),
+  ADD KEY `fk_complaint_subtype` (`complaint_subtype_id`),
+  ADD KEY `fk_complaint_closed_by` (`closed_by`),
+  ADD KEY `fk_complaint_import` (`import_batch_id`);
 
 --
 -- Indexes for table `complaint_evidence`
@@ -896,7 +1343,8 @@ ALTER TABLE `contractors`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `contractor_code` (`contractor_code`),
   ADD KEY `fk_contractor_division` (`division_id`),
-  ADD KEY `fk_contractor_creator` (`created_by`);
+  ADD KEY `fk_contractor_creator` (`created_by`),
+  ADD KEY `idx_contractor_contract_end_date` (`contract_end_date`);
 
 --
 -- Indexes for table `contractor_documents`
@@ -918,8 +1366,16 @@ ALTER TABLE `divisions`
 --
 ALTER TABLE `inspections`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_inspection_no` (`inspection_no`),
   ADD KEY `fk_inspection_unit` (`unit_id`),
-  ADD KEY `fk_inspection_inspector` (`inspector_id`);
+  ADD KEY `fk_inspection_inspector` (`inspector_id`),
+  ADD KEY `fk_inspection_division` (`division_id`),
+  ADD KEY `fk_inspection_station` (`station_id`),
+  ADD KEY `fk_inspection_train` (`train_id`),
+  ADD KEY `fk_inspection_category` (`inspection_category_id`),
+  ADD KEY `fk_inspection_type` (`inspection_type_id`),
+  ADD KEY `fk_inspection_assigned_user` (`assigned_to_user_id`),
+  ADD KEY `fk_inspection_closed_by` (`closed_by`);
 
 --
 -- Indexes for table `penalties`
@@ -1003,7 +1459,8 @@ ALTER TABLE `dropdown_options`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_dropdown_category` (`category`),
   ADD KEY `fk_dropdown_division` (`division_id`),
-  ADD KEY `fk_dropdown_creator` (`created_by`);
+  ADD KEY `fk_dropdown_creator` (`created_by`),
+  ADD KEY `fk_dropdown_parent` (`parent_id`);
 
 --
 -- Indexes for table `units`
@@ -1016,7 +1473,11 @@ ALTER TABLE `units`
   ADD KEY `fk_unit_cluster` (`cluster_id`),
   ADD KEY `fk_unit_contract_category` (`contract_category_id`),
   ADD KEY `fk_unit_contractor` (`contractor_id`),
-  ADD KEY `fk_unit_creator` (`created_by`);
+  ADD KEY `fk_unit_creator` (`created_by`),
+  ADD KEY `idx_unit_electric_bill_valid_till` (`electric_bill_valid_till`),
+  ADD KEY `idx_unit_fssai_valid_till` (`fssai_valid_till`),
+  ADD KEY `idx_unit_license_period_end` (`license_period_end`),
+  ADD KEY `idx_unit_contractor_id` (`contractor_id`);
 
 --
 -- Indexes for table `users`
@@ -1174,7 +1635,7 @@ ALTER TABLE `cluster_members`
 -- AUTO_INCREMENT for table `dropdown_options`
 --
 ALTER TABLE `dropdown_options`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=81;
 
 --
 -- AUTO_INCREMENT for table `units`
@@ -1233,13 +1694,61 @@ ALTER TABLE `audit_logs`
 --
 ALTER TABLE `complaints`
   ADD CONSTRAINT `fk_complaint_unit` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_complaint_user` FOREIGN KEY (`registered_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `fk_complaint_user` FOREIGN KEY (`registered_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_complaint_division` FOREIGN KEY (`division_id`) REFERENCES `divisions` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_complaint_train` FOREIGN KEY (`train_id`) REFERENCES `trains` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_complaint_station` FOREIGN KEY (`station_id`) REFERENCES `stations` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_complaint_assigned_user` FOREIGN KEY (`assigned_to_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_complaint_type` FOREIGN KEY (`complaint_type_id`) REFERENCES `dropdown_options` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_complaint_subtype` FOREIGN KEY (`complaint_subtype_id`) REFERENCES `dropdown_options` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_complaint_closed_by` FOREIGN KEY (`closed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_complaint_import` FOREIGN KEY (`import_batch_id`) REFERENCES `complaint_import_history` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `complaint_evidence`
 --
 ALTER TABLE `complaint_evidence`
   ADD CONSTRAINT `fk_evidence_complaint` FOREIGN KEY (`complaint_id`) REFERENCES `complaints` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `complaint_action_taken_reports`
+--
+ALTER TABLE `complaint_action_taken_reports`
+  ADD CONSTRAINT `fk_atr_complaint` FOREIGN KEY (`complaint_id`) REFERENCES `complaints` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_atr_submitter` FOREIGN KEY (`submitted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_atr_reviewer` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_atr_decider` FOREIGN KEY (`decided_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `complaint_documents`
+--
+ALTER TABLE `complaint_documents`
+  ADD CONSTRAINT `fk_doc_complaint` FOREIGN KEY (`complaint_id`) REFERENCES `complaints` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_doc_atr` FOREIGN KEY (`atr_id`) REFERENCES `complaint_action_taken_reports` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_doc_uploader` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `complaint_assignments`
+--
+ALTER TABLE `complaint_assignments`
+  ADD CONSTRAINT `fk_assign_complaint` FOREIGN KEY (`complaint_id`) REFERENCES `complaints` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_assign_from_unit` FOREIGN KEY (`from_unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_assign_to_unit` FOREIGN KEY (`to_unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_assign_user` FOREIGN KEY (`assigned_to_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_assign_by` FOREIGN KEY (`assigned_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `complaint_status_history`
+--
+ALTER TABLE `complaint_status_history`
+  ADD CONSTRAINT `fk_hist_complaint` FOREIGN KEY (`complaint_id`) REFERENCES `complaints` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_hist_user` FOREIGN KEY (`changed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `complaint_import_history`
+--
+ALTER TABLE `complaint_import_history`
+  ADD CONSTRAINT `fk_import_user` FOREIGN KEY (`imported_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `contractors`
@@ -1265,7 +1774,48 @@ ALTER TABLE `divisions`
 --
 ALTER TABLE `inspections`
   ADD CONSTRAINT `fk_inspection_inspector` FOREIGN KEY (`inspector_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_inspection_unit` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_inspection_unit` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_inspection_division` FOREIGN KEY (`division_id`) REFERENCES `divisions` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_inspection_station` FOREIGN KEY (`station_id`) REFERENCES `stations` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_inspection_train` FOREIGN KEY (`train_id`) REFERENCES `trains` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_inspection_category` FOREIGN KEY (`inspection_category_id`) REFERENCES `dropdown_options` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_inspection_type` FOREIGN KEY (`inspection_type_id`) REFERENCES `dropdown_options` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_inspection_assigned_user` FOREIGN KEY (`assigned_to_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_inspection_closed_by` FOREIGN KEY (`closed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `inspection_action_taken_reports`
+--
+ALTER TABLE `inspection_action_taken_reports`
+  ADD CONSTRAINT `fk_iatr_inspection` FOREIGN KEY (`inspection_id`) REFERENCES `inspections` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_iatr_submitter` FOREIGN KEY (`submitted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_iatr_reviewer` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_iatr_decider` FOREIGN KEY (`decided_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `inspection_documents`
+--
+ALTER TABLE `inspection_documents`
+  ADD CONSTRAINT `fk_idoc_inspection` FOREIGN KEY (`inspection_id`) REFERENCES `inspections` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_idoc_atr` FOREIGN KEY (`atr_id`) REFERENCES `inspection_action_taken_reports` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_idoc_uploader` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `inspection_assignments`
+--
+ALTER TABLE `inspection_assignments`
+  ADD CONSTRAINT `fk_iassign_inspection` FOREIGN KEY (`inspection_id`) REFERENCES `inspections` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_iassign_from_unit` FOREIGN KEY (`from_unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_iassign_to_unit` FOREIGN KEY (`to_unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_iassign_user` FOREIGN KEY (`assigned_to_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_iassign_by` FOREIGN KEY (`assigned_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `inspection_status_history`
+--
+ALTER TABLE `inspection_status_history`
+  ADD CONSTRAINT `fk_ihist_inspection` FOREIGN KEY (`inspection_id`) REFERENCES `inspections` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_ihist_user` FOREIGN KEY (`changed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `penalties`
@@ -1326,7 +1876,8 @@ ALTER TABLE `cluster_members`
 --
 ALTER TABLE `dropdown_options`
   ADD CONSTRAINT `fk_dropdown_division` FOREIGN KEY (`division_id`) REFERENCES `divisions` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_dropdown_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `fk_dropdown_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_dropdown_parent` FOREIGN KEY (`parent_id`) REFERENCES `dropdown_options` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `units`

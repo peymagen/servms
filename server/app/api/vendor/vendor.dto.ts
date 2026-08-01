@@ -13,6 +13,7 @@ export interface IVendor extends BaseSchema {
   address?: string;
   profile_image?: string;
   signature_path?: string;
+  blood_group?: string;
   vendor_type?: "train_tsv" | "station_pf" | "station_stall" | "station_others";
   contractor_id?: number;
   unit_id?: number;
@@ -43,6 +44,7 @@ export interface IVendorCreate {
   address?: string;
   profile_image?: string;
   signature_path?: string;
+  blood_group?: string;
   vendor_type?: "train_tsv" | "station_pf" | "station_stall" | "station_others";
   contractor_id?: number;
   unit_id?: number;
@@ -72,6 +74,7 @@ export interface IVendorUpdate {
   address?: string;
   profile_image?: string;
   signature_path?: string;
+  blood_group?: string;
   vendor_type?: "train_tsv" | "station_pf" | "station_stall" | "station_others";
   contractor_id?: number;
   unit_id?: number;

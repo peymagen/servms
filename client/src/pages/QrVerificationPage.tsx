@@ -60,6 +60,7 @@ export default function QrVerificationPage() {
                   <InfoField label="Contractor / Agency" value={result.contractor_name ?? "—"} />
                   <InfoField label="Assigned Unit" value={result.unit_name ?? result.station_name ?? "—"} />
                   <InfoField label="Aadhaar Number" value={result.aadhaar_number ?? "—"} />
+                  <InfoField label="Blood Group" value={result.blood_group ?? "—"} />
                   <InfoField label="Address" value={result.address ?? "—"} />
                 </div>
                 <div className={styles.validityRow}>

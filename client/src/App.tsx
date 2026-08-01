@@ -32,10 +32,11 @@ import ImportManagementPage from "./pages/ImportManagementPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpCenterPage from "./pages/HelpCenterPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import type { ModuleName } from "./types";
 
-function protectedPage(page: ReactNode) {
+function protectedPage(page: ReactNode, module?: ModuleName) {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute module={module}>
       <AppShell>{page}</AppShell>
     </ProtectedRoute>
   );
@@ -49,31 +50,33 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/verify/:code" element={<QrVerificationPage />} />
 
-          <Route path="/dashboard" element={protectedPage(<DashboardPage />)} />
-          <Route path="/users" element={protectedPage(<UserManagementPage />)} />
-          <Route path="/roles" element={protectedPage(<RoleManagementPage />)} />
-          <Route path="/locations" element={protectedPage(<LocationMastersPage />)} />
-          <Route path="/vendors" element={protectedPage(<VendorManagementPage />)} />
-          <Route path="/vendors/new" element={protectedPage(<VendorRegistrationPage />)} />
-          <Route path="/contractors" element={protectedPage(<ContractorManagementPage />)} />
-          <Route path="/contractors/new" element={protectedPage(<ContractorRegistrationPage />)} />
-          <Route path="/id-cards" element={protectedPage(<IdCardQrPage />)} />
-          <Route path="/renewals" element={protectedPage(<RenewalsPage />)} />
-          <Route path="/complaints" element={protectedPage(<ComplaintsPage />)} />
-          <Route path="/complaints/new" element={protectedPage(<ComplaintRegistrationPage />)} />
-          <Route path="/complaints/import" element={protectedPage(<ComplaintImportPage />)} />
-          <Route path="/complaints/types" element={protectedPage(<ComplaintTypeMasterPage />)} />
-          <Route path="/inspections" element={protectedPage(<InspectionsPage />)} />
-          <Route path="/inspections/new" element={protectedPage(<InspectionFormPage />)} />
-          <Route path="/inspections/:id/edit" element={protectedPage(<InspectionFormPage />)} />
-          <Route path="/inspections/types" element={protectedPage(<InspectionTypeMasterPage />)} />
-          <Route path="/penalties" element={protectedPage(<PenaltiesPage />)} />
-          <Route path="/audit-logs" element={protectedPage(<AuditLogsPage />)} />
-          <Route path="/reports" element={protectedPage(<ReportsPage />)} />
-          <Route path="/reports/builder" element={protectedPage(<ReportBuilderPage />)} />
-          <Route path="/reports/saved" element={protectedPage(<SavedReportsPage />)} />
-          <Route path="/reports/exports" element={protectedPage(<ExportHistoryPage />)} />
-          <Route path="/reports/import" element={protectedPage(<ImportManagementPage />)} />
+          <Route path="/dashboard" element={protectedPage(<DashboardPage />, "dashboard")} />
+          <Route path="/users" element={protectedPage(<UserManagementPage />, "user_management")} />
+          <Route path="/roles" element={protectedPage(<RoleManagementPage />, "role_management")} />
+          <Route path="/locations" element={protectedPage(<LocationMastersPage />, "location_management")} />
+          <Route path="/vendors" element={protectedPage(<VendorManagementPage />, "vendor_management")} />
+          <Route path="/vendors/new" element={protectedPage(<VendorRegistrationPage />, "vendor_management")} />
+          <Route path="/contractors" element={protectedPage(<ContractorManagementPage />, "contractor_management")} />
+          <Route path="/contractors/new" element={protectedPage(<ContractorRegistrationPage />, "contractor_management")} />
+          <Route path="/id-cards" element={protectedPage(<IdCardQrPage />, "id_card_management")} />
+          <Route path="/renewals" element={protectedPage(<RenewalsPage />, "vendor_management")} />
+          <Route path="/complaints" element={protectedPage(<ComplaintsPage />, "complaint_management")} />
+          <Route path="/complaints/new" element={protectedPage(<ComplaintRegistrationPage />, "complaint_management")} />
+          <Route path="/complaints/import" element={protectedPage(<ComplaintImportPage />, "complaint_management")} />
+          <Route path="/complaints/types" element={protectedPage(<ComplaintTypeMasterPage />, "complaint_management")} />
+          <Route path="/inspections" element={protectedPage(<InspectionsPage />, "inspection_management")} />
+          <Route path="/inspections/new" element={protectedPage(<InspectionFormPage />, "inspection_management")} />
+          <Route path="/inspections/:id/edit" element={protectedPage(<InspectionFormPage />, "inspection_management")} />
+          <Route path="/inspections/types" element={protectedPage(<InspectionTypeMasterPage />, "inspection_management")} />
+          <Route path="/penalties" element={protectedPage(<PenaltiesPage />, "penalty_management")} />
+          <Route path="/audit-logs" element={protectedPage(<AuditLogsPage />, "audit_logs")} />
+          <Route path="/reports" element={protectedPage(<ReportsPage />, "reports")} />
+          <Route path="/reports/builder" element={protectedPage(<ReportBuilderPage />, "reports")} />
+          <Route path="/reports/saved" element={protectedPage(<SavedReportsPage />, "reports")} />
+          <Route path="/reports/exports" element={protectedPage(<ExportHistoryPage />, "reports")} />
+          <Route path="/reports/import" element={protectedPage(<ImportManagementPage />, "reports")} />
+          {/* Notifications/Settings/Help are personal, not module-gated — every
+              authenticated role can reach them regardless of role_permissions. */}
           <Route path="/notifications" element={protectedPage(<NotificationsPage />)} />
           <Route path="/settings" element={protectedPage(<SettingsPage />)} />
           <Route path="/help" element={protectedPage(<HelpCenterPage />)} />

@@ -32,14 +32,14 @@ export const createVendor = async (data: any, userId: number) => {
   const query = `
     INSERT INTO vendors (
       vendor_code, full_name, father_name, date_of_birth, aadhaar_number, mobile_number, address,
-      profile_image, signature_path, vendor_type, contractor_id, unit_id, station_id, division_id, vendor_status,
+      profile_image, signature_path, blood_group, vendor_type, contractor_id, unit_id, station_id, division_id, vendor_status,
       validity_start, validity_end,
       police_verification_status, police_verification_issue_date, police_verification_valid_till,
       police_verification_remarks, police_verification_document,
       medical_verification_status, medical_verification_issue_date, medical_verification_valid_till,
       medical_verification_remarks, medical_verification_document,
       created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const values = [
@@ -52,6 +52,7 @@ export const createVendor = async (data: any, userId: number) => {
     data.address ?? null,
     data.profile_image ?? null,
     data.signature_path ?? null,
+    data.blood_group ?? null,
     data.vendor_type ?? "station_others",
     data.contractor_id ?? null,
     data.unit_id ?? null,
@@ -113,6 +114,19 @@ export const createVendor = async (data: any, userId: number) => {
   return { id: insertId, vendor_code: vendorCode };
 };
 
+// ─── STATUS CHANGE (dedicated action so it's a distinct, gated audit event) ─────
+export const changeVendorStatus = async (id: string, status: string) => {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    "SELECT vendor_status FROM vendors WHERE id = ? AND status = 1",
+    [id]
+  );
+  if (!rows[0]) throw new Error("Vendor not found");
+  const previousStatus = rows[0].vendor_status;
+
+  await pool.execute("UPDATE vendors SET vendor_status = ? WHERE id = ?", [status, id]);
+  return { id: Number(id), previousStatus, newStatus: status };
+};
+
 // ─── GET VENDORS (WITH SEARCH AND FILTERS) ───────────────────────────────────────
 export const getVendors = async (filters: {
   search?: string;
@@ -148,7 +162,12 @@ export const getVendors = async (filters: {
     countParams.push(filters.unit_id);
   }
 
-  if (filters.status) {
+  if (filters.status === "inactive") {
+    // "Inactive" isn't a single stored status — it's the Dashboard module's
+    // rollup of every non-active, non-blacklisted status. Keep in sync with
+    // dashboard.service.ts's getVendorsSummary if that definition changes.
+    whereClauses.push("v.vendor_status NOT IN ('active','blacklisted')");
+  } else if (filters.status) {
     whereClauses.push("v.vendor_status = ?");
     params.push(filters.status);
     countParams.push(filters.status);

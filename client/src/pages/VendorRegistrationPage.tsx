@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "
 import { useNavigate } from "react-router-dom";
 import { useCreateVendorMutation } from "../api/vendorApi";
 import { useGetContractorsLiteQuery, useGetDivisionsQuery, useGetStationsQuery, useGetUnitsLiteQuery } from "../api/mastersApi";
-import { VENDOR_TYPE_LABELS, type VendorType, type VerificationStatus } from "../types";
+import { BLOOD_GROUPS, VENDOR_TYPE_LABELS, type VendorType, type VerificationStatus } from "../types";
 import styles from "./VendorRegistrationPage.module.css";
 
 const STEPS = ["Personal Details", "Deployment", "Verification", "Documents", "Submit"];
@@ -31,6 +31,7 @@ export default function VendorRegistrationPage() {
   const [aadhaar, setAadhaar] = useState("");
   const [mobile, setMobile] = useState("");
   const [address, setAddress] = useState("");
+  const [bloodGroup, setBloodGroup] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
@@ -162,6 +163,7 @@ export default function VendorRegistrationPage() {
         aadhaar_number: aadhaar || undefined,
         mobile_number: mobile,
         address: address || undefined,
+        blood_group: bloodGroup || undefined,
         vendor_type: vendorType,
         division_id: divisionId ? Number(divisionId) : undefined,
         station_id: stationId ? Number(stationId) : undefined,
@@ -250,6 +252,19 @@ export default function VendorRegistrationPage() {
                   maxLength={12}
                 />
               </Field>
+            </div>
+            <div className={styles.fieldRow}>
+              <Field label="Blood Group">
+                <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}>
+                  <option value="">Select blood group</option>
+                  {BLOOD_GROUPS.map((bg) => (
+                    <option key={bg} value={bg}>
+                      {bg}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <div />
             </div>
           </section>
 
@@ -550,6 +565,7 @@ export default function VendorRegistrationPage() {
             <ReviewItem label="Mobile Number" value={mobile || "—"} />
             <ReviewItem label="Address" value={address || "—"} />
             <ReviewItem label="Aadhaar Number" value={aadhaar || "—"} />
+            <ReviewItem label="Blood Group" value={bloodGroup || "—"} />
             <ReviewItem
               label="Division"
               value={divisions.find((d) => d.id === divisionId)?.division_name ?? "—"}

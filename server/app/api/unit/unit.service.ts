@@ -136,7 +136,13 @@ export const getUnits = async (filters: {
     whereClauses.push("u.contract_category_id = ?");
     params.push(filters.contract_category_id);
   }
-  if (filters.units_status) {
+  if (filters.units_status === "idle") {
+    // "Idle" isn't a stored units_status value — it's the Dashboard module's
+    // derived definition (active-ish unit with no contractor currently
+    // assigned). Keep this condition in sync with dashboard.service.ts's
+    // getUnitsSummary if that definition ever changes.
+    whereClauses.push("u.units_status != 'inactive' AND u.contractor_id IS NULL");
+  } else if (filters.units_status) {
     whereClauses.push("u.units_status = ?");
     params.push(filters.units_status);
   } else {

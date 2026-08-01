@@ -2,7 +2,7 @@ import * as penaltyService from "./penalty.service";
 import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
-import { isDivisionScoped } from "../../common/constants/roles";
+import { isDivisionScoped, assertRecordAccessible } from "../../common/constants/roles";
 import { logAudit } from "../../common/services/auditLog.service";
 import { type PenaltyApprovalStatus, type PenaltyRecoveryStatus } from "./penalty.dto";
 
@@ -51,6 +51,7 @@ export const getPenaltyById = asyncHandler(async (req: Request, res: Response) =
     res.status(404).send(createResponse(null, "Penalty record not found"));
     return;
   }
+  assertRecordAccessible(req.user as any, result);
   res.send(createResponse(result));
 });
 

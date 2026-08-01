@@ -25,4 +25,10 @@ export interface IQrPayload {
   card_number: string;
   card_status: string;
   verification_url: string;
+  blood_group: string | null;
+  department: string | null;
+  contractor_mobile: string | null;
+  contract_valid_from: string | null;
+  contract_valid_to: string | null;
+  date_of_issue: string | null;
 }

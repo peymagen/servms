@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   useGetPenaltiesQuery,
@@ -75,14 +76,22 @@ export default function PenaltiesPage() {
   const canCreate = can("penalty_management", "create");
 
   const [offset, setOffset] = useState(0);
+  // Seeds initial filters from the URL once (e.g. the Dashboard's Penalty card
+  // links here as `/penalties?recovery_status=pending&dueDateTo=2026-08-07&division_id=2`).
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [approvalFilter, setApprovalFilter] = useState<PenaltyApprovalStatus | "">("");
-  const [recoveryFilter, setRecoveryFilter] = useState<PenaltyRecoveryStatus | "">("");
-  const [divisionFilter, setDivisionFilter] = useState<number | "">("");
+  const [recoveryFilter, setRecoveryFilter] = useState<PenaltyRecoveryStatus | "">(
+    () => (searchParams.get("recovery_status") as PenaltyRecoveryStatus | "") || ""
+  );
+  const [divisionFilter, setDivisionFilter] = useState<number | "">(() => {
+    const raw = searchParams.get("division_id");
+    return raw ? Number(raw) : "";
+  });
   const [contractorFilter, setContractorFilter] = useState<number | "">("");
   const [vendorFilter, setVendorFilter] = useState<number | "">("");
-  const [dueDateFrom, setDueDateFrom] = useState("");
-  const [dueDateTo, setDueDateTo] = useState("");
+  const [dueDateFrom, setDueDateFrom] = useState(() => searchParams.get("dueDateFrom") ?? "");
+  const [dueDateTo, setDueDateTo] = useState(() => searchParams.get("dueDateTo") ?? "");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);

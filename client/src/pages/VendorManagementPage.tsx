@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ASSET_BASE } from "../store/apiSlice";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -55,10 +55,16 @@ export default function VendorManagementPage() {
   const { can } = useAuth();
   const canEdit = can("vendor_management", "edit");
   const [offset, setOffset] = useState(0);
+  // Seeds initial filters from the URL once (e.g. the Dashboard's Registered
+  // Vendors card links here as `/vendors?status=blacklisted&division_id=2`).
+  const [searchParams] = useSearchParams();
 
   const [search, setSearch] = useState("");
-  const [divisionFilter, setDivisionFilter] = useState<number | "">("");
-  const [validityFilter, setValidityFilter] = useState("");
+  const [divisionFilter, setDivisionFilter] = useState<number | "">(() => {
+    const raw = searchParams.get("division_id");
+    return raw ? Number(raw) : "";
+  });
+  const [validityFilter, setValidityFilter] = useState(() => searchParams.get("status") ?? "");
   const [unitFilter, setUnitFilter] = useState<number | "">("");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
@@ -215,6 +221,10 @@ export default function VendorManagementPage() {
               <option value="active">Active</option>
               <option value="pending">Pending</option>
               <option value="expired">Expired</option>
+              <option value="blacklisted">Blacklisted</option>
+              {/* "inactive" is the Dashboard's rollup of pending/expired (see
+                  vendor.service.ts's getVendors), not a real vendor_status value. */}
+              <option value="inactive">Inactive (Non-Active)</option>
             </select>
           </LabeledField>
         </div>
@@ -404,6 +414,7 @@ function VendorDetailModal({
           <DetailItem label="Vendor Code" value={vendor.vendor_code} />
           <DetailItem label="Vendor Type" value={VENDOR_TYPE_LABELS[vendor.vendor_type]} />
           <DetailItem label="Mobile" value={vendor.mobile_number ?? "—"} />
+          <DetailItem label="Blood Group" value={vendor.blood_group ?? "—"} />
           <DetailItem label="Address" value={vendor.address ?? "—"} />
           <DetailItem label="Contractor" value={vendor.contractor_name ?? "—"} />
           <DetailItem label="Division" value={vendor.division_name ?? "—"} />

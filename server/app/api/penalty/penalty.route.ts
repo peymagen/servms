@@ -3,7 +3,7 @@ import { type NextFunction, type Request, type Response } from "express";
 import { validationResult } from "express-validator";
 import * as penaltyController from "./penalty.controller";
 import { roleAuth } from "../../common/middleware/role-auth.middleware";
-import { requirePermission } from "../../common/middleware/permission.middleware";
+import { requirePermission, requireAnyRole } from "../../common/middleware/permission.middleware";
 import { documentUpload } from "../../common/middleware/multer.middleware";
 import {
   createPenaltyValidation,
@@ -77,9 +77,14 @@ router.post(
 );
 
 // ─── Recovery workflow ────────────────────────────────────────────────────────────
+// requireAnyRole, not requirePermission("penalty_management","edit") — Dealing
+// Section's role_permissions row no longer grants can_edit at all (migration
+// 011), since that flag also gated the general PATCH /:id and POST
+// /:id/documents routes below, not just recovery entry. This is the one
+// penalty route Dealing Section can still reach.
 router.patch(
   "/:id/recovery",
-  requirePermission("penalty_management", "edit"),
+  requireAnyRole(["hq_admin", "divisional_admin", "dealing_section"]),
   updateRecoveryValidation,
   validate,
   penaltyController.updateRecovery

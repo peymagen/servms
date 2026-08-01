@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   useGetInspectionsQuery,
   useGetInspectionMetricsQuery,
@@ -67,18 +67,24 @@ export default function InspectionsPage() {
   const navigate = useNavigate();
   const { can } = useAuth();
   const [offset, setOffset] = useState(0);
+  // Seeds initial filters from the URL once (e.g. the Dashboard's Pending
+  // Action card links here as `/inspections?status=assigned&division_id=2`).
+  const [searchParams] = useSearchParams();
 
   const [search, setSearch] = useState("");
   const [inspectionNo, setInspectionNo] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [divisionFilter, setDivisionFilter] = useState<number | "">("");
+  const [divisionFilter, setDivisionFilter] = useState<number | "">(() => {
+    const raw = searchParams.get("division_id");
+    return raw ? Number(raw) : "";
+  });
   const [stationFilter, setStationFilter] = useState<number | "">("");
   const [trainFilter, setTrainFilter] = useState<number | "">("");
   const [unitFilter, setUnitFilter] = useState<number | "">("");
   const [categoryFilter, setCategoryFilter] = useState<number | "">("");
   const [typeFilter, setTypeFilter] = useState<number | "">("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 

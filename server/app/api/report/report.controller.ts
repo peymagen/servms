@@ -111,6 +111,15 @@ export const getTemplateById = asyncHandler(async (req: Request, res: Response) 
     res.status(404).send(createResponse(null, "Report template not found"));
     return;
   }
+  // Not shared and not privileged and not the creator -> treat as not found,
+  // same as every other module's assertRecordAccessible (avoids confirming
+  // another user's private template exists at all).
+  const user = currentUser(req);
+  const isPrivileged = ["super_admin_hq", "hq_admin"].includes(user?.role_name);
+  if (!isPrivileged && !result.is_shared && result.created_by !== user?.id) {
+    res.status(404).send(createResponse(null, "Report template not found"));
+    return;
+  }
   res.send(createResponse(result));
 });
 
