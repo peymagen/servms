@@ -438,7 +438,7 @@ function UnitFormModal({ unit, onClose, onSaved }: { unit?: Unit; onClose: () =>
   const [unitCode, setUnitCode] = useState(unit?.unit_code ?? "");
   const [areaDescription, setAreaDescription] = useState(unit?.area_description ?? "");
   const [contractorId, setContractorId] = useState<number | "">(unit?.contractor_id ?? "");
-  const [monthlyFee, setMonthlyFee] = useState(unit?.monthly_fee ? String(unit.monthly_fee) : "");
+  const [annualFee, setAnnualFee] = useState(unit?.annual_fee ? String(unit.annual_fee) : "");
   const [unitsStatus, setUnitsStatus] = useState<Unit["units_status"]>(unit?.units_status ?? "active");
   const [sketchFile, setSketchFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -469,7 +469,7 @@ function UnitFormModal({ unit, onClose, onSaved }: { unit?: Unit; onClose: () =>
         area_description: areaDescription || undefined,
         sketch_map_file: sketchFile ?? undefined,
         contractor_id: contractorId ? Number(contractorId) : undefined,
-        monthly_fee: monthlyFee ? Number(monthlyFee) : undefined,
+        annual_fee: annualFee ? Number(annualFee) : undefined,
         units_status: unitsStatus,
       };
       if (isEdit && unit) {
@@ -595,8 +595,8 @@ function UnitFormModal({ unit, onClose, onSaved }: { unit?: Unit; onClose: () =>
               ))}
             </select>
           </Field>
-          <Field label="Monthly Fee (₹)">
-            <input type="number" min="0" value={monthlyFee} onChange={(e) => setMonthlyFee(e.target.value)} />
+          <Field label="Annual License Fee (₹)">
+            <input type="number" min="0" value={annualFee} onChange={(e) => setAnnualFee(e.target.value)} />
           </Field>
 
           {isEdit && (

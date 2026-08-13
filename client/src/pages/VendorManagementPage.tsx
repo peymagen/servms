@@ -439,6 +439,7 @@ function VendorDetailModal({
             vendorId={vendor.id}
             kind="police"
             status={vendor.police_verification_status}
+            number={vendor.police_verification_number}
             issueDate={vendor.police_verification_issue_date}
             validTill={vendor.police_verification_valid_till}
             remarks={vendor.police_verification_remarks}
@@ -449,6 +450,7 @@ function VendorDetailModal({
             vendorId={vendor.id}
             kind="medical"
             status={vendor.medical_verification_status}
+            number={vendor.medical_verification_number}
             issueDate={vendor.medical_verification_issue_date}
             validTill={vendor.medical_verification_valid_till}
             remarks={vendor.medical_verification_remarks}
@@ -559,6 +561,7 @@ function VerificationCard({
   vendorId,
   kind,
   status,
+  number,
   issueDate,
   validTill,
   remarks,
@@ -568,6 +571,7 @@ function VerificationCard({
   vendorId: number;
   kind: "police" | "medical";
   status: VerificationStatus;
+  number: string | null;
   issueDate: string | null;
   validTill: string | null;
   remarks: string | null;
@@ -576,9 +580,11 @@ function VerificationCard({
   const [updatePolice, { isLoading: isSavingPolice }] = useUpdatePoliceVerificationMutation();
   const [updateMedical, { isLoading: isSavingMedical }] = useUpdateMedicalVerificationMutation();
   const saving = kind === "police" ? isSavingPolice : isSavingMedical;
+  const numberLabel = kind === "police" ? "Police Verification Number" : "Medical Fitness Certificate Number";
 
   const [editing, setEditing] = useState(false);
   const [formStatus, setFormStatus] = useState<VerificationStatus>(status);
+  const [formNumber, setFormNumber] = useState(number ?? "");
   const [formIssueDate, setFormIssueDate] = useState(issueDate ?? "");
   const [formValidTill, setFormValidTill] = useState(validTill ?? "");
   const [formRemarks, setFormRemarks] = useState(remarks ?? "");
@@ -587,6 +593,7 @@ function VerificationCard({
 
   function startEdit() {
     setFormStatus(status);
+    setFormNumber(number ?? "");
     setFormIssueDate(issueDate ?? "");
     setFormValidTill(validTill ?? "");
     setFormRemarks(remarks ?? "");
@@ -597,6 +604,10 @@ function VerificationCard({
 
   async function save() {
     setError(null);
+    if (!formNumber.trim()) {
+      setError(`${numberLabel} is required.`);
+      return;
+    }
     if (formValidTill && formIssueDate && formValidTill < formIssueDate) {
       setError("Valid till date cannot be before the issue date.");
       return;
@@ -613,6 +624,7 @@ function VerificationCard({
       await mutation({
         id: vendorId,
         status: formStatus,
+        number: formNumber,
         issue_date: formIssueDate || undefined,
         valid_till: formValidTill || undefined,
         remarks: formRemarks,
@@ -640,6 +652,9 @@ function VerificationCard({
       {!editing ? (
         <>
           <div className={styles.formGrid} style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <DetailItem label={numberLabel} value={number || "—"} />
+          </div>
+          <div className={styles.formGrid} style={{ gridTemplateColumns: "1fr 1fr", marginTop: 10 }}>
             <DetailItem label="Issue Date" value={issueDate ? new Date(issueDate).toLocaleDateString() : "—"} />
             <DetailItem label="Valid Till" value={validTill ? new Date(validTill).toLocaleDateString() : "—"} />
           </div>
@@ -676,6 +691,10 @@ function VerificationCard({
               <option value="verified">Verified</option>
               <option value="rejected">Rejected</option>
             </select>
+          </div>
+          <div className={styles.field} style={{ marginBottom: 10 }}>
+            <span className={styles.fieldLabel}>{numberLabel}</span>
+            <input value={formNumber} onChange={(e) => setFormNumber(e.target.value)} required />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
             <div className={styles.field}>

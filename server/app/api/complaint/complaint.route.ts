@@ -69,6 +69,15 @@ router.post(
   importController.importRailMadad
 );
 router.get("/import/history", requirePermission("complaint_management", "view"), importController.getImportHistory);
+// Admin-tier only — no role currently holds can_delete on complaint_management
+// (nothing else in the module is deletable), so this narrow admin-only action is
+// gated the same way as Complaint Type/Sub-type management above, not via the
+// generic permission matrix.
+router.delete(
+  "/import/history/:id",
+  requireAnyRole([ROLE.HQ_ADMIN, ROLE.DIVISIONAL_ADMIN]),
+  importController.deleteImportHistory
+);
 
 // ─── Core CRUD ──────────────────────────────────────────────────────────────────
 router.get("/", requirePermission("complaint_management", "view"), complaintController.getComplaints);

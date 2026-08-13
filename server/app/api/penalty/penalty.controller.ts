@@ -73,8 +73,8 @@ export const editPenalty = asyncHandler(async (req: Request, res: Response) => {
 // ─── APPROVE / REJECT / REVOKE (Divisional/HQ Admin only) ───────────────────────
 export const approvePenalty = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id;
-  const result = await penaltyService.approvePenalty(req.params.id as string, userId);
-  await logAudit({ req, module: "penalty", recordId: req.params.id, action: "APPROVE" });
+  const result = await penaltyService.approvePenalty(req.params.id as string, userId, req.body);
+  await logAudit({ req, module: "penalty", recordId: req.params.id, action: "APPROVE", newData: req.body });
   res.send(createResponse(result, "Penalty approved"));
 });
 
@@ -123,6 +123,23 @@ export const updateRecovery = asyncHandler(async (req: Request, res: Response) =
   res.send(createResponse(result, "Recovery status updated"));
 });
 
+// ─── RECOVERY DOCUMENT VERIFICATION (Admin/Divisional Admin) ────────────────────
+export const verifyRecovery = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req.user as any)?.id;
+  const oldData = (await penaltyService.getPenaltyById(req.params.id as string)) as any;
+  const result = await penaltyService.verifyRecovery(req.params.id as string, userId, req.body);
+  await logAudit({
+    req,
+    module: "penalty",
+    recordId: req.params.id,
+    action: "UPDATE",
+    oldData: { recovery_verification_status: oldData?.recovery_verification_status },
+    newData: req.body,
+    details: `Recovery ${req.body?.decision}`,
+  });
+  res.send(createResponse(result, `Recovery ${req.body?.decision}`));
+});
+
 // ─── SUPPORTING DOCUMENTS ────────────────────────────────────────────────────────
 export const uploadPenaltyDocument = asyncHandler(async (req: Request, res: Response) => {
   if (!req.file) {
@@ -131,13 +148,15 @@ export const uploadPenaltyDocument = asyncHandler(async (req: Request, res: Resp
   }
   const userId = (req.user as any)?.id;
   const documentPath = `/uploads/${req.file.filename}`;
+  const documentType = (req.body?.document_type as any) ?? "other";
   const result = await penaltyService.uploadPenaltyDocument(
     req.params.id as string,
+    documentType,
     documentPath,
     req.file.originalname,
     userId
   );
-  await logAudit({ req, module: "penalty", recordId: req.params.id, action: "UPDATE", details: "Document uploaded" });
+  await logAudit({ req, module: "penalty", recordId: req.params.id, action: "UPDATE", details: `Document uploaded (${documentType})` });
   res.send(createResponse(result, "Document uploaded successfully"));
 });
 

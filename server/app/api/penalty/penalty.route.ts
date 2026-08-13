@@ -9,7 +9,10 @@ import {
   createPenaltyValidation,
   updatePenaltyValidation,
   revokePenaltyValidation,
+  approvePenaltyValidation,
   updateRecoveryValidation,
+  verifyRecoveryValidation,
+  uploadPenaltyDocumentValidation,
 } from "./penalty.validation";
 
 const validate = (req: Request, res: Response, next: NextFunction) => {
@@ -61,6 +64,8 @@ router.patch(
 router.post(
   "/:id/approve",
   requirePermission("penalty_management", "approve_reject"),
+  approvePenaltyValidation,
+  validate,
   penaltyController.approvePenalty
 );
 router.post(
@@ -77,24 +82,38 @@ router.post(
 );
 
 // ─── Recovery workflow ────────────────────────────────────────────────────────────
-// requireAnyRole, not requirePermission("penalty_management","edit") — Dealing
-// Section's role_permissions row no longer grants can_edit at all (migration
-// 011), since that flag also gated the general PATCH /:id and POST
-// /:id/documents routes below, not just recovery entry. This is the one
-// penalty route Dealing Section can still reach.
+// Recovery entry is Dealing-Section-exclusive per spec ("Recovery entry shall be
+// managed by Dealing Section") — hq_admin/divisional_admin no longer share this
+// route; their oversight role is the separate verify step below instead.
 router.patch(
   "/:id/recovery",
-  requireAnyRole(["hq_admin", "divisional_admin", "dealing_section"]),
+  requireAnyRole(["dealing_section"]),
   updateRecoveryValidation,
   validate,
   penaltyController.updateRecovery
 );
 
+// Document Verification step: Admin/Divisional Admin verifies (or rejects) a
+// Dealing-Section recovery entry before it can reach recovery_status "closed".
+router.post(
+  "/:id/recovery/verify",
+  requirePermission("penalty_management", "approve_reject"),
+  verifyRecoveryValidation,
+  validate,
+  penaltyController.verifyRecovery
+);
+
 // ─── Supporting documents ─────────────────────────────────────────────────────────
+// requireAnyRole, not requirePermission("penalty_management","edit") — Dealing
+// Section's role_permissions row grants no can_edit at all (see recovery route
+// above), but still needs to upload recovery-proof documents; hq_admin/
+// divisional_admin upload penalty-order/approval documents through the same route.
 router.post(
   "/:id/documents",
-  requirePermission("penalty_management", "edit"),
+  requireAnyRole(["hq_admin", "divisional_admin", "dealing_section"]),
   documentUpload.single("document"),
+  uploadPenaltyDocumentValidation,
+  validate,
   penaltyController.uploadPenaltyDocument
 );
 

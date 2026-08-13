@@ -14,7 +14,7 @@ import MiniChart from "../components/ui/MiniChart";
 import { roleLabel } from "../types/labels";
 import styles from "./DashboardPage.module.css";
 
-const HQ_ROLES = ["hq_admin", "hq_sub_admin"];
+const HQ_ROLES = ["super_admin_hq", "hq_admin", "hq_sub_admin"];
 
 function isoDate(daysOffset: number): string {
   const d = new Date();

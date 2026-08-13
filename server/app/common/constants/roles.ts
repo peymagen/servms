@@ -68,3 +68,28 @@ export const assertRecordAccessible = (
     }
   }
 };
+
+// Admin-tier roles per the SRS: "All Admin role creation and management shall be
+// controlled from Super Admin ID" — HQ/Divisional Admin accounts (and Super Admin
+// itself) can only be created, edited, or disabled by super_admin_hq. This is
+// deliberately narrower than the generic user_management permission, which
+// hq_admin/divisional_admin also hold (needed for creating ordinary staff/sub-admin
+// accounts) but must not extend to managing peer or superior admin accounts.
+const ADMIN_TIER_ROLES: string[] = [ROLE.SUPER_ADMIN_HQ, ROLE.HQ_ADMIN, ROLE.DIVISIONAL_ADMIN];
+
+export const isAdminTierRole = (roleName: string | undefined | null): boolean =>
+  !!roleName && ADMIN_TIER_ROLES.includes(roleName);
+
+// Call with the target user's CURRENT role_name (for edit/delete/disable) and/or
+// the REQUESTED role_name (for create, or a PATCH that changes role_id) — pass
+// whichever is relevant to the action being performed; either one landing in the
+// Admin tier requires the actor to be Super Admin HQ.
+export const assertCanManageAdminTier = (
+  actingUser: { role_name?: string | null } | undefined | null,
+  ...targetRoleNames: Array<string | null | undefined>
+): void => {
+  const touchesAdminTier = targetRoleNames.some((r) => isAdminTierRole(r));
+  if (touchesAdminTier && actingUser?.role_name !== ROLE.SUPER_ADMIN_HQ) {
+    throw createHttpError(403, "Only Super Admin HQ can create or manage Admin-tier accounts");
+  }
+};

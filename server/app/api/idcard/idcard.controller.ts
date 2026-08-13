@@ -2,7 +2,6 @@ import * as idcardService from "./idcard.service";
 import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
-import path from "path";
 import { isDivisionScoped } from "../../common/constants/roles";
 import { logAudit } from "../../common/services/auditLog.service";
 import { type CardExpirySource, type CardTemplate } from "./idcard.dto";
@@ -41,7 +40,7 @@ export const requestIdCard = asyncHandler(async (req: Request, res: Response) =>
 export const approveIdCard = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user as any;
   const actorDivisionId = isDivisionScoped(user?.role_name) ? user.division_id : undefined;
-  const result = await idcardService.approveIdCard(req.params.vendorId as string, user?.id, actorDivisionId);
+  const result = await idcardService.approveIdCard(req.params.vendorId as string, user?.id, actorDivisionId, user?.role_name);
   await logAudit({ req, module: "idcard", recordId: req.params.vendorId, action: "APPROVE", details: "Card approved and signed" });
   res.send(createResponse(result, "ID card approved, signed, and generated"));
 });
@@ -56,13 +55,21 @@ export const rejectIdCard = asyncHandler(async (req: Request, res: Response) => 
 
 // ─── DOWNLOAD PDF ────────────────────────────────────────────────────────────────
 export const downloadIdCardPdf = asyncHandler(async (req: Request, res: Response) => {
-  const pdfPath = await idcardService.getIdCardPdfPath(req.params.vendorId as string);
-  if (!pdfPath) {
+  const templateParam = req.query.template;
+  if (templateParam !== undefined && templateParam !== "template_a" && templateParam !== "template_b") {
+    res.status(400).send(createResponse(null, "Invalid template"));
+    return;
+  }
+
+  const result = await idcardService.getIdCardPdf(req.params.vendorId as string, templateParam as CardTemplate | undefined);
+  if (!result) {
     res.status(404).send(createResponse(null, "No generated ID card PDF found for this vendor"));
     return;
   }
-  await logAudit({ req, module: "idcard", recordId: req.params.vendorId, action: "DOWNLOAD" });
-  res.sendFile(path.join(process.cwd(), pdfPath));
+  await logAudit({ req, module: "idcard", recordId: req.params.vendorId, action: "DOWNLOAD", details: templateParam });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+  res.send(Buffer.from(result.bytes));
 });
 
 // ─── PUBLIC QR VERIFICATION ─────────────────────────────────────────────────────

@@ -29,8 +29,6 @@ import ReportBuilderPage from "./pages/ReportBuilderPage";
 import SavedReportsPage from "./pages/SavedReportsPage";
 import ExportHistoryPage from "./pages/ExportHistoryPage";
 import ImportManagementPage from "./pages/ImportManagementPage";
-import SettingsPage from "./pages/SettingsPage";
-import HelpCenterPage from "./pages/HelpCenterPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import type { ModuleName } from "./types";
 
@@ -75,11 +73,9 @@ function App() {
           <Route path="/reports/saved" element={protectedPage(<SavedReportsPage />, "reports")} />
           <Route path="/reports/exports" element={protectedPage(<ExportHistoryPage />, "reports")} />
           <Route path="/reports/import" element={protectedPage(<ImportManagementPage />, "reports")} />
-          {/* Notifications/Settings/Help are personal, not module-gated — every
+          {/* Notifications are personal, not module-gated — every
               authenticated role can reach them regardless of role_permissions. */}
           <Route path="/notifications" element={protectedPage(<NotificationsPage />)} />
-          <Route path="/settings" element={protectedPage(<SettingsPage />)} />
-          <Route path="/help" element={protectedPage(<HelpCenterPage />)} />
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

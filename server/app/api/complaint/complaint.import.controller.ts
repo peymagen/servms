@@ -34,3 +34,9 @@ export const getImportHistory = asyncHandler(async (req: Request, res: Response)
   const result = await importService.getImportHistory(limit);
   res.send(createResponse(result));
 });
+
+export const deleteImportHistory = asyncHandler(async (req: Request, res: Response) => {
+  await importService.deleteImportHistory(req.params.id as string);
+  await logAudit({ req, module: "complaint_import", recordId: req.params.id, action: "DELETE" });
+  res.send(createResponse(null, "Import history record deleted"));
+});

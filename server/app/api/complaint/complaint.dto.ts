@@ -57,7 +57,8 @@ export interface IComplaint extends BaseSchema {
 }
 
 export interface IComplaintCreate {
-  complaint_source?: "cpgrams" | "manual";
+  complaint_source?: "railmadad" | "cpgrams" | "manual";
+  complaint_ref_no?: string;
   portal_registration_number?: string;
   manual_dak_reference_number?: string;
   eoffice_computer_number?: string;

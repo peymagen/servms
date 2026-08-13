@@ -2,6 +2,13 @@ import { type IUserCreate, type IUserUpdate } from "./user.dto";
 import { pool } from "../../common/services/sql.service";
 import { type RowDataPacket, type ResultSetHeader } from "mysql2";
 
+// Used by the Admin-tier delegation check (roles.ts's assertCanManageAdminTier)
+// to resolve a requested role_id to its role_name before create/edit.
+export const getRoleName = async (roleId: number): Promise<string | null> => {
+  const [rows] = await pool.execute<RowDataPacket[]>("SELECT role_name FROM roles WHERE id = ?", [roleId]);
+  return rows[0]?.role_name ?? null;
+};
+
 // ─── CARD SIGNING AUTHORITY ELIGIBILITY ─────────────────────────────────────────
 // Only JS/SS-graded Admin-tier or Sub Admin-tier users (HQ or Divisional) may be
 // granted Card Signing Authority — Divisional/HQ Admin included, since a division's
@@ -11,7 +18,8 @@ const SIGNING_ELIGIBLE_ROLES = ["hq_admin", "hq_sub_admin", "divisional_admin", 
 const assertCardSigningEligibility = async (
   roleId: number | undefined,
   designationGrade: string | null | undefined,
-  cardSigningAuthority: boolean | undefined
+  cardSigningAuthority: boolean | undefined,
+  authorityDesignation: string | null | undefined
 ) => {
   if (!cardSigningAuthority) return;
   if (!roleId) {
@@ -25,11 +33,19 @@ const assertCardSigningEligibility = async (
   if (!designationGrade || !["JS", "SS"].includes(designationGrade)) {
     throw new Error("Card Signing Authority requires a JS or SS designation grade");
   }
+  if (!authorityDesignation?.trim()) {
+    throw new Error("Authority Designation is required for a Card Signing Authority");
+  }
 };
 
 // ─── CREATE ────────────────────────────────────────────────────────────────────
 export const createUser = async (data: IUserCreate) => {
-  await assertCardSigningEligibility(data.role_id, data.designation_grade, data.card_signing_authority);
+  await assertCardSigningEligibility(
+    data.role_id,
+    data.designation_grade,
+    data.card_signing_authority,
+    data.card_signing_authority_designation
+  );
 
   const columns: string[] = ["employee_id", "username", "full_name", "password_hash", "role_id"];
   const values: any[] = [data.employee_id, data.username, data.full_name, data.password, data.role_id];
@@ -46,6 +62,7 @@ export const createUser = async (data: IUserCreate) => {
     ["users_status", "users_status"],
     ["designation", "designation"],
     ["designation_grade", "designation_grade"],
+    ["card_signing_authority_designation", "card_signing_authority_designation"],
   ];
   for (const [key, column] of optionalFields) {
     if (data[key] !== undefined && data[key] !== null) {
@@ -67,12 +84,22 @@ export const createUser = async (data: IUserCreate) => {
 
 // ─── FULL UPDATE (PUT) ─────────────────────────────────────────────────────────
 export const updateUser = async (id: string, data: IUserCreate) => {
-  await assertCardSigningEligibility(data.role_id, data.designation_grade, data.card_signing_authority);
+  await assertCardSigningEligibility(
+    data.role_id,
+    data.designation_grade,
+    data.card_signing_authority,
+    data.card_signing_authority_designation
+  );
 
+  // data.password arrives pre-hashed by the controller (already bcrypt'd, despite the
+  // IUserCreate field name). Previously this SET clause omitted password_hash entirely,
+  // so the controller's hash was computed and then silently discarded — a PUT never
+  // actually changed the password, leaving the account on its old hash.
   const query = `
     UPDATE users
     SET employee_id = ?, hrms_id = ?, username = ?, full_name = ?, role_id = ?, division_id = ?, zone_id = ?, station_id = ?,
-        email = ?, mobile = ?, users_status = ?, designation = ?, designation_grade = ?, card_signing_authority = ?
+        email = ?, mobile = ?, users_status = ?, designation = ?, designation_grade = ?, card_signing_authority = ?,
+        card_signing_authority_designation = ?, password_hash = ?
     WHERE id = ?
   `;
   const values = [
@@ -90,20 +117,29 @@ export const updateUser = async (id: string, data: IUserCreate) => {
     data.designation ?? null,
     data.designation_grade ?? null,
     data.card_signing_authority ? 1 : 0,
+    data.card_signing_authority ? data.card_signing_authority_designation ?? null : null,
+    data.password,
     id
   ];
   await pool.execute(query, values);
-  return { id, ...data };
+  // Never echo the password hash back in the API response.
+  const { password: _password, ...rest } = data as IUserCreate & { password?: string };
+  return { ...rest, id };
 };
 
 // ─── PARTIAL UPDATE (PATCH) ────────────────────────────────────────────────────
 export const editUser = async (id: string, data: IUserUpdate) => {
   if (data.card_signing_authority !== undefined) {
-    const roleId = data.role_id ?? (await getUserById(id) as any)?.role_id;
-    const designationGrade = data.designation_grade !== undefined
-      ? data.designation_grade
-      : (await getUserById(id) as any)?.designation_grade;
-    await assertCardSigningEligibility(roleId, designationGrade, data.card_signing_authority);
+    const existing = data.role_id === undefined || data.designation_grade === undefined || data.card_signing_authority_designation === undefined
+      ? (await getUserById(id) as any)
+      : undefined;
+    const roleId = data.role_id ?? existing?.role_id;
+    const designationGrade = data.designation_grade !== undefined ? data.designation_grade : existing?.designation_grade;
+    const authorityDesignation =
+      data.card_signing_authority_designation !== undefined
+        ? data.card_signing_authority_designation
+        : existing?.card_signing_authority_designation;
+    await assertCardSigningEligibility(roleId, designationGrade, data.card_signing_authority, authorityDesignation);
   }
 
   const updates: string[] = [];
@@ -122,6 +158,7 @@ export const editUser = async (id: string, data: IUserUpdate) => {
     ["full_name", "full_name"],
     ["designation", "designation"],
     ["designation_grade", "designation_grade"],
+    ["card_signing_authority_designation", "card_signing_authority_designation"],
     ["role_id", "role_id"],
     ["division_id", "division_id"],
     ["zone_id", "zone_id"],
@@ -150,7 +187,9 @@ export const editUser = async (id: string, data: IUserUpdate) => {
   values.push(id);
   const query = `UPDATE users SET ${updates.join(", ")} WHERE id = ?`;
   await pool.execute(query, values);
-  return { id, ...data };
+  // Never echo the password hash back in the API response.
+  const { password_hash: _passwordHash, ...rest } = data as IUserUpdate & { password_hash?: string };
+  return { ...rest, id };
 };
 
 // ─── DELETE ────────────────────────────────────────────────────────────────────

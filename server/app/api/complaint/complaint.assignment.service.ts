@@ -1,7 +1,7 @@
 import { pool } from "../../common/services/sql.service";
 import { type RowDataPacket, type ResultSetHeader } from "mysql2";
 import { type IComplaintAssign } from "./complaint.dto";
-import { recordStatusChange } from "./complaint.service";
+import { recordStatusChange, getUnitDivisionId } from "./complaint.service";
 
 const assertComplaintExists = async (id: string) => {
   const [rows] = await pool.execute<RowDataPacket[]>(
@@ -32,9 +32,17 @@ export const assignComplaint = async (
 
   const nextStatus = complaint.complaints_status === "pending" ? "assigned" : complaint.complaints_status;
 
+  // Re-derive division_id from the newly assigned unit every time (not just when
+  // currently NULL) — this is what actually makes an HQ-sourced complaint
+  // (division_id IS NULL, e.g. a RailMadad row with divCode="HQ") show up in the
+  // right division's Complaint module once it's assigned to one of that division's
+  // units. Without this, HQ complaints stayed permanently invisible to divisional
+  // roles even after assignment, since division_id never got backfilled.
+  const divisionId = await getUnitDivisionId(data.to_unit_id);
+
   await pool.execute(
-    `UPDATE complaints SET unit_id = ?, assigned_to_user_id = ?, complaints_status = ? WHERE id = ?`,
-    [data.to_unit_id, data.assigned_to_user_id ?? null, nextStatus, id]
+    `UPDATE complaints SET unit_id = ?, division_id = ?, assigned_to_user_id = ?, complaints_status = ? WHERE id = ?`,
+    [data.to_unit_id, divisionId, data.assigned_to_user_id ?? null, nextStatus, id]
   );
 
   if (nextStatus !== complaint.complaints_status) {

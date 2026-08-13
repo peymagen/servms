@@ -2,11 +2,14 @@ import { pool } from "../../common/services/sql.service";
 import { type RowDataPacket, type ResultSetHeader } from "mysql2";
 import {
   RECOVERY_STATUS_ORDER,
+  type IPenaltyApprove,
   type IPenaltyCreate,
   type IPenaltyFilters,
   type IPenaltyRecoveryUpdate,
+  type IPenaltyRecoveryVerify,
   type IPenaltyUpdate,
   type PenaltyApprovalStatus,
+  type PenaltyDocumentType,
   type PenaltyRecoveryStatus,
 } from "./penalty.dto";
 
@@ -22,6 +25,7 @@ const BASE_JOINS = `
   LEFT JOIN users us ON us.id = p.issued_by
   LEFT JOIN users appu ON appu.id = p.approved_by
   LEFT JOIN users revu ON revu.id = p.revoked_by
+  LEFT JOIN users vfu ON vfu.id = p.recovery_verified_by
 `;
 
 const SELECT_COLUMNS = `
@@ -35,6 +39,7 @@ const SELECT_COLUMNS = `
   us.full_name as issued_by_name,
   appu.full_name as approved_by_name,
   revu.full_name as revoked_by_name,
+  vfu.full_name as recovery_verified_by_name,
   cm.complaint_code,
   ins.inspection_date
 `;
@@ -168,8 +173,11 @@ export const getPenaltyById = async (id: string) => {
   if (!penalty) return null;
 
   const [documents] = await pool.execute<RowDataPacket[]>(
-    `SELECT id, penalty_id, document_path, original_name, uploaded_by, uploaded_at
-     FROM penalty_documents WHERE penalty_id = ? AND status = 1 ORDER BY uploaded_at DESC`,
+    `SELECT pd.id, pd.penalty_id, pd.document_type, pd.document_path, pd.original_name,
+            pd.uploaded_by, u.full_name as uploaded_by_name, pd.uploaded_at
+     FROM penalty_documents pd
+     LEFT JOIN users u ON u.id = pd.uploaded_by
+     WHERE pd.penalty_id = ? AND pd.status = 1 ORDER BY pd.uploaded_at DESC`,
     [id]
   );
 
@@ -209,16 +217,30 @@ export const editPenalty = async (id: string, data: IPenaltyUpdate) => {
 };
 
 // ─── APPROVE / REJECT / REVOKE (Divisional/HQ Admin only, gated at route level) ──
-export const approvePenalty = async (id: string, userId: number) => {
+// Amount is already captured at creation; due date/order number/remarks are
+// captured here, at the moment of approval/imposition, rather than only being
+// settable later via editPenalty/updateRecovery — approved_at (set below) IS the
+// Penalty Imposition Date/timestamp.
+export const approvePenalty = async (id: string, userId: number, data: IPenaltyApprove = {}) => {
   const penalty = await assertExists(id);
   if (penalty.approval_status !== "pending_approval") {
     throw new Error(`Cannot approve a penalty in "${penalty.approval_status}" state`);
   }
   const legacyStatus = deriveLegacyStatus("approved", penalty.recovery_status);
-  await pool.execute(
-    `UPDATE penalties SET approval_status = 'approved', approved_by = ?, approved_at = NOW(), penalties_status = ? WHERE id = ?`,
-    [userId, legacyStatus, id]
-  );
+
+  const updates = ["approval_status = 'approved'", "approved_by = ?", "approved_at = NOW()", "penalties_status = ?"];
+  const values: any[] = [userId, legacyStatus];
+
+  const optionalFields: Array<keyof IPenaltyApprove> = ["due_date", "order_number", "order_date", "remarks"];
+  for (const field of optionalFields) {
+    if (data[field] !== undefined) {
+      updates.push(`\`${field}\` = ?`);
+      values.push(data[field]);
+    }
+  }
+
+  values.push(id);
+  await pool.execute(`UPDATE penalties SET ${updates.join(", ")} WHERE id = ?`, values);
   return getPenaltyById(id);
 };
 
@@ -248,11 +270,21 @@ export const revokePenalty = async (id: string, userId: number, reason: string) 
   return getPenaltyById(id);
 };
 
-// ─── RECOVERY WORKFLOW: Pending → Partially Recovered → Recovered → Closed ───────
+// ─── RECOVERY ENTRY (Dealing Section): Pending → Partially Recovered → Recovered ─
+// "Closed" is deliberately NOT reachable from here — reaching "recovered" only
+// records that Dealing Section believes the full amount is in; an Admin/Divisional
+// Admin must separately verify the recovery documents (see verifyRecovery below)
+// before the penalty is actually closed out, per the Document Verification step.
 export const updateRecovery = async (id: string, data: IPenaltyRecoveryUpdate) => {
   const penalty = await assertExists(id);
   if (penalty.approval_status !== "approved") {
     throw new Error("Recovery can only be tracked on an approved penalty");
+  }
+
+  if (data.recovery_status === "closed") {
+    throw new Error(
+      "Recovery entry cannot close a penalty directly — mark it \"recovered\" and have an Admin verify it instead"
+    );
   }
 
   const currentIndex = RECOVERY_STATUS_ORDER.indexOf(penalty.recovery_status);
@@ -292,7 +324,14 @@ export const updateRecovery = async (id: string, data: IPenaltyRecoveryUpdate) =
   ];
   const values: any[] = [data.recovery_status, recoveryAmount, recoveryDate, legacyStatus];
 
+  // Reaching (or re-reaching, after a rejected verification) "recovered" always
+  // (re)opens a fresh verification cycle — clears any prior verifier/decision.
+  if (data.recovery_status === "recovered") {
+    updates.push("recovery_verification_status = 'pending'", "recovery_verified_by = NULL", "recovery_verified_at = NULL");
+  }
+
   const optionalFields: Array<keyof IPenaltyRecoveryUpdate> = [
+    "payment_reference",
     "mr_number",
     "mr_date",
     "order_number",
@@ -306,29 +345,60 @@ export const updateRecovery = async (id: string, data: IPenaltyRecoveryUpdate) =
     }
   }
 
-  if (data.recovery_status === "recovered" || data.recovery_status === "closed") {
-    updates.push("resolution_date = ?");
-    values.push(recoveryDate ?? new Date().toISOString().split("T")[0]);
-  }
-
   values.push(id);
   await pool.execute(`UPDATE penalties SET ${updates.join(", ")} WHERE id = ?`, values);
+  return getPenaltyById(id);
+};
+
+// ─── DOCUMENT VERIFICATION (Admin/Divisional Admin): Recovered → Closed ─────────
+export const verifyRecovery = async (id: string, userId: number, data: IPenaltyRecoveryVerify) => {
+  const penalty = await assertExists(id);
+  if (penalty.recovery_status !== "recovered") {
+    throw new Error('Only a penalty marked "recovered" by Dealing Section can be verified');
+  }
+  if (penalty.recovery_verification_status !== "pending") {
+    throw new Error("This recovery entry has already been decided — no verification is pending");
+  }
+
+  if (data.decision === "verified") {
+    const legacyStatus = deriveLegacyStatus(penalty.approval_status, "closed");
+    await pool.execute(
+      `UPDATE penalties SET
+        recovery_verification_status = 'verified', recovery_verified_by = ?, recovery_verified_at = NOW(),
+        recovery_status = 'closed', penalties_status = ?, resolution_date = COALESCE(resolution_date, CURDATE()),
+        remarks = COALESCE(?, remarks)
+       WHERE id = ?`,
+      [userId, legacyStatus, data.remarks ?? null, id]
+    );
+  } else {
+    // Rejected: recovery_status stays "recovered" — Dealing Section must correct
+    // the entry/documents and resubmit via updateRecovery, which re-opens verification.
+    await pool.execute(
+      `UPDATE penalties SET
+        recovery_verification_status = 'rejected', recovery_verified_by = ?, recovery_verified_at = NOW(),
+        remarks = COALESCE(?, remarks)
+       WHERE id = ?`,
+      [userId, data.remarks ?? null, id]
+    );
+  }
+
   return getPenaltyById(id);
 };
 
 // ─── SUPPORTING DOCUMENTS ────────────────────────────────────────────────────────
 export const uploadPenaltyDocument = async (
   penaltyId: string,
+  documentType: PenaltyDocumentType,
   documentPath: string,
   originalName: string | undefined,
   userId: number
 ) => {
   await assertExists(penaltyId);
   const [result] = await pool.execute<ResultSetHeader>(
-    `INSERT INTO penalty_documents (penalty_id, document_path, original_name, uploaded_by) VALUES (?, ?, ?, ?)`,
-    [penaltyId, documentPath, originalName ?? null, userId]
+    `INSERT INTO penalty_documents (penalty_id, document_type, document_path, original_name, uploaded_by) VALUES (?, ?, ?, ?, ?)`,
+    [penaltyId, documentType, documentPath, originalName ?? null, userId]
   );
-  return { id: result.insertId, penalty_id: Number(penaltyId), document_path: documentPath };
+  return { id: result.insertId, penalty_id: Number(penaltyId), document_type: documentType, document_path: documentPath };
 };
 
 // ─── GET PENALTY METRICS (dashboard totals + aging buckets) ─────────────────────

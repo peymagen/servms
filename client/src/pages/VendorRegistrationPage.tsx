@@ -48,10 +48,12 @@ export default function VendorRegistrationPage() {
 
   // Step 3 — Verification
   const [policeStatus, setPoliceStatus] = useState<VerificationStatus>("pending");
+  const [policeNumber, setPoliceNumber] = useState("");
   const [policeIssueDate, setPoliceIssueDate] = useState("");
   const [policeValidTill, setPoliceValidTill] = useState("");
   const [policeRemarks, setPoliceRemarks] = useState("");
   const [medicalStatus, setMedicalStatus] = useState<VerificationStatus>("pending");
+  const [medicalNumber, setMedicalNumber] = useState("");
   const [medicalIssueDate, setMedicalIssueDate] = useState("");
   const [medicalValidTill, setMedicalValidTill] = useState("");
   const [medicalRemarks, setMedicalRemarks] = useState("");
@@ -136,6 +138,10 @@ export default function VendorRegistrationPage() {
       }
     }
     if (step === 3) {
+      if (!policeNumber.trim() || !medicalNumber.trim()) {
+        setError("Police Verification Number and Medical Fitness Certificate Number are required.");
+        return;
+      }
       if (policeValidTill && policeIssueDate && policeValidTill < policeIssueDate) {
         setError("Police verification valid till date cannot be before the issue date.");
         return;
@@ -172,10 +178,12 @@ export default function VendorRegistrationPage() {
         validity_start: validityStart || undefined,
         validity_end: validityEnd || undefined,
         police_verification_status: policeStatus,
+        police_verification_number: policeNumber,
         police_verification_issue_date: policeIssueDate || undefined,
         police_verification_valid_till: policeValidTill || undefined,
         police_verification_remarks: policeRemarks || undefined,
         medical_verification_status: medicalStatus,
+        medical_verification_number: medicalNumber,
         medical_verification_issue_date: medicalIssueDate || undefined,
         medical_verification_valid_till: medicalValidTill || undefined,
         medical_verification_remarks: medicalRemarks || undefined,
@@ -448,16 +456,27 @@ export default function VendorRegistrationPage() {
               </Field>
             </div>
             <div className={styles.fieldRow}>
+              <Field label="Police Verification Number">
+                <input
+                  value={policeNumber}
+                  onChange={(e) => setPoliceNumber(e.target.value)}
+                  placeholder="e.g. PVR/KGP/2026/1029"
+                  required
+                />
+              </Field>
               <Field label="Valid Till Date">
                 <input type="date" value={policeValidTill} onChange={(e) => setPoliceValidTill(e.target.value)} />
               </Field>
+            </div>
+            <div className={styles.fieldRow}>
               <Field label="Remarks (optional)">
                 <input
                   value={policeRemarks}
                   onChange={(e) => setPoliceRemarks(e.target.value)}
-                  placeholder="e.g. PVR/KGP/2026/1029"
+                  placeholder="Additional notes"
                 />
               </Field>
+              <div />
             </div>
           </section>
 
@@ -481,9 +500,19 @@ export default function VendorRegistrationPage() {
               </Field>
             </div>
             <div className={styles.fieldRow}>
+              <Field label="Medical Fitness Certificate Number">
+                <input
+                  value={medicalNumber}
+                  onChange={(e) => setMedicalNumber(e.target.value)}
+                  placeholder="e.g. MFC/KGP/2026/1029"
+                  required
+                />
+              </Field>
               <Field label="Valid Till Date">
                 <input type="date" value={medicalValidTill} onChange={(e) => setMedicalValidTill(e.target.value)} />
               </Field>
+            </div>
+            <div className={styles.fieldRow}>
               <Field label="Remarks (optional)">
                 <input
                   value={medicalRemarks}
@@ -491,6 +520,7 @@ export default function VendorRegistrationPage() {
                   placeholder="Additional notes"
                 />
               </Field>
+              <div />
             </div>
           </section>
         </div>
@@ -579,7 +609,9 @@ export default function VendorRegistrationPage() {
               value={contractors.find((c) => c.id === contractorId)?.company_name ?? "—"}
             />
             <ReviewItem label="Police Verification" value={policeStatus} />
+            <ReviewItem label="Police Verification Number" value={policeNumber || "—"} />
             <ReviewItem label="Medical Verification" value={medicalStatus} />
+            <ReviewItem label="Medical Fitness Certificate Number" value={medicalNumber || "—"} />
             <ReviewItem label="Aadhaar Document" value={aadhaarDoc?.name ?? "Not uploaded"} />
             <ReviewItem label="Medical Document" value={medicalDoc?.name ?? "Not uploaded"} />
             <ReviewItem label="Police Document" value={policeDoc?.name ?? "Not uploaded"} />

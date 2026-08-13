@@ -26,22 +26,43 @@ const SELECT_COMPLAINT_JOIN = `
   LEFT JOIN users cu ON cu.id = c.closed_by
 `;
 
-const generateComplaintCode = () => {
+export const generateComplaintCode = () => {
   const randomNum = Math.floor(10000 + Math.random() * 90000);
   return `CMP-${randomNum}`;
 };
 
-// Manual/CPGRAMS entries derive their dedup reference number from whichever
-// source-specific field was supplied — RailMadad's own reference number is
-// handled separately by the import service.
-const deriveManualRefNo = (source: "cpgrams" | "manual", data: IComplaintCreate): string | null => {
+// complaint_code is a random 5-digit value (90,000 possibilities) with a real,
+// if small, chance of colliding on a large bulk import (e.g. a 400+ row
+// RailMadad batch) — distinguishes a complaint_code collision from any other
+// duplicate-key error (notably complaint_ref_no's own unique constraint, which
+// must NOT be retried — that's a genuine duplicate, not a code clash).
+export const isComplaintCodeCollision = (err: any): boolean =>
+  err?.code === "ER_DUP_ENTRY" && typeof err?.sqlMessage === "string" && err.sqlMessage.includes("complaint_code");
+
+// Manual/CPGRAMS/single-record-RailMadad entries derive their dedup reference
+// number from whichever source-specific field was supplied — bulk RailMadad
+// imports go through the separate import service instead, but this same
+// complaint_ref_no field and (complaint_source, complaint_ref_no) unique key
+// are shared, so a manually-entered RailMadad complaint dedupes against an
+// earlier import of the same reference number and vice versa.
+const deriveManualRefNo = (source: "railmadad" | "cpgrams" | "manual", data: IComplaintCreate): string | null => {
   if (source === "cpgrams") return data.portal_registration_number?.trim() || null;
+  if (source === "railmadad") return data.complaint_ref_no?.trim() || null;
   return data.manual_dak_reference_number?.trim() || data.eoffice_computer_number?.trim() || null;
 };
 
+// Units are polymorphically located at a station, train, or cluster (see
+// Location & Unit Management) — only joining via station_id left train/cluster
+// units with an unresolvable (NULL) division, so all three location types are
+// covered here, same as unit.service.ts's own DIVISION_EXPR.
 export const getUnitDivisionId = async (unitId: number): Promise<number | null> => {
   const [rows] = await pool.execute<RowDataPacket[]>(
-    `SELECT st.division_id FROM units u LEFT JOIN stations st ON st.id = u.station_id WHERE u.id = ?`,
+    `SELECT COALESCE(st.division_id, tr.division_id, cl.division_id) as division_id
+     FROM units u
+     LEFT JOIN stations st ON st.id = u.station_id
+     LEFT JOIN trains tr ON tr.id = u.train_id
+     LEFT JOIN location_clusters cl ON cl.id = u.cluster_id
+     WHERE u.id = ?`,
     [unitId]
   );
   return rows[0]?.division_id ?? null;
@@ -62,7 +83,6 @@ export const recordStatusChange = async (
 
 // ─── CREATE COMPLAINT (Manual / CPGRAMS) ───────────────────────────────────────
 export const createComplaint = async (data: IComplaintCreate, userId: number) => {
-  const complaintCode = generateComplaintCode();
   const source = data.complaint_source ?? "manual";
   const refNo = deriveManualRefNo(source, data);
 
@@ -84,8 +104,7 @@ export const createComplaint = async (data: IComplaintCreate, userId: number) =>
   `;
 
   const now = new Date();
-  const values = [
-    complaintCode,
+  const baseValues = [
     source,
     refNo,
     data.portal_registration_number ?? null,
@@ -110,16 +129,24 @@ export const createComplaint = async (data: IComplaintCreate, userId: number) =>
     userId,
   ];
 
-  try {
-    const [result] = await pool.execute<ResultSetHeader>(query, values);
-    await recordStatusChange(result.insertId, null, "pending", userId, "Complaint registered");
-    return { id: result.insertId, complaint_code: complaintCode };
-  } catch (err: any) {
-    if (err?.code === "ER_DUP_ENTRY") {
-      throw new Error(`A complaint with this reference number already exists for ${source.toUpperCase()}`);
+  // complaint_code collisions (random 5-digit id) are re-rolled and retried —
+  // distinguished from a genuine complaint_ref_no duplicate, which must still
+  // surface as a real validation error rather than being silently retried.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const complaintCode = generateComplaintCode();
+    try {
+      const [result] = await pool.execute<ResultSetHeader>(query, [complaintCode, ...baseValues]);
+      await recordStatusChange(result.insertId, null, "pending", userId, "Complaint registered");
+      return { id: result.insertId, complaint_code: complaintCode };
+    } catch (err: any) {
+      if (isComplaintCodeCollision(err) && attempt < 4) continue;
+      if (err?.code === "ER_DUP_ENTRY") {
+        throw new Error(`A complaint with this reference number already exists for ${source.toUpperCase()}`);
+      }
+      throw err;
     }
-    throw err;
   }
+  throw new Error("Unable to generate a unique complaint code");
 };
 
 // ─── ADD DOCUMENTS (evidence at creation, or ATR uploads) ──────────────────────
@@ -322,7 +349,7 @@ export const editComplaint = async (id: string, data: IComplaintUpdate) => {
 
   values.push(id);
   await pool.execute(`UPDATE complaints SET ${updates.join(", ")} WHERE id = ?`, values);
-  return { id, ...data };
+  return { ...data, id };
 };
 
 // ─── GET COMPLAINT METRICS (dashboard cards + charts) ──────────────────────────

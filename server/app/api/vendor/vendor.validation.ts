@@ -52,6 +52,8 @@ const verificationFields = (prefix: "police_verification" | "medical_verificatio
     }),
 
   body(`${prefix}_remarks`).optional({ nullable: true }).trim(),
+
+  body(`${prefix}_number`).optional({ nullable: true }).trim(),
 ];
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -125,6 +127,14 @@ export const createVendorValidation = [
     .optional()
     .isIn(["train_tsv", "station_pf", "station_stall", "station_others"])
     .withMessage("Invalid vendor type value"),
+
+  body("police_verification_number")
+    .trim()
+    .notEmpty().withMessage("Police verification number is required"),
+
+  body("medical_verification_number")
+    .trim()
+    .notEmpty().withMessage("Medical fitness certificate number is required"),
 
   ...verificationFields("police_verification"),
   ...verificationFields("medical_verification"),
@@ -211,6 +221,8 @@ export const updateVerificationValidation = [
     .optional()
     .isIn(["pending", "verified", "rejected", "expired"])
     .withMessage("Invalid verification status value"),
+
+  body("number").optional({ nullable: true }).trim(),
 
   body("issue_date")
     .optional({ nullable: true })

@@ -11,6 +11,7 @@ export interface AuthUser {
   designation: string | null;
   designation_grade?: DesignationGrade | null;
   card_signing_authority?: boolean | number;
+  card_signing_authority_designation?: string | null;
   email: string | null;
   mobile: string | null;
   is_temp_password?: boolean | number;
@@ -29,6 +30,48 @@ export interface ManagedUser extends AuthUser {
   zone_name?: string | null;
   station_name?: string | null;
   last_login_at: string | null;
+  created_at: string;
+}
+
+export type RequestApprovalStatus = "pending" | "approved" | "rejected";
+
+export interface PasswordResetRequest {
+  id: number;
+  requested_user_id: number;
+  requested_user_name: string | null;
+  requested_user_employee_id: string | null;
+  requested_by: number;
+  requested_by_name: string | null;
+  reason: string | null;
+  approval_status: RequestApprovalStatus;
+  action_taken_by: number | null;
+  action_taken_by_name: string | null;
+  action_taken_at: string | null;
+  remarks: string | null;
+  created_at: string;
+}
+
+export interface UserTransferRequest {
+  id: number;
+  user_id: number;
+  user_name: string | null;
+  employee_id: string | null;
+  from_division_id: number | null;
+  from_division_name: string | null;
+  to_division_id: number | null;
+  to_division_name: string | null;
+  from_role_id: number | null;
+  from_role_name: string | null;
+  to_role_id: number | null;
+  to_role_name: string | null;
+  reason: string | null;
+  requested_by: number;
+  requested_by_name: string | null;
+  approval_status: RequestApprovalStatus;
+  action_taken_by: number | null;
+  action_taken_by_name: string | null;
+  action_taken_at: string | null;
+  remarks: string | null;
   created_at: string;
 }
 
@@ -242,7 +285,7 @@ export interface Unit {
   sketch_map_file?: string | null;
   contractor_id: number | null;
   contractor_name?: string | null;
-  monthly_fee: number | null;
+  annual_fee: number | null;
   units_status: "active" | "expiring" | "inactive" | "inspection_pending";
   inspector_name?: string | null;
 }
@@ -286,11 +329,13 @@ export interface Vendor {
   validity_start: string | null;
   validity_end: string | null;
   police_verification_status: VerificationStatus;
+  police_verification_number: string | null;
   police_verification_issue_date: string | null;
   police_verification_valid_till: string | null;
   police_verification_remarks: string | null;
   police_verification_document: string | null;
   medical_verification_status: VerificationStatus;
+  medical_verification_number: string | null;
   medical_verification_issue_date: string | null;
   medical_verification_valid_till: string | null;
   medical_verification_remarks: string | null;
@@ -555,12 +600,16 @@ export interface Inspection {
 export type PenaltyReferenceType = "complaint" | "inspection";
 export type PenaltyApprovalStatus = "pending_approval" | "approved" | "rejected" | "revoked";
 export type PenaltyRecoveryStatus = "pending" | "partially_recovered" | "recovered" | "closed";
+export type PenaltyRecoveryVerificationStatus = "not_applicable" | "pending" | "verified" | "rejected";
+export type PenaltyDocumentType = "penalty_order" | "approval" | "recovery_receipt" | "other";
 
 export interface PenaltyDocument {
   id: number;
   penalty_id: number;
+  document_type: PenaltyDocumentType;
   document_path: string;
   original_name: string | null;
+  uploaded_by_name?: string | null;
   uploaded_at: string;
 }
 
@@ -592,6 +641,10 @@ export interface Penalty {
   revoke_reason?: string | null;
   recovery_status: PenaltyRecoveryStatus;
   recovery_amount: number;
+  payment_reference?: string | null;
+  recovery_verification_status: PenaltyRecoveryVerificationStatus;
+  recovery_verified_by_name?: string | null;
+  recovery_verified_at?: string | null;
   due_date: string | null;
   recovery_date: string | null;
   mr_number?: string | null;
@@ -633,11 +686,6 @@ export type CardTemplate = "template_a" | "template_b";
 export type CardApprovalStatus = "draft" | "pending_approval" | "approved" | "rejected";
 export type CardExpirySource = "medical" | "police_verification";
 
-export const CARD_TEMPLATE_LABELS: Record<CardTemplate, string> = {
-  template_a: "Template A — Portrait",
-  template_b: "Template B — Landscape",
-};
-
 export interface IdCard {
   id: number;
   vendor_id: number;
@@ -655,6 +703,7 @@ export interface IdCard {
   requested_by_name?: string | null;
   requested_at?: string | null;
   approved_by_name?: string | null;
+  approved_by_designation?: string | null;
   approved_at?: string | null;
   rejection_reason?: string | null;
   expiry_source?: CardExpirySource | null;
@@ -671,6 +720,9 @@ export interface IdCard {
   contractor_name?: string | null;
   contractor_mobile?: string | null;
   blood_group?: string | null;
+  address?: string | null;
+  aadhaar_number?: string | null;
+  profile_image?: string | null;
 }
 
 export interface IdCardVerification {
@@ -700,6 +752,14 @@ export interface IdCardVerification {
   blood_group: string | null;
 }
 
+export type RenewalType = "pvr" | "medical" | "both";
+
+export const RENEWAL_TYPE_LABELS: Record<RenewalType, string> = {
+  pvr: "Police Verification Report (PVR)",
+  medical: "Medical Certificate",
+  both: "PVR + Medical Certificate",
+};
+
 export interface VendorRenewal {
   id: number;
   vendor_id: number;
@@ -707,10 +767,15 @@ export interface VendorRenewal {
   full_name?: string;
   division_name?: string;
   renewal_period: string | null;
+  renewal_type: RenewalType;
   previous_expiry: string | null;
   new_expiry: string | null;
   pvr_number: string | null;
   pvr_issue_date: string | null;
+  pvr_document: string | null;
+  medical_fitness_doc: string | null;
+  medical_issue_date: string | null;
+  medical_number: string | null;
   renewals_status: "draft" | "pending_approval" | "approved" | "rejected";
 }
 

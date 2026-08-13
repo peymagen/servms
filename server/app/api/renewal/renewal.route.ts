@@ -3,7 +3,7 @@ import { type NextFunction, type Request, type Response } from "express";
 import { validationResult } from "express-validator";
 import * as renewalController from "./renewal.controller";
 import { roleAuth } from "../../common/middleware/role-auth.middleware";
-import { upload } from "../../common/middleware/multer.middleware";
+import { documentUpload } from "../../common/middleware/multer.middleware";
 import { createRenewalValidation, updateRenewalValidation } from "./renewal.validation";
 
 const validate = (req: Request, res: Response, next: NextFunction) => {
@@ -31,7 +31,10 @@ router.get("/:id", renewalController.getRenewalById);
 
 router.post(
   "/",
-  upload.single("medical_fitness_doc"),
+  documentUpload.fields([
+    { name: "medical_fitness_doc", maxCount: 1 },
+    { name: "pvr_document", maxCount: 1 },
+  ]),
   createRenewalValidation,
   validate,
   renewalController.createRenewal

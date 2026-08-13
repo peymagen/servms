@@ -1,4 +1,4 @@
-import { apiSlice } from "../store/apiSlice";
+import { apiSlice, API_BASE } from "../store/apiSlice";
 import type { CardExpirySource, CardTemplate, IdCard, IdCardVerification } from "../types";
 
 export interface IdCardFilters {
@@ -69,3 +69,28 @@ export const {
   useRejectIdCardMutation,
   useVerifyIdCardQuery,
 } = idcardApi;
+
+// Binary PDF response, not the {success,data} JSON envelope, so it's fetched
+// directly (with the bearer token) rather than through RTK Query's envelope unwrapping —
+// this also lets the caller pick either card format on demand, regardless of which
+// format the card was originally approved with.
+export async function downloadIdCardPdf(vendorId: number, template: CardTemplate) {
+  const token = localStorage.getItem("servms_token");
+  const res = await fetch(`${API_BASE}/idcards/${vendorId}/pdf?template=${template}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message ?? "Unable to download ID card PDF");
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const fileName = match?.[1] ?? `id-card-${vendorId}-${template}.pdf`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+}

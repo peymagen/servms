@@ -63,7 +63,7 @@ export const editRole = async (id: string, data: any) => {
 
   values.push(id);
   await pool.execute(`UPDATE roles SET ${updates.join(", ")} WHERE id = ?`, values);
-  return { id, ...data };
+  return { ...data, id };
 };
 
 // ─── DELETE ROLE ──────────────────────────────────────────────────────────────────

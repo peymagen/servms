@@ -34,12 +34,12 @@ export const createVendor = async (data: any, userId: number) => {
       vendor_code, full_name, father_name, date_of_birth, aadhaar_number, mobile_number, address,
       profile_image, signature_path, blood_group, vendor_type, contractor_id, unit_id, station_id, division_id, vendor_status,
       validity_start, validity_end,
-      police_verification_status, police_verification_issue_date, police_verification_valid_till,
+      police_verification_status, police_verification_number, police_verification_issue_date, police_verification_valid_till,
       police_verification_remarks, police_verification_document,
-      medical_verification_status, medical_verification_issue_date, medical_verification_valid_till,
+      medical_verification_status, medical_verification_number, medical_verification_issue_date, medical_verification_valid_till,
       medical_verification_remarks, medical_verification_document,
       created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const values = [
@@ -62,11 +62,13 @@ export const createVendor = async (data: any, userId: number) => {
     data.validity_start ?? null,
     data.validity_end ?? null,
     data.police_verification_status ?? "pending",
+    data.police_verification_number ?? null,
     data.police_verification_issue_date ?? null,
     data.police_verification_valid_till ?? null,
     data.police_verification_remarks ?? null,
     data.police_verification_document ?? null,
     data.medical_verification_status ?? "pending",
+    data.medical_verification_number ?? null,
     data.medical_verification_issue_date ?? null,
     data.medical_verification_valid_till ?? null,
     data.medical_verification_remarks ?? null,
@@ -244,9 +246,9 @@ export const editVendor = async (id: string, data: any) => {
     "address", "profile_image", "signature_path", "blood_group", "emergency_contact", "vendor_type",
     "contractor_id", "unit_id", "station_id", "division_id", "vendor_status",
     "validity_start", "validity_end",
-    "police_verification_status", "police_verification_issue_date", "police_verification_valid_till",
+    "police_verification_status", "police_verification_number", "police_verification_issue_date", "police_verification_valid_till",
     "police_verification_remarks", "police_verification_document",
-    "medical_verification_status", "medical_verification_issue_date", "medical_verification_valid_till",
+    "medical_verification_status", "medical_verification_number", "medical_verification_issue_date", "medical_verification_valid_till",
     "medical_verification_remarks", "medical_verification_document"
   ];
 
@@ -273,7 +275,7 @@ export const editVendor = async (id: string, data: any) => {
     );
   }
 
-  return { id, ...data };
+  return { ...data, id };
 };
 
 // ─── DELETE VENDOR ───────────────────────────────────────────────────────────────
@@ -381,9 +383,9 @@ export const getVendorVerification = async (id: string) => {
   const query = `
     SELECT
       id, vendor_code, full_name,
-      police_verification_status, police_verification_issue_date, police_verification_valid_till,
+      police_verification_status, police_verification_number, police_verification_issue_date, police_verification_valid_till,
       police_verification_remarks, police_verification_document,
-      medical_verification_status, medical_verification_issue_date, medical_verification_valid_till,
+      medical_verification_status, medical_verification_number, medical_verification_issue_date, medical_verification_valid_till,
       medical_verification_remarks, medical_verification_document
     FROM vendors
     WHERE id = ? AND status = 1
@@ -396,7 +398,7 @@ export const getVendorVerification = async (id: string) => {
 const updateVerification = async (
   id: string,
   prefix: "police_verification" | "medical_verification",
-  data: { status?: string; issue_date?: string; valid_till?: string; remarks?: string },
+  data: { status?: string; number?: string; issue_date?: string; valid_till?: string; remarks?: string },
   documentPath?: string
 ) => {
   const updates: string[] = [];
@@ -405,6 +407,10 @@ const updateVerification = async (
   if (data.status !== undefined) {
     updates.push(`\`${prefix}_status\` = ?`);
     values.push(data.status);
+  }
+  if (data.number !== undefined) {
+    updates.push(`\`${prefix}_number\` = ?`);
+    values.push(data.number);
   }
   if (data.issue_date !== undefined) {
     updates.push(`\`${prefix}_issue_date\` = ?`);
@@ -435,13 +441,13 @@ const updateVerification = async (
 
 export const updatePoliceVerification = (
   id: string,
-  data: { status?: string; issue_date?: string; valid_till?: string; remarks?: string },
+  data: { status?: string; number?: string; issue_date?: string; valid_till?: string; remarks?: string },
   documentPath?: string
 ) => updateVerification(id, "police_verification", data, documentPath);
 
 export const updateMedicalVerification = (
   id: string,
-  data: { status?: string; issue_date?: string; valid_till?: string; remarks?: string },
+  data: { status?: string; number?: string; issue_date?: string; valid_till?: string; remarks?: string },
   documentPath?: string
 ) => updateVerification(id, "medical_verification", data, documentPath);
 

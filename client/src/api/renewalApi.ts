@@ -1,5 +1,5 @@
 import { apiSlice } from "../store/apiSlice";
-import type { VendorRenewal } from "../types";
+import type { RenewalType, VendorRenewal } from "../types";
 
 export interface RenewalListResult {
   total: number;
@@ -9,10 +9,25 @@ export interface RenewalListResult {
 export interface CreateRenewalBody {
   vendor_id: number;
   renewal_period?: string;
+  renewal_type?: RenewalType;
   new_expiry?: string;
   pvr_number?: string;
   pvr_issue_date?: string;
+  pvr_document?: File;
+  medical_issue_date?: string;
+  medical_number?: string;
+  medical_fitness_doc?: File;
   renewals_status?: VendorRenewal["renewals_status"];
+}
+
+function toFormData(data: CreateRenewalBody): FormData {
+  const formData = new FormData();
+  Object.entries(data).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    if (value instanceof File) formData.append(key, value);
+    else formData.append(key, String(value));
+  });
+  return formData;
 }
 
 export const renewalApi = apiSlice.injectEndpoints({
@@ -28,7 +43,7 @@ export const renewalApi = apiSlice.injectEndpoints({
           : [{ type: "Renewal" as const, id: "LIST" }],
     }),
     createRenewal: builder.mutation<{ id: number }, CreateRenewalBody>({
-      query: (body) => ({ url: "/renewals", method: "POST", body }),
+      query: (body) => ({ url: "/renewals", method: "POST", body: toFormData(body) }),
       invalidatesTags: [{ type: "Renewal" as const, id: "LIST" }],
     }),
     updateRenewalStatus: builder.mutation<unknown, { id: number; renewals_status: "approved" | "rejected" }>({

@@ -158,7 +158,7 @@ export const editContractor = async (id: string, data: any) => {
   values.push(id);
   const query = `UPDATE contractors SET ${updates.join(", ")} WHERE id = ?`;
   await pool.execute(query, values);
-  return { id, ...data };
+  return { ...data, id };
 };
 
 // ─── DELETE CONTRACTOR ───────────────────────────────────────────────────────────

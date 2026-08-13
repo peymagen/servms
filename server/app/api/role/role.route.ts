@@ -4,7 +4,8 @@ import { validationResult } from "express-validator";
 import asyncHandler from "express-async-handler";
 import * as roleController from "./role.controller";
 import { roleAuth } from "../../common/middleware/role-auth.middleware";
-import { requirePermission } from "../../common/middleware/permission.middleware";
+import { requirePermission, requireAnyRole } from "../../common/middleware/permission.middleware";
+import { ROLE } from "../../common/constants/roles";
 import {
   createRoleValidation,
   updateRoleValidation,
@@ -52,9 +53,14 @@ router.get("/:id/permissions", allowSelfOrRequireRoleView, roleController.getRol
 
 router.post("/", requirePermission("role_management", "create"), createRoleValidation, validate, roleController.createRole);
 router.patch("/:id", requirePermission("role_management", "edit"), updateRoleValidation, validate, roleController.editRole);
+// Permission-matrix editing: HQ Admin and Divisional Admin (super_admin_hq
+// passes via requireAnyRole's own bypass). Note: this was briefly narrowed to
+// HQ Admin only per the user's 2026-08-11 request, then reopened to
+// divisional_admin the same day per a follow-up request — see
+// uat-clarifications-role-admin-scope.md item 28 for the full history/rationale.
 router.patch(
   "/:id/permissions",
-  requirePermission("role_management", "edit"),
+  requireAnyRole([ROLE.HQ_ADMIN, ROLE.DIVISIONAL_ADMIN]),
   updatePermissionsValidation,
   validate,
   roleController.updateRolePermissions

@@ -41,7 +41,7 @@ export interface UnitFormData {
   area_description?: string;
   sketch_map_file?: File;
   contractor_id?: number;
-  monthly_fee?: number;
+  annual_fee?: number;
   units_status?: Unit["units_status"];
 }
 

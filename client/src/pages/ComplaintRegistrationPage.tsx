@@ -6,7 +6,7 @@ import { useGetTrainsQuery } from "../api/trainApi";
 import type { Complaint } from "../types";
 import styles from "./ComplaintRegistrationPage.module.css";
 
-type Source = "cpgrams" | "manual";
+type Source = "railmadad" | "cpgrams" | "manual";
 
 const PRIORITIES: Array<{ value: Complaint["priority"]; label: string; icon: ReactNode }> = [
   { value: "low", label: "Low", icon: <ExclaimIcon /> },
@@ -24,6 +24,7 @@ export default function ComplaintRegistrationPage() {
   const [portalRegNo, setPortalRegNo] = useState("");
   const [dakRefNo, setDakRefNo] = useState("");
   const [eofficeNo, setEofficeNo] = useState("");
+  const [railMadadRefNo, setRailMadadRefNo] = useState("");
 
   const [divisionId, setDivisionId] = useState<number | "">("");
   const { data: stations = [] } = useGetStationsQuery(divisionId || undefined);
@@ -55,7 +56,12 @@ export default function ComplaintRegistrationPage() {
   const [error, setError] = useState<string | null>(null);
 
   const referenceLabel = useMemo(
-    () => (source === "cpgrams" ? "Portal Registration Number" : "Manual Dak / E-Office Reference"),
+    () =>
+      source === "cpgrams"
+        ? "Portal Registration Number"
+        : source === "railmadad"
+        ? "RailMadad Reference Number"
+        : "Manual Dak / E-Office Reference",
     [source]
   );
 
@@ -76,6 +82,10 @@ export default function ComplaintRegistrationPage() {
       setError("Portal Registration Number is required for CPGRAMS complaints");
       return;
     }
+    if (source === "railmadad" && !railMadadRefNo.trim()) {
+      setError("RailMadad Reference Number is required for RailMadad complaints");
+      return;
+    }
 
     try {
       await createComplaint({
@@ -83,6 +93,7 @@ export default function ComplaintRegistrationPage() {
         portal_registration_number: source === "cpgrams" ? portalRegNo : undefined,
         manual_dak_reference_number: source === "manual" ? dakRefNo || undefined : undefined,
         eoffice_computer_number: source === "manual" ? eofficeNo || undefined : undefined,
+        complaint_ref_no: source === "railmadad" ? railMadadRefNo : undefined,
         unit_id: Number(unitId),
         division_id: divisionId || undefined,
         train_id: trainId || undefined,
@@ -111,8 +122,8 @@ export default function ComplaintRegistrationPage() {
           <div>
             <h1 className={styles.title}>Complaint Registration</h1>
             <p className={styles.subtitle}>
-              Register a CPGRAMS or Manual complaint. RailMadad complaints are registered in bulk via Excel
-              import.
+              Register a CPGRAMS, Manual, or single RailMadad complaint. RailMadad complaints can also be
+              registered in bulk via Excel import.
             </p>
           </div>
           <div className={styles.headerActions}>
@@ -133,14 +144,14 @@ export default function ComplaintRegistrationPage() {
               <InfoIcon /> Complaint Source
             </h2>
             <div className={styles.priorityRow}>
-              {(["manual", "cpgrams"] as Source[]).map((s) => (
+              {(["manual", "cpgrams", "railmadad"] as Source[]).map((s) => (
                 <button
                   type="button"
                   key={s}
                   className={source === s ? styles.priorityTileActive : styles.priorityTile}
                   onClick={() => setSource(s)}
                 >
-                  <span>{s === "manual" ? "Manual Complaint" : "CPGRAMS"}</span>
+                  <span>{s === "manual" ? "Manual Complaint" : s === "cpgrams" ? "CPGRAMS" : "RailMadad"}</span>
                 </button>
               ))}
             </div>
@@ -149,6 +160,12 @@ export default function ComplaintRegistrationPage() {
                 <Field label="Portal Registration Number">
                   <div className={styles.inputWithIcon}>
                     <input value={portalRegNo} onChange={(e) => setPortalRegNo(e.target.value)} required />
+                  </div>
+                </Field>
+              ) : source === "railmadad" ? (
+                <Field label="RailMadad Reference Number">
+                  <div className={styles.inputWithIcon}>
+                    <input value={railMadadRefNo} onChange={(e) => setRailMadadRefNo(e.target.value)} required />
                   </div>
                 </Field>
               ) : (

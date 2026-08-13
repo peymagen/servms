@@ -9,6 +9,10 @@ export const createRenewalValidation = [
     .optional({ nullable: true })
     .trim(),
 
+  body("renewal_type")
+    .optional({ nullable: true })
+    .isIn(["pvr", "medical", "both"]).withMessage("Invalid renewal type"),
+
   body("new_expiry")
     .optional({ nullable: true })
     .isDate().withMessage("Must be a valid new expiry date"),
@@ -20,6 +24,14 @@ export const createRenewalValidation = [
   body("pvr_issue_date")
     .optional({ nullable: true })
     .isDate().withMessage("Must be a valid PVR issue date"),
+
+  body("medical_issue_date")
+    .optional({ nullable: true })
+    .isDate().withMessage("Must be a valid medical certificate issue date"),
+
+  body("medical_number")
+    .optional({ nullable: true })
+    .trim(),
 
   body("renewals_status")
     .optional()
