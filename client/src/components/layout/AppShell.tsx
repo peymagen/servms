@@ -30,11 +30,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/reports", label: "Reports", icon: <IconReport />, module: "reports" },
 ];
 
-const FOOTER_NAV_ITEMS: NavItem[] = [
-  { to: "/settings", label: "Settings", icon: <IconGear /> },
-  { to: "/help", label: "Help Center", icon: <IconHelpCircle /> },
-];
-
 export default function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, can } = useAuth();
   const navigate = useNavigate();
@@ -81,21 +76,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <nav className={styles.footerNav}>
-          {FOOTER_NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                isActive ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem
-              }
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
-
         <button className={styles.logoutBtn} onClick={logout}>
           <IconLogout /> Logout
         </button>
@@ -115,12 +95,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
               {unreadCount > 0 && (
                 <span className={styles.notificationDot}>{unreadCount > 9 ? "9+" : unreadCount}</span>
               )}
-            </button>
-            <button className={styles.iconBtn} aria-label="Help" type="button">
-              <IconHelpCircle />
-            </button>
-            <button className={styles.iconBtn} aria-label="Settings" type="button">
-              <IconGear />
             </button>
           </div>
           <div className={styles.userBadge}>
@@ -286,34 +260,6 @@ function IconReport() {
         strokeWidth="1.6"
       />
       <path d="M9 12h6M9 16h6M9 9h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconGear() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M19.4 13a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V19a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 17.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 13 1.65 1.65 0 0 0 3.17 12H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 6.6a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 2.28a1.65 1.65 0 0 0 1-1.51V.6a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 2.28a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 6.6a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"
-        stroke="currentColor"
-        strokeWidth="1.3"
-      />
-    </svg>
-  );
-}
-
-function IconHelpCircle() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M9.5 9.2a2.5 2.5 0 0 1 4.8.9c0 1.7-2.3 1.8-2.3 3.4"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <circle cx="12" cy="17" r="0.9" fill="currentColor" />
     </svg>
   );
 }

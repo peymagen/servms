@@ -31,6 +31,7 @@ export interface IdCardRenderData {
   divisionName: string | null;
   department: string | null;
   bloodGroup: string | null;
+  aadhaarNumber: string | null;
   photoPath: string | null;
   vendorSignaturePath: string | null;
   cardNumber: string;
@@ -74,6 +75,41 @@ function fmtDate(value: string | null): string {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function qrFmtDate(value: string | null): string {
+  if (!value) return "N/A";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function maskAadhaar(aadhaar: string | null): string {
+  if (!aadhaar) return "XXXX-XXXX-XXXX";
+  const digits = aadhaar.replace(/\D/g, "");
+  const last4 = digits.slice(-4).padStart(4, "X");
+  return `XXXX-XXXX-${last4}`;
+}
+
+// Plain-text QR payload per Railway Board Commercial Circular 13/2025 —
+// a scanner must show readable fields directly, not a JSON blob.
+export function buildQrText(payload: IQrPayload): string {
+  const nameAddress = [payload.vendor_name, payload.address].filter(Boolean).join(", ") || "N/A";
+  const issuingAuthority = [payload.issuing_authority_name, payload.issuing_authority_designation]
+    .filter(Boolean)
+    .join(", ") || "N/A";
+  return [
+    `Name & Address: ${nameAddress}`,
+    `Aadhaar No: ${payload.aadhaar ?? "N/A"}`,
+    `PVR Validity: ${qrFmtDate(payload.pvr_validity)}`,
+    `Medical Validity: ${qrFmtDate(payload.medical_validity)}`,
+    `Unit: ${payload.unit ?? "N/A"}`,
+    `Vendor Type: ${payload.vendor_type}`,
+    `Contractor: ${payload.contractor ?? "N/A"}`,
+    `Validity of ID Card: ${qrFmtDate(payload.id_card_validity)}`,
+    `Issuing Authority: ${issuingAuthority}`,
+    `Verify: ${payload.verification_url}`,
+  ].join("\n");
+}
+
 function drawCentered(page: PDFPage, text: string, centerX: number, y: number, font: PDFFont, size: number, color = DARK) {
   const width = font.widthOfTextAtSize(text, size);
   page.drawText(text, { x: centerX - width / 2, y, size, font, color });
@@ -87,7 +123,7 @@ async function embedAll(doc: PDFDocument, data: IdCardRenderData) {
 }
 
 export const renderIdCardPdf = async (
-  _template: CardTemplate,
+  template: CardTemplate,
   data: IdCardRenderData,
   qrPayload: IQrPayload
 ): Promise<Uint8Array> => {
@@ -96,7 +132,10 @@ export const renderIdCardPdf = async (
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
 
-  const qrPng = await QRCode.toBuffer(JSON.stringify(qrPayload), { margin: 1, width: 200 });
+  // margin 4 = the QR spec's minimum quiet zone — a thinner border makes a small
+  // printed code (~2cm on the physical card) unreliable to scan even though the
+  // encoded content is fine.
+  const qrPng = await QRCode.toBuffer(buildQrText(qrPayload), { margin: 4, width: 200, errorCorrectionLevel: "M" });
   const qrImage = await doc.embedPng(qrPng);
   const { photo, vendorSignature, authoritySignature } = await embedAll(doc, data);
 
@@ -108,18 +147,28 @@ export const renderIdCardPdf = async (
   const backX = MARGIN + CARD_W + GAP;
   const cardY = MARGIN;
 
-  drawCardFrame(page, frontX, cardY);
-  drawFrontFace(page, frontX, cardY, font, bold, photo, vendorSignature, authoritySignature, data);
+  if (template === "template_a") {
+    // Format 1 (Annexure B) — plain "Indian Railway" header, no ON CONTRACT side strip.
+    drawCardFrame(page, frontX, cardY, false);
+    drawFrontFaceFormat1(page, frontX, cardY, font, bold, photo, vendorSignature, data);
 
-  drawCardFrame(page, backX, cardY);
-  drawBackFace(page, backX, cardY, font, bold, italic, qrImage, data);
+    drawCardFrame(page, backX, cardY, false);
+    drawBackFaceFormat1(page, backX, cardY, font, bold, italic, qrImage, data);
+  } else {
+    // Format 2 (Annexure-II) — "Entry Pass" header with ON CONTRACT side strip.
+    drawCardFrame(page, frontX, cardY, true);
+    drawFrontFace(page, frontX, cardY, font, bold, photo, vendorSignature, authoritySignature, data);
+
+    drawCardFrame(page, backX, cardY, true);
+    drawBackFace(page, backX, cardY, font, bold, italic, qrImage, data);
+  }
 
   return doc.save();
 };
 
-function drawCardFrame(page: PDFPage, x: number, y: number) {
+function drawCardFrame(page: PDFPage, x: number, y: number, withStrip: boolean) {
   page.drawRectangle({ x, y, width: CARD_W, height: CARD_H, color: WHITE, borderColor: ORANGE, borderWidth: 1.5 });
-  drawSideStrip(page, x, y, CARD_H);
+  if (withStrip) drawSideStrip(page, x, y, CARD_H);
 }
 
 function drawSideStrip(page: PDFPage, x: number, y: number, height: number) {
@@ -255,6 +304,107 @@ function drawBackFace(
   page.drawText("Please surrender to issuing authority on", { x: contentX + 6, y: cursorY, size: 4.8, font: italic, color: MUTED });
   cursorY -= 7;
   page.drawText("completion/termination of contractual services.", { x: contentX + 6, y: cursorY, size: 4.8, font: italic, color: MUTED });
+
+  drawCentered(page, `Card No: ${data.cardNumber}`, centerX, y + 6, font, 5, MUTED);
+}
+
+function drawFrontFaceFormat1(
+  page: PDFPage,
+  x: number,
+  y: number,
+  font: PDFFont,
+  bold: PDFFont,
+  photo: Awaited<ReturnType<PDFDocument["embedPng"]>> | null,
+  vendorSignature: Awaited<ReturnType<PDFDocument["embedPng"]>> | null,
+  data: IdCardRenderData
+) {
+  const centerX = x + CARD_W / 2;
+
+  drawCentered(page, "Indian Railway", centerX, y + CARD_H - 20, bold, 13, ORANGE);
+  drawCentered(page, `ID Card No. ${data.cardNumber}`, centerX, y + CARD_H - 32, font, 7, MUTED);
+
+  const photoSize = Math.min(CARD_W - 16, 90);
+  const photoX = centerX - photoSize / 2;
+  const photoY = y + CARD_H - 48 - photoSize;
+  page.drawRectangle({ x: photoX, y: photoY, width: photoSize, height: photoSize, color: ORANGE_LIGHT, borderColor: ORANGE, borderWidth: 1 });
+  if (photo) {
+    const scale = Math.min(photoSize / photo.width, photoSize / photo.height);
+    page.drawImage(photo, {
+      x: photoX + (photoSize - photo.width * scale) / 2,
+      y: photoY + (photoSize - photo.height * scale) / 2,
+      width: photo.width * scale,
+      height: photo.height * scale,
+    });
+  }
+
+  let cursorY = photoY - 10;
+  if (vendorSignature) {
+    const maxW = CARD_W - 20;
+    const scale = Math.min(maxW / vendorSignature.width, 16 / vendorSignature.height);
+    page.drawImage(vendorSignature, {
+      x: centerX - (vendorSignature.width * scale) / 2,
+      y: cursorY - 14,
+      width: vendorSignature.width * scale,
+      height: vendorSignature.height * scale,
+    });
+  }
+  page.drawLine({ start: { x: x + 10, y: cursorY - 16 }, end: { x: x + CARD_W - 10, y: cursorY - 16 }, thickness: 0.5, color: MUTED });
+  drawCentered(page, "Signature of card holder", centerX, cursorY - 26, font, 5.5, MUTED);
+
+  cursorY -= 44;
+  page.drawText(`Name: ${data.fullName}`, { x: x + 8, y: cursorY, size: 9, font: bold, color: DARK });
+
+  cursorY -= 18;
+  const label = "Issuing Authority";
+  const labelWidth = font.widthOfTextAtSize(label, 5.5);
+  page.drawText(label, { x: x + CARD_W - 10 - labelWidth, y: cursorY, size: 5.5, font, color: MUTED });
+  if (data.signingAuthorityName) {
+    cursorY -= 8;
+    const nameWidth = font.widthOfTextAtSize(data.signingAuthorityName, 5.5);
+    page.drawText(data.signingAuthorityName, { x: x + CARD_W - 10 - nameWidth, y: cursorY, size: 5.5, font, color: DARK });
+  }
+}
+
+function drawBackFaceFormat1(
+  page: PDFPage,
+  x: number,
+  y: number,
+  font: PDFFont,
+  bold: PDFFont,
+  italic: PDFFont,
+  qrImage: Awaited<ReturnType<PDFDocument["embedPng"]>>,
+  data: IdCardRenderData
+) {
+  const centerX = x + CARD_W / 2;
+
+  const qrSize = 2 * 10 * MM * (CARD_W / (4.25 * 10 * MM));
+  const qrBoxSize = Math.min(qrSize, CARD_W * 0.42);
+  const qrY = y + CARD_H - 14 - qrBoxSize;
+  page.drawImage(qrImage, { x: x + 6, y: qrY, width: qrBoxSize, height: qrBoxSize });
+
+  const bgBoxSize = qrBoxSize * 0.75;
+  const bgX = x + CARD_W - bgBoxSize - 6;
+  const bgY = qrY + (qrBoxSize - bgBoxSize) / 2;
+  page.drawRectangle({ x: bgX, y: bgY, width: bgBoxSize, height: bgBoxSize, color: ORANGE_LIGHT, borderColor: ORANGE, borderWidth: 1 });
+  drawCentered(page, data.bloodGroup ?? "—", bgX + bgBoxSize / 2, bgY + bgBoxSize / 2 - 6, bold, 14, ORANGE);
+  drawCentered(page, "Blood Group", bgX + bgBoxSize / 2, bgY - 8, font, 4.5, MUTED);
+
+  let cursorY = qrY - 24;
+  drawCentered(page, data.department ?? "—", centerX, cursorY, bold, 11, DARK);
+  cursorY -= 18;
+  drawCentered(page, data.contractorMobile ?? "—", centerX, cursorY, bold, 12, ORANGE);
+  cursorY -= 16;
+  drawCentered(page, maskAadhaar(data.aadhaarNumber), centerX, cursorY, bold, 10, DARK);
+
+  cursorY -= 16;
+  page.drawLine({ start: { x: x + 8, y: cursorY }, end: { x: x + CARD_W - 8, y: cursorY }, thickness: 0.5, color: MUTED });
+
+  cursorY -= 12;
+  drawCentered(page, "Instruction", centerX, cursorY, bold, 4.8, MUTED);
+  cursorY -= 8;
+  drawCentered(page, "Please surrender to issuing authority on", centerX, cursorY, italic, 4.8, MUTED);
+  cursorY -= 7;
+  drawCentered(page, "completion/termination of contractual services.", centerX, cursorY, italic, 4.8, MUTED);
 
   drawCentered(page, `Card No: ${data.cardNumber}`, centerX, y + 6, font, 5, MUTED);
 }

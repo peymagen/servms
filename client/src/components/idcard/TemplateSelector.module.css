@@ -1,0 +1,122 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.card,
+.cardSelected {
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cardSelected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-info-bg);
+}
+
+.radioRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.name {
+  font-size: 12.5px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.checkmark {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.description {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.selectBtn,
+.selectBtnActive {
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.selectBtnActive {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.previewCard {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  height: 140px;
+  background: #fff;
+}
+
+.previewStrip {
+  writing-mode: vertical-rl;
+  background: #e87316;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 6px 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.previewBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+}
+
+.previewHeaderTitle {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #e87316;
+  text-align: center;
+}
+
+.previewHeaderSubtitle {
+  font-size: 7.5px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.previewPhoto {
+  width: 46px;
+  height: 46px;
+  border: 1px solid #e87316;
+  background: #fdecdc;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.previewName {
+  font-size: 8px;
+  font-weight: 700;
+  margin-top: auto;
+}

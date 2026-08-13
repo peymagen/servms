@@ -251,7 +251,7 @@ async function main() {
     // 7. Insert Users
     console.log("Inserting users...");
     const passwordHash = await hashPassword("admin123");
-    const superadminHash = await hashPassword("superadmin123");
+    const superadminHash = await hashPassword("superadmin123"); 
 
     // Super Admin HQ — username renamed to "superadminhq" per UAT requirement
     const [superUserRes] = await pool.execute(
@@ -423,8 +423,8 @@ async function main() {
     const unitIds: Record<string, number> = {};
     for (const unt of units) {
       const [res] = await pool.execute(
-        `INSERT INTO units 
-        (unit_code, unit_name, station_id, platform_location, contractor_id, monthly_fee, units_status) 
+        `INSERT INTO units
+        (unit_code, unit_name, station_id, platform_location, contractor_id, annual_fee, units_status)
         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           unt.code,

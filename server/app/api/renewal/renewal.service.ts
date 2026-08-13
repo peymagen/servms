@@ -13,19 +13,23 @@ export const createRenewal = async (data: any, userId: number) => {
 
   const query = `
     INSERT INTO vendor_renewals (
-      vendor_id, renewal_period, previous_expiry, new_expiry, medical_fitness_doc,
-      pvr_number, pvr_issue_date, renewals_status, submitted_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      vendor_id, renewal_period, renewal_type, previous_expiry, new_expiry, medical_fitness_doc,
+      medical_issue_date, medical_number, pvr_number, pvr_issue_date, pvr_document, renewals_status, submitted_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const values = [
     data.vendor_id,
     data.renewal_period ?? "3 Years Extension (Standard)",
+    data.renewal_type ?? "pvr",
     vendorRows[0].validity_end ?? null,
     data.new_expiry ?? null,
     data.medical_fitness_doc ?? null,
+    data.medical_issue_date ?? null,
+    data.medical_number ?? null,
     data.pvr_number ?? null,
     data.pvr_issue_date ?? null,
+    data.pvr_document ?? null,
     data.renewals_status ?? "draft",
     userId,
   ];

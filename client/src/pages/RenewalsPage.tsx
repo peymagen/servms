@@ -5,12 +5,25 @@ import {
   useUpdateRenewalStatusMutation,
 } from "../api/renewalApi";
 import { useGetVendorsLiteQuery } from "../api/mastersApi";
-import type { VendorRenewal } from "../types";
+import { RENEWAL_TYPE_LABELS, type RenewalType, type VendorRenewal } from "../types";
 import Field from "../components/ui/Field";
 import Pagination from "../components/ui/Pagination";
 import styles from "../styles/listPage.module.css";
 
 const LIMIT = 10;
+const ALLOWED_DOC_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"];
+const MAX_DOC_SIZE = 5 * 1024 * 1024;
+
+function validateDocFile(file: File): string | null {
+  const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+  if (!ALLOWED_DOC_EXTENSIONS.includes(ext)) {
+    return "Only PDF, JPG, and PNG files are supported.";
+  }
+  if (file.size > MAX_DOC_SIZE) {
+    return "File is too large. Maximum size is 5MB.";
+  }
+  return null;
+}
 
 const STATUS_LABELS: Record<VendorRenewal["renewals_status"], string> = {
   draft: "Draft",
@@ -55,9 +68,10 @@ export default function RenewalsPage() {
           <thead>
             <tr>
               <th>Vendor</th>
+              <th>Renewal Type</th>
               <th>Renewal Period</th>
               <th>New Expiry</th>
-              <th>PVR Number</th>
+              <th>Reference</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -65,13 +79,13 @@ export default function RenewalsPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} className={styles.emptyCell}>
+                <td colSpan={7} className={styles.emptyCell}>
                   Loading…
                 </td>
               </tr>
             ) : renewals.length === 0 ? (
               <tr>
-                <td colSpan={6} className={styles.emptyCell}>
+                <td colSpan={7} className={styles.emptyCell}>
                   No renewal requests yet.
                 </td>
               </tr>
@@ -82,9 +96,23 @@ export default function RenewalsPage() {
                     <div className={styles.strong}>{r.full_name}</div>
                     <div className={styles.sub}>{r.vendor_code}</div>
                   </td>
+                  <td>{RENEWAL_TYPE_LABELS[r.renewal_type] ?? "—"}</td>
                   <td>{r.renewal_period ?? "—"}</td>
                   <td>{r.new_expiry ? new Date(r.new_expiry).toLocaleDateString() : "—"}</td>
-                  <td>{r.pvr_number ?? "—"}</td>
+                  <td>
+                    {r.renewal_type !== "medical" && (
+                      <div>
+                        {r.pvr_number ? `PVR: ${r.pvr_number}` : "PVR: —"}
+                        {r.pvr_document ? " (doc uploaded)" : ""}
+                      </div>
+                    )}
+                    {r.renewal_type !== "pvr" && (
+                      <div className={styles.sub}>
+                        {r.medical_number ? `Medical No: ${r.medical_number}` : "Medical No: —"}
+                        {r.medical_fitness_doc ? " (doc uploaded)" : ""}
+                      </div>
+                    )}
+                  </td>
                   <td>
                     <span
                       className={
@@ -128,13 +156,34 @@ export default function RenewalsPage() {
 function NewRenewalModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [vendorId, setVendorId] = useState<number | "">("");
   const [renewalPeriod, setRenewalPeriod] = useState("3 Years Extension (Standard)");
+  const [renewalType, setRenewalType] = useState<RenewalType>("pvr");
   const [newExpiry, setNewExpiry] = useState("");
   const [pvrNumber, setPvrNumber] = useState("");
   const [pvrIssueDate, setPvrIssueDate] = useState("");
+  const [pvrDoc, setPvrDoc] = useState<File | null>(null);
+  const [medicalIssueDate, setMedicalIssueDate] = useState("");
+  const [medicalNumber, setMedicalNumber] = useState("");
+  const [medicalDoc, setMedicalDoc] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const { data: vendors = [] } = useGetVendorsLiteQuery();
   const [createRenewal, { isLoading: isSubmitting }] = useCreateRenewalMutation();
+
+  const showPvrFields = renewalType === "pvr" || renewalType === "both";
+  const showMedicalFields = renewalType === "medical" || renewalType === "both";
+
+  function handleDocChange(file: File | null, setter: (f: File | null) => void) {
+    if (file) {
+      const validationError = validateDocFile(file);
+      if (validationError) {
+        setError(validationError);
+        setter(null);
+        return;
+      }
+    }
+    setError(null);
+    setter(file);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -143,9 +192,14 @@ function NewRenewalModal({ onClose, onCreated }: { onClose: () => void; onCreate
       await createRenewal({
         vendor_id: Number(vendorId),
         renewal_period: renewalPeriod,
+        renewal_type: renewalType,
         new_expiry: newExpiry || undefined,
-        pvr_number: pvrNumber || undefined,
-        pvr_issue_date: pvrIssueDate || undefined,
+        pvr_number: showPvrFields ? pvrNumber || undefined : undefined,
+        pvr_issue_date: showPvrFields ? pvrIssueDate || undefined : undefined,
+        pvr_document: showPvrFields ? pvrDoc ?? undefined : undefined,
+        medical_issue_date: showMedicalFields ? medicalIssueDate || undefined : undefined,
+        medical_number: showMedicalFields ? medicalNumber || undefined : undefined,
+        medical_fitness_doc: showMedicalFields ? medicalDoc ?? undefined : undefined,
         renewals_status: "pending_approval",
       }).unwrap();
       onCreated();
@@ -173,6 +227,13 @@ function NewRenewalModal({ onClose, onCreated }: { onClose: () => void; onCreate
               ))}
             </select>
           </Field>
+          <Field label="Renewal Type" wide>
+            <select value={renewalType} onChange={(e) => setRenewalType(e.target.value as RenewalType)}>
+              <option value="pvr">Police Verification Report (PVR)</option>
+              <option value="medical">Medical Certificate</option>
+              <option value="both">Both (PVR + Medical Certificate)</option>
+            </select>
+          </Field>
           <Field label="Renewal Period">
             <select value={renewalPeriod} onChange={(e) => setRenewalPeriod(e.target.value)}>
               <option>1 Year Extension</option>
@@ -183,16 +244,52 @@ function NewRenewalModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <Field label="New Projected Expiry">
             <input type="date" value={newExpiry} onChange={(e) => setNewExpiry(e.target.value)} required />
           </Field>
-          <Field label="PVR Number">
-            <input
-              value={pvrNumber}
-              onChange={(e) => setPvrNumber(e.target.value)}
-              placeholder="e.g. PVR/KGP/2026/1029"
-            />
-          </Field>
-          <Field label="PVR Issue Date">
-            <input type="date" value={pvrIssueDate} onChange={(e) => setPvrIssueDate(e.target.value)} />
-          </Field>
+          {showPvrFields && (
+            <>
+              <Field label="PVR Number">
+                <input
+                  value={pvrNumber}
+                  onChange={(e) => setPvrNumber(e.target.value)}
+                  placeholder="e.g. PVR/KGP/2026/1029"
+                />
+              </Field>
+              <Field label="PVR Issue Date">
+                <input type="date" value={pvrIssueDate} onChange={(e) => setPvrIssueDate(e.target.value)} />
+              </Field>
+              <Field label="PVR Document">
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleDocChange(e.target.files?.[0] ?? null, setPvrDoc)}
+                />
+              </Field>
+            </>
+          )}
+          {showMedicalFields && (
+            <>
+              <Field label="Medical Certificate No.">
+                <input
+                  value={medicalNumber}
+                  onChange={(e) => setMedicalNumber(e.target.value)}
+                  placeholder="e.g. MED/KGP/2026/1029"
+                />
+              </Field>
+              <Field label="Medical Certificate Issue Date">
+                <input
+                  type="date"
+                  value={medicalIssueDate}
+                  onChange={(e) => setMedicalIssueDate(e.target.value)}
+                />
+              </Field>
+              <Field label="Medical Certificate Document">
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleDocChange(e.target.files?.[0] ?? null, setMedicalDoc)}
+                />
+              </Field>
+            </>
+          )}
         </div>
 
         {error && <div className={styles.errorBanner}>{error}</div>}

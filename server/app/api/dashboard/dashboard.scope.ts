@@ -73,10 +73,15 @@ export const resolveDashboardScope = async (user: any, viewParam?: string): Prom
   return { mode: "all", view: "all" };
 };
 
-// Fixed HQ toggle options per the SRS: Zone, ADRA, CKP, KGP, RNC, HQ — not
-// dynamic (confirmed with the user 2026-07-31; see HQ_TOGGLE_DIVISION_CODES above).
+// Toggle options: ADRA, CKP, KGP, RNC, HQ — not dynamic (confirmed with the
+// user 2026-07-31; see HQ_TOGGLE_DIVISION_CODES above). Per the user's
+// 2026-08-11 requests: "HQ" was briefly removed then put back, and "Zone" was
+// removed from the toggle bar. Both the "zone" and "hq" scope modes are left
+// intact in resolveDashboardScope()/scopeCondition() below regardless — "zone"
+// stays reachable for any other caller, and "hq" is still the implicit default
+// ("all" mode includes it) — only their toggle buttons come and go here.
 export const getHqToggleOptions = async (): Promise<string[]> => {
-  return ["Zone", ...HQ_TOGGLE_DIVISION_CODES, "HQ"];
+  return [...HQ_TOGGLE_DIVISION_CODES, "HQ"];
 };
 
 // Optional filter-bar narrowing, independent of the HQ toggle's division/zone/HQ

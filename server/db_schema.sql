@@ -526,6 +526,10 @@ CREATE TABLE `penalties` (
   `revoke_reason` text DEFAULT NULL,
   `recovery_status` enum('pending','partially_recovered','recovered','closed') NOT NULL DEFAULT 'pending',
   `recovery_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `payment_reference` varchar(100) DEFAULT NULL,
+  `recovery_verification_status` enum('not_applicable','pending','verified','rejected') NOT NULL DEFAULT 'not_applicable',
+  `recovery_verified_by` int(10) UNSIGNED DEFAULT NULL,
+  `recovery_verified_at` datetime DEFAULT NULL,
   `due_date` date DEFAULT NULL,
   `recovery_date` date DEFAULT NULL,
   `mr_number` varchar(50) DEFAULT NULL,
@@ -570,6 +574,7 @@ UPDATE `penalties` SET `recovery_status` = 'closed' WHERE `penalties_status` = '
 CREATE TABLE `penalty_documents` (
   `id` int(10) UNSIGNED NOT NULL,
   `penalty_id` int(10) UNSIGNED NOT NULL,
+  `document_type` enum('penalty_order','approval','recovery_receipt','other') NOT NULL DEFAULT 'other',
   `document_path` varchar(255) NOT NULL,
   `original_name` varchar(255) DEFAULT NULL,
   `uploaded_by` int(10) UNSIGNED DEFAULT NULL,
@@ -979,7 +984,7 @@ CREATE TABLE `units` (
   `area_description` text DEFAULT NULL,
   `sketch_map_file` varchar(255) DEFAULT NULL,
   `contractor_id` int(10) UNSIGNED DEFAULT NULL,
-  `monthly_fee` decimal(10,2) DEFAULT 0.00,
+  `annual_fee` decimal(10,2) DEFAULT 0.00,
   `license_period_start` date DEFAULT NULL,
   `license_period_end` date DEFAULT NULL,
   `electric_bill_valid_till` date DEFAULT NULL,
@@ -994,7 +999,7 @@ CREATE TABLE `units` (
 -- Dumping data for table `units`
 --
 
-INSERT INTO `units` (`id`, `unit_code`, `unit_name`, `station_id`, `platform_location`, `cluster_name`, `duration_type`, `contract_category`, `area_description`, `sketch_map_file`, `contractor_id`, `monthly_fee`, `license_period_start`, `license_period_end`, `units_status`, `created_by`, `created_at`, `updated_at`) VALUES
+INSERT INTO `units` (`id`, `unit_code`, `unit_name`, `station_id`, `platform_location`, `cluster_name`, `duration_type`, `contract_category`, `area_description`, `sketch_map_file`, `contractor_id`, `annual_fee`, `license_period_start`, `license_period_end`, `units_status`, `created_by`, `created_at`, `updated_at`) VALUES
 (1, 'UNT-KGP-01', 'Platform 1 Food Stall Cluster A', 1, 'Platform 1/2', NULL, 'long_term', NULL, NULL, NULL, 1, 15000.00, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26'),
 (2, 'UNT-KGP-02', 'Platform 3 Tea Stall', 1, 'Platform 1/2', NULL, 'long_term', NULL, NULL, NULL, 4, 15000.00, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26'),
 (3, 'UNT-SRC-01', 'Santragachi Platform 2 Snack Corner', 2, 'Platform 1/2', NULL, 'long_term', NULL, NULL, NULL, 7, 15000.00, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26'),
@@ -1021,6 +1026,7 @@ CREATE TABLE `users` (
   `designation` varchar(150) DEFAULT NULL,
   `designation_grade` enum('JAG','SG','SR_SUPERVISOR','JS','SS','OTHER') DEFAULT NULL,
   `card_signing_authority` tinyint(1) NOT NULL DEFAULT 0,
+  `card_signing_authority_designation` varchar(150) DEFAULT NULL,
   `email` varchar(150) DEFAULT NULL,
   `mobile` varchar(15) DEFAULT NULL,
   `password_hash` varchar(255) NOT NULL,
@@ -1042,17 +1048,69 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `employee_id`, `hrms_id`, `username`, `full_name`, `designation`, `designation_grade`, `card_signing_authority`, `email`, `mobile`, `password_hash`, `is_temp_password`, `role_id`, `division_id`, `zone_id`, `station_id`, `profile_image`, `signature_path`, `users_status`, `last_login_at`, `created_at`, `updated_at`, `status`) VALUES
-(1, 'EMP-001', NULL, 'superadminhq', 'HQ Superadmin User', 'Sr. Administrator', NULL, 0, 'superadmin@cris.org.in', '9999999999', '$2b$12$Ko8ua7pkwnAlwaDFd8Y8JOd8KfM/y62.PbtYzkV6u1JllZy3edUSS', 0, 1, NULL, NULL, NULL, NULL, NULL, 'active', '2026-07-11 18:50:29', '2026-07-11 13:05:26', '2026-07-11 13:20:29', 1),
-(2, 'SER-ADM-4421', NULL, 'arun_sharma', 'Arun Sharma', 'Assistant Comm. Manager', NULL, 0, 'arun.sharma@ser.railnet.gov.in', '9830011111', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 1, NULL, NULL, NULL, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(3, 'SER-INS-2908', NULL, 'kiran_maurya', 'Kiran Maurya', 'Station Inspector', NULL, 0, 'kiran.m@ser.railnet.gov.in', '9830022222', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 3, 1, NULL, 1, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(4, 'SER-DIV-8832', NULL, 'pratik_patel', 'Pratik Patel', 'Section Officer', NULL, 0, 'pratik.p@ser.railnet.gov.in', '9830033333', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 3, NULL, 4, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-12 18:25:41', 1),
-(5, 'SER-ADM-5521', NULL, 'sanjay_jha', 'Sanjay Jha', 'Senior Clerk', NULL, 0, 'sanjay.jha@ser.railnet.gov.in', '9830044444', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 1, NULL, NULL, NULL, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(6, 'SER-INS-1120', NULL, 'rina_tiwari', 'Rina Tiwari', 'Health Inspector', NULL, 0, 'rina.tiwari@ser.railnet.gov.in', '9830055555', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 3, 1, NULL, 2, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(7, 'EMP-ADMIN_KGP', NULL, 'admin_kgp', 'R. Prasad', 'Divisional Administrator', 'JS', 1, 'kgp_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 1, NULL, 1, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(8, 'EMP-ADMIN_ADRA', NULL, 'admin_adra', 'B. K. Sharma', 'Divisional Administrator', 'JS', 1, 'adra_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 2, NULL, 3, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(9, 'EMP-ADMIN_CKP', NULL, 'admin_ckp', 'S. K. Roy', 'Divisional Administrator', 'JS', 1, 'ckp_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 3, NULL, 4, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(10, 'EMP-ADMIN_RNC', NULL, 'admin_rnc', 'A. K. Mehta', 'Divisional Administrator', 'JS', 1, 'rnc_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 4, NULL, 5, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1);
+INSERT INTO `users` (`id`, `employee_id`, `hrms_id`, `username`, `full_name`, `designation`, `designation_grade`, `card_signing_authority`, `card_signing_authority_designation`, `email`, `mobile`, `password_hash`, `is_temp_password`, `role_id`, `division_id`, `zone_id`, `station_id`, `profile_image`, `signature_path`, `users_status`, `last_login_at`, `created_at`, `updated_at`, `status`) VALUES
+(1, 'EMP-001', NULL, 'superadminhq', 'HQ Superadmin User', 'Sr. Administrator', NULL, 0, NULL, 'superadmin@cris.org.in', '9999999999', '$2b$12$Ko8ua7pkwnAlwaDFd8Y8JOd8KfM/y62.PbtYzkV6u1JllZy3edUSS', 0, 1, NULL, NULL, NULL, NULL, NULL, 'active', '2026-07-11 18:50:29', '2026-07-11 13:05:26', '2026-07-11 13:20:29', 1),
+(2, 'SER-ADM-4421', NULL, 'arun_sharma', 'Arun Sharma', 'Assistant Comm. Manager', NULL, 0, NULL, 'arun.sharma@ser.railnet.gov.in', '9830011111', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 1, NULL, NULL, NULL, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(3, 'SER-INS-2908', NULL, 'kiran_maurya', 'Kiran Maurya', 'Station Inspector', NULL, 0, NULL, 'kiran.m@ser.railnet.gov.in', '9830022222', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 3, 1, NULL, 1, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(4, 'SER-DIV-8832', NULL, 'pratik_patel', 'Pratik Patel', 'Section Officer', NULL, 0, NULL, 'pratik.p@ser.railnet.gov.in', '9830033333', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 3, NULL, 4, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-12 18:25:41', 1),
+(5, 'SER-ADM-5521', NULL, 'sanjay_jha', 'Sanjay Jha', 'Senior Clerk', NULL, 0, NULL, 'sanjay.jha@ser.railnet.gov.in', '9830044444', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 1, NULL, NULL, NULL, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(6, 'SER-INS-1120', NULL, 'rina_tiwari', 'Rina Tiwari', 'Health Inspector', NULL, 0, NULL, 'rina.tiwari@ser.railnet.gov.in', '9830055555', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 3, 1, NULL, 2, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(7, 'EMP-ADMIN_KGP', NULL, 'admin_kgp', 'R. Prasad', 'Divisional Administrator', 'JS', 1, 'Divisional Administrator, Kharagpur Division', 'kgp_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 1, NULL, 1, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(8, 'EMP-ADMIN_ADRA', NULL, 'admin_adra', 'B. K. Sharma', 'Divisional Administrator', 'JS', 1, 'Divisional Administrator, Adra Division', 'adra_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 2, NULL, 3, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(9, 'EMP-ADMIN_CKP', NULL, 'admin_ckp', 'S. K. Roy', 'Divisional Administrator', 'JS', 1, 'Divisional Administrator, Chakradharpur Division', 'ckp_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 3, NULL, 4, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(10, 'EMP-ADMIN_RNC', NULL, 'admin_rnc', 'A. K. Mehta', 'Divisional Administrator', 'JS', 1, 'Divisional Administrator, Ranchi Division', 'rnc_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 4, NULL, 5, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `password_reset_requests`
+--
+-- "For any user: Request should be raised to servmshqadmin@gmail.com. System
+-- should maintain: Request ID, Requested User, Requested By, Request Date,
+-- Approval Status, Action Taken Date." — requested_user_id is the account whose
+-- password needs resetting; requested_by is whoever raised the request (the
+-- user themself, or an admin on their behalf). Approval sets the target user's
+-- password_hash to a freshly generated temp password and is_temp_password=1.
+
+CREATE TABLE `password_reset_requests` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `requested_user_id` int(10) UNSIGNED NOT NULL,
+  `requested_by` int(10) UNSIGNED NOT NULL,
+  `reason` text DEFAULT NULL,
+  `approval_status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `action_taken_by` int(10) UNSIGNED DEFAULT NULL,
+  `action_taken_at` datetime DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` tinyint(4) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_transfer_requests`
+--
+-- "Transfer Request Raised -> HQ Admin Review -> Approval -> User Division/Role
+-- Updated." target_division_id/target_role_id are nullable since a transfer can
+-- change just one of division/role (e.g. a division-only relocation, not always
+-- both) — at least one is expected to be set, enforced at the validation layer.
+
+CREATE TABLE `user_transfer_requests` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `from_division_id` int(10) UNSIGNED DEFAULT NULL,
+  `to_division_id` int(10) UNSIGNED DEFAULT NULL,
+  `from_role_id` int(10) UNSIGNED DEFAULT NULL,
+  `to_role_id` int(10) UNSIGNED DEFAULT NULL,
+  `reason` text DEFAULT NULL,
+  `requested_by` int(10) UNSIGNED NOT NULL,
+  `approval_status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `action_taken_by` int(10) UNSIGNED DEFAULT NULL,
+  `action_taken_at` datetime DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` tinyint(4) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1082,11 +1140,13 @@ CREATE TABLE `vendors` (
   `validity_start` date DEFAULT NULL,
   `validity_end` date DEFAULT NULL,
   `police_verification_status` enum('pending','verified','rejected','expired') NOT NULL DEFAULT 'pending',
+  `police_verification_number` varchar(50) DEFAULT NULL,
   `police_verification_issue_date` date DEFAULT NULL,
   `police_verification_valid_till` date DEFAULT NULL,
   `police_verification_remarks` text DEFAULT NULL,
   `police_verification_document` varchar(255) DEFAULT NULL,
   `medical_verification_status` enum('pending','verified','rejected','expired') NOT NULL DEFAULT 'pending',
+  `medical_verification_number` varchar(50) DEFAULT NULL,
   `medical_verification_issue_date` date DEFAULT NULL,
   `medical_verification_valid_till` date DEFAULT NULL,
   `medical_verification_remarks` text DEFAULT NULL,
@@ -1101,12 +1161,12 @@ CREATE TABLE `vendors` (
 -- Dumping data for table `vendors`
 --
 
-INSERT INTO `vendors` (`id`, `vendor_code`, `full_name`, `father_name`, `date_of_birth`, `aadhaar_number`, `mobile_number`, `address`, `profile_image`, `blood_group`, `emergency_contact`, `vendor_type`, `contractor_id`, `unit_id`, `station_id`, `division_id`, `vendor_status`, `validity_start`, `validity_end`, `police_verification_status`, `police_verification_issue_date`, `police_verification_valid_till`, `police_verification_remarks`, `police_verification_document`, `medical_verification_status`, `medical_verification_issue_date`, `medical_verification_valid_till`, `medical_verification_remarks`, `medical_verification_document`, `created_by`, `created_at`, `updated_at`, `status`) VALUES
-(1, 'V-2024-0891', 'Subhash Mahato', 'Raman Mahato', '1990-05-15', '345678901234', '9830012345', 'Platform 1, Kharagpur Junction', NULL, NULL, NULL, 'station_others', 1, 1, 1, 1, 'active', '2024-01-01', '2025-12-12', 'verified', NULL, NULL, NULL, NULL, 'verified', NULL, NULL, NULL, NULL, 1, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(2, 'V-2024-1102', 'Aruna Kumari', 'Shyamlal Singh', '1994-08-20', '234567890123', '9876540123', 'Bokaro Steel City, ADRA Division', NULL, NULL, NULL, 'station_others', 2, 4, 3, 2, 'active', '2022-10-01', '2028-02-25', 'verified', NULL, NULL, NULL, NULL, 'pending', NULL, NULL, NULL, NULL, 1, '2026-07-11 13:05:26', '2026-07-12 18:31:13', 1),
-(3, 'V-2024-0943', 'Rajesh Jha', 'Devendra Jha', '1988-12-10', '123456789012', '9431109876', 'Tatanagar, CKP Division', NULL, NULL, NULL, 'station_others', 3, 6, 4, 3, 'active', '2023-06-25', '2026-07-16', 'pending', NULL, NULL, NULL, NULL, 'verified', NULL, NULL, NULL, NULL, 1, '2026-07-11 13:05:26', '2026-07-11 13:30:41', 1),
-(4, 'V-2024-1288', 'Bikash Khan', 'Jalil Khan', '1992-02-14', '456789012345', '9007123456', 'Platform 1, Kharagpur Junction', NULL, NULL, NULL, 'station_others', 1, 1, 1, 1, 'active', '2024-02-03', '2026-02-02', 'verified', NULL, NULL, NULL, NULL, 'verified', NULL, NULL, NULL, NULL, 1, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(5, 'V-2026-9594', 'OM Sharma', 'prakash', '2004-11-24', '277859614719', '+916207438729', 'Jealgorah, Jharkhand', '/uploads/profile_image-1783855036812.png', NULL, NULL, 'train_tsv', 7, 4, 3, 2, 'pending', '2026-04-04', '2028-12-15', 'verified', '2022-11-24', NULL, '442254236665', NULL, 'verified', NULL, NULL, NULL, '/uploads/medical_doc-1783855036815.png', 1, '2026-07-12 11:17:16', '2026-07-12 11:17:16', 1);
+INSERT INTO `vendors` (`id`, `vendor_code`, `full_name`, `father_name`, `date_of_birth`, `aadhaar_number`, `mobile_number`, `address`, `profile_image`, `blood_group`, `emergency_contact`, `vendor_type`, `contractor_id`, `unit_id`, `station_id`, `division_id`, `vendor_status`, `validity_start`, `validity_end`, `police_verification_status`, `police_verification_number`, `police_verification_issue_date`, `police_verification_valid_till`, `police_verification_remarks`, `police_verification_document`, `medical_verification_status`, `medical_verification_number`, `medical_verification_issue_date`, `medical_verification_valid_till`, `medical_verification_remarks`, `medical_verification_document`, `created_by`, `created_at`, `updated_at`, `status`) VALUES
+(1, 'V-2024-0891', 'Subhash Mahato', 'Raman Mahato', '1990-05-15', '345678901234', '9830012345', 'Platform 1, Kharagpur Junction', NULL, NULL, NULL, 'station_others', 1, 1, 1, 1, 'active', '2024-01-01', '2025-12-12', 'verified', NULL, NULL, NULL, NULL, NULL, 'verified', NULL, NULL, NULL, NULL, NULL, 1, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(2, 'V-2024-1102', 'Aruna Kumari', 'Shyamlal Singh', '1994-08-20', '234567890123', '9876540123', 'Bokaro Steel City, ADRA Division', NULL, NULL, NULL, 'station_others', 2, 4, 3, 2, 'active', '2022-10-01', '2028-02-25', 'verified', NULL, NULL, NULL, NULL, NULL, 'pending', NULL, NULL, NULL, NULL, NULL, 1, '2026-07-11 13:05:26', '2026-07-12 18:31:13', 1),
+(3, 'V-2024-0943', 'Rajesh Jha', 'Devendra Jha', '1988-12-10', '123456789012', '9431109876', 'Tatanagar, CKP Division', NULL, NULL, NULL, 'station_others', 3, 6, 4, 3, 'active', '2023-06-25', '2026-07-16', 'pending', NULL, NULL, NULL, NULL, NULL, 'verified', NULL, NULL, NULL, NULL, NULL, 1, '2026-07-11 13:05:26', '2026-07-11 13:30:41', 1),
+(4, 'V-2024-1288', 'Bikash Khan', 'Jalil Khan', '1992-02-14', '456789012345', '9007123456', 'Platform 1, Kharagpur Junction', NULL, NULL, NULL, 'station_others', 1, 1, 1, 1, 'active', '2024-02-03', '2026-02-02', 'verified', NULL, NULL, NULL, NULL, NULL, 'verified', NULL, NULL, NULL, NULL, NULL, 1, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(5, 'V-2026-9594', 'OM Sharma', 'prakash', '2004-11-24', '277859614719', '+916207438729', 'Jealgorah, Jharkhand', '/uploads/profile_image-1783855036812.png', NULL, NULL, 'train_tsv', 7, 4, 3, 2, 'pending', '2026-04-04', '2028-12-15', 'verified', NULL, '2022-11-24', NULL, '442254236665', NULL, 'verified', NULL, NULL, NULL, NULL, '/uploads/medical_doc-1783855036815.png', 1, '2026-07-12 11:17:16', '2026-07-12 11:17:16', 1);
 
 -- --------------------------------------------------------
 
@@ -1180,11 +1240,15 @@ CREATE TABLE `vendor_renewals` (
   `id` int(10) UNSIGNED NOT NULL,
   `vendor_id` int(10) UNSIGNED NOT NULL,
   `renewal_period` varchar(50) DEFAULT NULL,
+  `renewal_type` enum('pvr','medical','both') NOT NULL DEFAULT 'pvr',
   `previous_expiry` date DEFAULT NULL,
   `new_expiry` date DEFAULT NULL,
   `medical_fitness_doc` varchar(255) DEFAULT NULL,
+  `medical_issue_date` date DEFAULT NULL,
+  `medical_number` varchar(50) DEFAULT NULL,
   `pvr_number` varchar(50) DEFAULT NULL,
   `pvr_issue_date` date DEFAULT NULL,
+  `pvr_document` varchar(255) DEFAULT NULL,
   `renewals_status` enum('draft','pending_approval','approved','rejected') NOT NULL DEFAULT 'draft',
   `submitted_by` int(10) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -1404,6 +1468,28 @@ ALTER TABLE `penalty_documents`
   ADD KEY `fk_penaltydoc_uploader` (`uploaded_by`);
 
 --
+-- Indexes for table `password_reset_requests`
+--
+ALTER TABLE `password_reset_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_prr_requested_user` (`requested_user_id`),
+  ADD KEY `fk_prr_requested_by` (`requested_by`),
+  ADD KEY `fk_prr_action_taken_by` (`action_taken_by`);
+
+--
+-- Indexes for table `user_transfer_requests`
+--
+ALTER TABLE `user_transfer_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_utr_user` (`user_id`),
+  ADD KEY `fk_utr_from_division` (`from_division_id`),
+  ADD KEY `fk_utr_to_division` (`to_division_id`),
+  ADD KEY `fk_utr_from_role` (`from_role_id`),
+  ADD KEY `fk_utr_to_role` (`to_role_id`),
+  ADD KEY `fk_utr_requested_by` (`requested_by`),
+  ADD KEY `fk_utr_action_taken_by` (`action_taken_by`);
+
+--
 -- Indexes for table `roles`
 --
 ALTER TABLE `roles`
@@ -1593,6 +1679,18 @@ ALTER TABLE `penalties`
 -- AUTO_INCREMENT for table `penalty_documents`
 --
 ALTER TABLE `penalty_documents`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `password_reset_requests`
+--
+ALTER TABLE `password_reset_requests`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `user_transfer_requests`
+--
+ALTER TABLE `user_transfer_requests`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -1836,6 +1934,26 @@ ALTER TABLE `penalties`
 ALTER TABLE `penalty_documents`
   ADD CONSTRAINT `fk_penaltydoc_penalty` FOREIGN KEY (`penalty_id`) REFERENCES `penalties` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_penaltydoc_uploader` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `password_reset_requests`
+--
+ALTER TABLE `password_reset_requests`
+  ADD CONSTRAINT `fk_prr_requested_user` FOREIGN KEY (`requested_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_prr_requested_by` FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_prr_action_taken_by` FOREIGN KEY (`action_taken_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `user_transfer_requests`
+--
+ALTER TABLE `user_transfer_requests`
+  ADD CONSTRAINT `fk_utr_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_utr_from_division` FOREIGN KEY (`from_division_id`) REFERENCES `divisions` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_utr_to_division` FOREIGN KEY (`to_division_id`) REFERENCES `divisions` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_utr_from_role` FOREIGN KEY (`from_role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_utr_to_role` FOREIGN KEY (`to_role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_utr_requested_by` FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_utr_action_taken_by` FOREIGN KEY (`action_taken_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `role_permissions`

@@ -1,5 +1,5 @@
 import { apiSlice } from "../store/apiSlice";
-import type { Penalty, PenaltyApprovalStatus, PenaltyMetrics, PenaltyRecoveryStatus } from "../types";
+import type { Penalty, PenaltyApprovalStatus, PenaltyDocumentType, PenaltyMetrics, PenaltyRecoveryStatus } from "../types";
 
 export interface PenaltyFilters {
   search?: string;
@@ -41,14 +41,27 @@ export interface UpdatePenaltyBody {
   remarks?: string;
 }
 
+export interface ApprovePenaltyBody {
+  due_date?: string;
+  order_number?: string;
+  order_date?: string;
+  remarks?: string;
+}
+
 export interface UpdateRecoveryBody {
-  recovery_status: PenaltyRecoveryStatus;
+  recovery_status: Exclude<PenaltyRecoveryStatus, "closed">;
   recovery_amount?: number;
   recovery_date?: string;
+  payment_reference?: string;
   mr_number?: string;
   mr_date?: string;
   order_number?: string;
   order_date?: string;
+  remarks?: string;
+}
+
+export interface VerifyRecoveryBody {
+  decision: "verified" | "rejected";
   remarks?: string;
 }
 
@@ -114,9 +127,9 @@ export const penaltyApi = apiSlice.injectEndpoints({
         { type: "Penalty" as const, id },
       ],
     }),
-    approvePenalty: builder.mutation<Penalty, number>({
-      query: (id) => ({ url: `/penalties/${id}/approve`, method: "POST" }),
-      invalidatesTags: (_result, _error, id) => [
+    approvePenalty: builder.mutation<Penalty, { id: number; data?: ApprovePenaltyBody }>({
+      query: ({ id, data }) => ({ url: `/penalties/${id}/approve`, method: "POST", body: data ?? {} }),
+      invalidatesTags: (_result, _error, { id }) => [
         { type: "Penalty" as const, id: "LIST" },
         { type: "Penalty" as const, id: "METRICS" },
         { type: "Penalty" as const, id },
@@ -146,10 +159,19 @@ export const penaltyApi = apiSlice.injectEndpoints({
         { type: "Penalty" as const, id },
       ],
     }),
-    uploadPenaltyDocument: builder.mutation<unknown, { id: number; file: File }>({
-      query: ({ id, file }) => {
+    verifyPenaltyRecovery: builder.mutation<Penalty, { id: number; data: VerifyRecoveryBody }>({
+      query: ({ id, data }) => ({ url: `/penalties/${id}/recovery/verify`, method: "POST", body: data }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "Penalty" as const, id: "LIST" },
+        { type: "Penalty" as const, id: "METRICS" },
+        { type: "Penalty" as const, id },
+      ],
+    }),
+    uploadPenaltyDocument: builder.mutation<unknown, { id: number; file: File; documentType?: PenaltyDocumentType }>({
+      query: ({ id, file, documentType }) => {
         const formData = new FormData();
         formData.append("document", file);
+        if (documentType) formData.append("document_type", documentType);
         return { url: `/penalties/${id}/documents`, method: "POST", body: formData };
       },
       invalidatesTags: (_result, _error, { id }) => [{ type: "Penalty" as const, id }],
@@ -169,5 +191,6 @@ export const {
   useRejectPenaltyMutation,
   useRevokePenaltyMutation,
   useUpdatePenaltyRecoveryMutation,
+  useVerifyPenaltyRecoveryMutation,
   useUploadPenaltyDocumentMutation,
 } = penaltyApi;

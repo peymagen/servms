@@ -285,9 +285,13 @@ function TrashIcon() {
   );
 }
 
+// Matches the server's requireAnyRole([ROLE.HQ_ADMIN, ROLE.DIVISIONAL_ADMIN])
+// gate on PATCH /:id/permissions.
+const CAN_EDIT_PERMISSION_MATRIX_ROLES = ["hq_admin", "divisional_admin", "super_admin_hq"];
+
 function PermissionMatrix({ roleId, roleName }: { roleId: number; roleName: string }) {
-  const { can } = useAuth();
-  const canEdit = can("role_management", "edit");
+  const { user } = useAuth();
+  const canEdit = CAN_EDIT_PERMISSION_MATRIX_ROLES.includes(user?.role_name ?? "");
   const { data: serverPermissions = [], isFetching: isLoading, refetch } = useGetRolePermissionsQuery(roleId);
   const [updateRolePermissions, { isLoading: isSaving }] = useUpdateRolePermissionsMutation();
   const [saved, setSaved] = useState(false);

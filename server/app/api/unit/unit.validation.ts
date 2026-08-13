@@ -38,9 +38,9 @@ export const createUnitValidation = [
     .optional()
     .isIn(["long_term", "short_term", "temporary"]).withMessage("Invalid duration type"),
 
-  body("monthly_fee")
+  body("annual_fee")
     .optional({ nullable: true })
-    .isFloat({ min: 0 }).withMessage("Monthly fee must be a positive number"),
+    .isFloat({ min: 0 }).withMessage("Annual fee must be a positive number"),
 
   body("units_status")
     .optional()

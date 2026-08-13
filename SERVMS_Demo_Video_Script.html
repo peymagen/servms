@@ -1,0 +1,966 @@
+<title>SERVMS — Full Demonstration &amp; UAT Script</title>
+<style>
+:root{
+  --bg:#F6F4EF; --surface:#FFFFFF; --surface-2:#FBFAF7; --ink:#1D1B18; --ink-muted:#5B564C;
+  --line:#E4DFD3; --accent:#1F3A5C; --accent-soft:#E8EEF3; --amber:#C97A2B; --amber-soft:#F5E8D8;
+  --pass:#2F6E3C; --pass-soft:#E4EFE6; --fail:#A6392C; --fail-soft:#F5E4E1; --gap:#8A6D3B; --gap-soft:#F0E6D2;
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+  --radius:6px;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#15171C; --surface:#1C1F26; --surface-2:#20232B; --ink:#EDEAE2; --ink-muted:#A9A398; --line:#2C3038; --accent:#7CA9DA; --accent-soft:#1E2733; --amber:#E0A15C; --amber-soft:#2E2313; --pass:#6FBF83; --pass-soft:#182A1C; --fail:#E08277; --fail-soft:#2E1E1B; --gap:#D9A768; --gap-soft:#2A2113; }
+}
+:root[data-theme="dark"]{ --bg:#15171C; --surface:#1C1F26; --surface-2:#20232B; --ink:#EDEAE2; --ink-muted:#A9A398; --line:#2C3038; --accent:#7CA9DA; --accent-soft:#1E2733; --amber:#E0A15C; --amber-soft:#2E2313; --pass:#6FBF83; --pass-soft:#182A1C; --fail:#E08277; --fail-soft:#2E1E1B; --gap:#D9A768; --gap-soft:#2A2113; }
+:root[data-theme="light"]{ --bg:#F6F4EF; --surface:#FFFFFF; --surface-2:#FBFAF7; --ink:#1D1B18; --ink-muted:#5B564C; --line:#E4DFD3; --accent:#1F3A5C; --accent-soft:#E8EEF3; --amber:#C97A2B; --amber-soft:#F5E8D8; --pass:#2F6E3C; --pass-soft:#E4EFE6; --fail:#A6392C; --fail-soft:#F5E4E1; --gap:#8A6D3B; --gap-soft:#F0E6D2; }
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--font-ui);
+  font-size:15.5px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{ text-wrap:balance; font-weight:750; letter-spacing:-0.01em; color:var(--ink); }
+a{ color:var(--accent); }
+code, .mono{ font-family:var(--font-mono); font-size:0.88em; }
+code{ background:var(--accent-soft); color:var(--accent); padding:0.1em 0.4em; border-radius:4px; }
+
+/* ---------- Shell layout ---------- */
+.shell{ display:grid; grid-template-columns:272px minmax(0,1fr); min-height:100vh; }
+@media (max-width:920px){ .shell{ grid-template-columns:1fr; } .toc{ position:static; height:auto; border-right:none; border-bottom:1px solid var(--line); } }
+
+.toc{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  background:var(--surface-2); border-right:1px solid var(--line); padding:22px 18px 40px;
+}
+.toc-brand{ display:flex; align-items:baseline; gap:8px; margin-bottom:4px; }
+.toc-brand .mark{ font-family:var(--font-mono); font-weight:700; font-size:13px; color:var(--accent); background:var(--accent-soft); padding:2px 6px; border-radius:4px; }
+.toc-brand .name{ font-weight:750; font-size:15px; letter-spacing:0.01em; }
+.toc-sub{ font-size:11.5px; color:var(--ink-muted); margin:2px 0 20px; }
+.toc nav{ display:flex; flex-direction:column; gap:1px; }
+.toc .grp{ text-transform:uppercase; font-size:10.5px; letter-spacing:0.08em; color:var(--ink-muted); margin:16px 0 6px; }
+.toc a{ text-decoration:none; color:var(--ink); font-size:13px; padding:5px 8px; border-radius:5px; display:block; }
+.toc a:hover{ background:var(--accent-soft); color:var(--accent); }
+
+.main{ padding:0; min-width:0; }
+.hero{
+  padding:46px 48px 34px; border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,var(--accent-soft),var(--bg) 140%);
+}
+.eyebrow{ text-transform:uppercase; font-size:11px; letter-spacing:0.14em; color:var(--accent); font-weight:700; margin:0 0 10px; }
+.hero h1{ font-size:clamp(28px,3.4vw,40px); margin:0 0 10px; }
+.hero p.lead{ max-width:66ch; color:var(--ink-muted); font-size:15.5px; margin:0 0 18px; }
+.hero-meta{ display:flex; flex-wrap:wrap; gap:10px; }
+.tag{ font-family:var(--font-mono); font-size:11.5px; background:var(--surface); border:1px solid var(--line); padding:4px 9px; border-radius:20px; color:var(--ink-muted); }
+
+.content{ padding:8px 48px 100px; max-width:1180px; }
+@media (max-width:640px){ .content{ padding:8px 18px 80px; } .hero{ padding:32px 20px 26px; } }
+
+section.block{ padding:40px 0 8px; border-top:1px solid var(--line); scroll-margin-top:16px; }
+section.block:first-of-type{ border-top:none; }
+.block > .kicker{ text-transform:uppercase; font-size:11px; letter-spacing:0.12em; color:var(--amber); font-weight:700; margin:0 0 6px; }
+.block > h2{ font-size:25px; margin:0 0 6px; }
+.block > .dek{ color:var(--ink-muted); max-width:74ch; margin:0 0 22px; font-size:14.5px; }
+
+h3.sub{ font-size:18px; margin:30px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--ink); display:inline-block; }
+h4.sub2{ font-size:15px; margin:22px 0 8px; color:var(--accent); }
+
+/* ---------- Callouts ---------- */
+.note{ border:1px solid var(--line); background:var(--surface); border-left:3px solid var(--accent); border-radius:0 var(--radius) var(--radius) 0; padding:12px 16px; margin:16px 0; font-size:14px; }
+.note.warn{ border-left-color:var(--amber); }
+.note.warn::before{ content:"CAVEAT — "; font-weight:700; color:var(--amber); }
+.note strong.lbl{ color:var(--accent); }
+
+/* ---------- Tables ---------- */
+.twrap{ overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); margin:14px 0 24px; background:var(--surface); }
+table{ border-collapse:collapse; width:100%; font-size:13.5px; }
+th,td{ padding:8px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+thead th{ background:var(--surface-2); font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted); white-space:nowrap; position:sticky; top:0; }
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:var(--accent-soft); }
+td.mono, th.mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+table.matrix td:first-child, table.matrix th:first-child{ position:sticky; left:0; background:var(--surface-2); font-weight:600; z-index:1; }
+
+/* ---------- Pills / badges ---------- */
+.pill{ display:inline-block; font-family:var(--font-mono); font-size:11px; font-weight:700; padding:2px 7px; border-radius:20px; letter-spacing:0.02em; white-space:nowrap; }
+.pill.pass{ background:var(--pass-soft); color:var(--pass); }
+.pill.fail{ background:var(--fail-soft); color:var(--fail); }
+.pill.gap{ background:var(--gap-soft); color:var(--gap); }
+.pill.none{ background:var(--surface-2); color:var(--ink-muted); }
+.pill.role{ background:var(--accent-soft); color:var(--accent); }
+
+/* ---------- Step cards (flagship E2E) ---------- */
+.step-card{ border:1px solid var(--line); border-radius:8px; background:var(--surface); margin:16px 0; overflow:hidden; }
+.step-head{ display:flex; align-items:center; gap:10px; padding:10px 16px; background:var(--surface-2); border-bottom:1px solid var(--line); }
+.step-num{ font-family:var(--font-mono); font-weight:800; color:var(--accent); font-size:13px; }
+.step-title{ font-weight:700; font-size:14.5px; }
+.step-time{ margin-left:auto; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); }
+.step-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:0; }
+.step-field{ padding:11px 16px; border-top:1px solid var(--line); border-left:1px solid var(--line); }
+.step-field:nth-child(-n+3){ border-top:none; }
+.step-field:first-child, .step-grid .step-field:nth-child(3n+1){ border-left:none; }
+.step-field .k{ text-transform:uppercase; font-size:10px; letter-spacing:0.08em; color:var(--ink-muted); margin-bottom:3px; }
+.step-field .v{ font-size:13.5px; }
+.step-field.wide{ grid-column:1/-1; border-left:none; }
+
+/* ---------- Compact checklists ---------- */
+ul.checklist{ list-style:none; margin:0 0 20px; padding:0; display:flex; flex-direction:column; gap:5px; }
+ul.checklist li{ font-size:13.8px; padding:6px 10px; border:1px solid var(--line); border-radius:6px; background:var(--surface); display:flex; gap:8px; align-items:flex-start; }
+ul.checklist li::before{ content:"☐"; color:var(--ink-muted); font-size:15px; line-height:1; }
+ol.stepped{ padding-left:22px; }
+ol.stepped li{ margin-bottom:6px; font-size:14px; }
+
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media (max-width:760px){ .grid-2{ grid-template-columns:1fr; } }
+
+footer.end{ padding:40px 48px 60px; border-top:1px solid var(--line); color:var(--ink-muted); font-size:12.5px; }
+</style>
+
+<div class="shell">
+  <aside class="toc">
+    <div class="toc-brand"><span class="mark">SER</span><span class="name">SERVMS Script</span></div>
+    <p class="toc-sub">Full demo &amp; UAT video script<br>verified against live code, 2026‑08‑02</p>
+    <nav>
+      <a href="#howto">0 · How to use this doc</a>
+      <div class="grp">Ground truth</div>
+      <a href="#setup">1 · Setup &amp; test accounts</a>
+      <a href="#roles">2 · Roles</a>
+      <a href="#matrix">3 · Permission matrix</a>
+      <a href="#nav">4 · Navigation map</a>
+      <a href="#completion">5 · Module completion</a>
+      <div class="grp">Timing</div>
+      <a href="#timing">6 · Video structure &amp; timing</a>
+      <div class="grp">Script</div>
+      <a href="#seg1">Segment 1 · Login &amp; auth</a>
+      <a href="#seg2">Segment 2 · Role &amp; nav tour</a>
+      <a href="#seg3">Segment 3 · Dashboard</a>
+      <a href="#seg4">Segment 4 · End‑to‑end workflow</a>
+      <a href="#seg5">Segment 5 · Module deep‑dive</a>
+      <a href="#seg6">Segment 6 · Security testing</a>
+      <a href="#seg7">Segment 7 · Division restriction</a>
+      <a href="#seg8">Segment 8 · Reports, audit, close</a>
+      <div class="grp">Sign‑off</div>
+      <a href="#checklists">7 · Checklists</a>
+      <a href="#missing">8 · Missing features</a>
+      <a href="#bugs">9 · Bugs found</a>
+      <a href="#suggestions">10 · Improvements</a>
+      <a href="#appendix">11 · Appendix — seed data</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="hero">
+      <p class="eyebrow">Railway Security Vendor Management System</p>
+      <h1>SERVMS — Full Demonstration &amp; Testing Video Script</h1>
+      <p class="lead">A recordable, step-by-step UAT script covering every role, module, workflow, and restriction in the application — reverse-engineered from the live codebase (branch <code>feature/reports-update</code>), not a generic template. Every field name, endpoint, status enum, and permission cell below is real.</p>
+      <div class="hero-meta">
+        <span class="tag">8 roles</span>
+        <span class="tag">14 permission modules</span>
+        <span class="tag">~83 min full cut</span>
+        <span class="tag">verified 2026‑08‑02</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+    <section class="block" id="howto">
+      <p class="kicker">Before you press record</p>
+      <h2>0 · How this document is built</h2>
+      <p class="dek">Two independent code audits (routing/permissions and per-module fields/workflows) were run against the actual repository to ground every claim below. Where the app has a real, demonstrable gap — a missing endpoint, an unenforced check — this script says so explicitly rather than scripting a step that will fail on camera.</p>
+
+      <div class="note"><strong class="lbl">Depth convention.</strong> The flagship End-to-End Workflow (Segment 4) and the Role Tour examples (Segment 2) use the full per-step template the brief asked for: Step / Module / Role / Action / Input / Expected / Validation / Screenshot / Narration / Camera / Time. Repeating that 14-field template for every atomic CRUD action across 8 roles × 16 modules would run past 300 pages of near-identical boilerplate and add no verification value. Segment 5 (module-by-module CRUD/validation) instead uses a compact table — Step / Action / Input / Expected / Time — because the extra fields would just restate "record on screen, narrate the action, 1 pass/fail box" 400 times. Use Segment 4's format as the template if you need the long form for any specific compact-table row.</div>
+
+      <div class="note warn"><strong class="lbl">Timing tension.</strong> The brief asks for total coverage of every module <em>and</em> a 30–60 minute runtime. Those two constraints conflict — full coverage of 16 modules × 8 roles genuinely runs to ~83 minutes end to end (Section 6 has the breakdown). Section 6 also gives a 34-minute Smoke Cut that keeps every module touched at least once but drops the repeated per-role permission walks. Pick whichever the audience needs.</div>
+    </section>
+
+    <section class="block" id="setup">
+      <p class="kicker">Ground truth · 1</p>
+      <h2>Pre-production setup &amp; test accounts</h2>
+      <p class="dek">The seed script (<code>server/seed.ts</code>) only creates working logins for 3 of the 8 roles. The other 5 have <strong>no seeded account</strong> — Segment 1 opens by creating them live on camera via User Management, which doubles as your first real CRUD demo.</p>
+
+      <h3 class="sub">Environment</h3>
+      <ul class="checklist">
+        <li>MySQL schema imported from <code>server/db_schema.sql</code> and <code>npm run seed</code> executed (fresh data — re-run before recording so counts/IDs in this script line up)</li>
+        <li>Server (<code>server/</code>) and client (<code>client/</code>) both running; confirm <code>FE_BASE_URL</code> is set correctly since it's baked into every generated ID-card QR verification link</li>
+        <li>Browser: Chrome/Edge with DevTools Network tab pre-opened on a second monitor for Segment 6 (security testing) — you'll inspect raw API responses and craft a couple of direct requests with a saved Bearer token</li>
+        <li>A REST client (Postman/Thunder Client/curl) ready for the two API-level security checks in Segment 6 that have no UI path</li>
+        <li>Screen recorder at 1080p/60fps minimum; browser zoom at 100% so table columns aren't clipped</li>
+      </ul>
+
+      <h3 class="sub">Seeded accounts (real — from <code>server/seed.ts</code>)</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Username</th><th>Password</th><th>Role</th><th>Division</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">superadminhq</td><td class="mono">superadmin123</td><td><span class="pill role">super_admin_hq</span></td><td>— (unscoped)</td><td>active</td><td>Hardcoded full-bypass — ignores role_permissions entirely, in both API middleware and the client's <code>can()</code> check</td></tr>
+          <tr><td class="mono">arun_sharma</td><td class="mono">admin123</td><td><span class="pill role">super_admin_hq</span></td><td>—</td><td>active</td><td>Mock console user, role resolves to super_admin_hq despite "Admin" label in seed comments</td></tr>
+          <tr><td class="mono">sanjay_jha</td><td class="mono">admin123</td><td><span class="pill role">super_admin_hq</span></td><td>—</td><td>active</td><td>Second super-admin mock — use for the "duplicate submissions" / multi-tab test in Segment 6</td></tr>
+          <tr><td class="mono">pratik_patel</td><td class="mono">admin123</td><td><span class="pill role">divisional_admin</span></td><td>CKP</td><td><strong>inactive</strong></td><td>Deliberately inactive — use to demonstrate that <code>users_status</code> is <em>not</em> checked at login (Bug #1, Segment 6)</td></tr>
+          <tr><td class="mono">kiran_maurya</td><td class="mono">admin123</td><td><span class="pill role">inspector</span></td><td>KGP</td><td>active</td><td>Station: Kharagpur Jn</td></tr>
+          <tr><td class="mono">rina_tiwari</td><td class="mono">admin123</td><td><span class="pill role">inspector</span></td><td>KGP</td><td>active</td><td>Station: Santragachi</td></tr>
+          <tr><td class="mono">admin_kgp</td><td class="mono">admin123</td><td><span class="pill role">divisional_admin</span></td><td>KGP</td><td>active</td><td>Card Signing Authority = yes (JS grade) — use for ID Card approval steps</td></tr>
+          <tr><td class="mono">admin_adra</td><td class="mono">admin123</td><td><span class="pill role">divisional_admin</span></td><td>ADRA</td><td>active</td><td>Card Signing Authority = yes</td></tr>
+          <tr><td class="mono">admin_ckp</td><td class="mono">admin123</td><td><span class="pill role">divisional_admin</span></td><td>CKP</td><td>active</td><td>Card Signing Authority = yes — <strong>primary account for the E2E workflow</strong></td></tr>
+          <tr><td class="mono">admin_rnc</td><td class="mono">admin123</td><td><span class="pill role">divisional_admin</span></td><td>RNC</td><td>active</td><td>Card Signing Authority = yes</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">Accounts to create live on camera (opens Segment 1)</h3>
+      <p class="dek">Logged in as <code>superadminhq</code>, create one user per missing role via <strong>User Management → Add User</strong>. Suggested values (division picks reuse seeded divisions/stations):</p>
+      <div class="twrap"><table>
+        <thead><tr><th>Role to create</th><th>Suggested username</th><th>Division</th><th>Why this account matters later</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill role">hq_admin</span></td><td class="mono">hq_admin_demo</td><td>— (HQ, unscoped)</td><td>Approves the Penalty in Segment 4 step 16; full Reports access including delete</td></tr>
+          <tr><td><span class="pill role">hq_sub_admin</span></td><td class="mono">hq_subadmin_demo</td><td>— (HQ)</td><td>Demonstrates the "create only, no approve" cut-down in the permission matrix</td></tr>
+          <tr><td><span class="pill role">divisional_sub_admin</span></td><td class="mono">ckp_subadmin_demo</td><td>CKP</td><td>Delegates the Inspection to Dealing Section in Segment 4 step 12</td></tr>
+          <tr><td><span class="pill role">dealing_section</span></td><td class="mono">ckp_dealing_demo</td><td>CKP</td><td>Files the ATR and records penalty recovery in Segment 4 steps 13 &amp; 18</td></tr>
+          <tr><td><span class="pill role">complaint_cell</span></td><td class="mono">ckp_complaintcell_demo</td><td>CKP</td><td>Registers the manual complaint in Segment 4 step 15</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note">Every new user is created with <code>is_temp_password</code>=1 in the DB, but nothing in the app currently forces a password change on first login (see Bug #6) — set a real temporary password of your choosing and just use it directly, no forced-reset screen will appear.</div>
+    </section>
+
+    <section class="block" id="roles">
+      <p class="kicker">Ground truth · 2</p>
+      <h2>The 8 roles</h2>
+      <div class="twrap"><table>
+        <thead><tr><th>Role key</th><th>Description (from seed)</th><th>Scoping model</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">super_admin_hq</td><td>Complete control over every zone and division</td><td>Unscoped — hardcoded bypass, not matrix-driven</td></tr>
+          <tr><td class="mono">hq_admin</td><td>Full HQ-level access across all zones</td><td>Unscoped (matrix-driven)</td></tr>
+          <tr><td class="mono">hq_sub_admin</td><td>Limited HQ-level access</td><td>Unscoped (matrix-driven, reduced grants)</td></tr>
+          <tr><td class="mono">divisional_admin</td><td>Full access within a single division</td><td>Division-scoped</td></tr>
+          <tr><td class="mono">divisional_sub_admin</td><td>Limited access within a division</td><td>Division-scoped</td></tr>
+          <tr><td class="mono">inspector</td><td>Creates inspections, limited dashboard access</td><td><strong>Self</strong>-scoped — sees only inspections they filed</td></tr>
+          <tr><td class="mono">dealing_section</td><td>ATR, recovery, and reports</td><td><strong>Assignee</strong>-scoped — sees only inspections currently delegated to them</td></tr>
+          <tr><td class="mono">complaint_cell</td><td>Complaint module only</td><td>Division-scoped</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="block" id="matrix">
+      <p class="kicker">Ground truth · 3</p>
+      <h2>Full role permission matrix</h2>
+      <p class="dek">Read live from <code>role_permissions</code> in <code>server/db_schema.sql</code>. Letters present = granted: <b>V</b>iew <b>C</b>reate <b>E</b>dit <b>D</b>elete <b>A</b>pprove/reject e<b>X</b>port. A bare dash means zero access — the nav item won't even render for that role.</p>
+      <div class="twrap"><table class="matrix">
+        <thead><tr><th>Module</th><th>super_admin_hq</th><th>hq_admin</th><th>hq_sub_admin</th><th>divisional_admin</th><th>divisional_sub_admin</th><th>inspector</th><th>dealing_section</th><th>complaint_cell</th></tr></thead>
+        <tbody>
+          <tr><td>user_management</td><td class="mono">VCEDAX</td><td class="mono">VCEDAX</td><td class="mono">VC</td><td class="mono">VCEDAX</td><td class="mono">VC</td><td>—</td><td>—</td><td>—</td></tr>
+          <tr><td>role_management</td><td class="mono">VCEDAX</td><td class="mono">VCEDAX</td><td>—</td><td class="mono">VCEDAX</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+          <tr><td>vendor_management</td><td class="mono">VCEDAX</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">V</td><td class="mono">V</td><td class="mono">V</td></tr>
+          <tr><td>contractor_management</td><td class="mono">VCEDAX</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">V</td><td class="mono">V</td><td class="mono">V</td></tr>
+          <tr><td>unit_management</td><td class="mono">VCEDAX</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">V</td><td class="mono">V</td><td class="mono">V</td></tr>
+          <tr><td>location_management</td><td class="mono">VCEDAX</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">V</td><td class="mono">V</td><td class="mono">V</td></tr>
+          <tr><td>id_card_management</td><td class="mono">VCEDAX</td><td class="mono">VCEAX</td><td class="mono">VCEA*</td><td class="mono">VCEAX</td><td class="mono">VCEA*</td><td class="mono">V</td><td class="mono">V</td><td>—</td></tr>
+          <tr><td>penalty_management</td><td class="mono">VCEDAX</td><td class="mono">VCEAX</td><td class="mono">V</td><td class="mono">VCEAX</td><td class="mono">V</td><td class="mono">V</td><td class="mono">V</td><td>—</td></tr>
+          <tr><td>complaint_management</td><td class="mono">VCEDAX</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">VC</td><td class="mono">VE</td><td class="mono">VCE</td></tr>
+          <tr><td>inspection_management</td><td class="mono">VCEDAX</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">VCEAX</td><td class="mono">VCE</td><td class="mono">VCE</td><td class="mono">VE</td><td>—</td></tr>
+          <tr><td>audit_logs</td><td class="mono">VCEDAX</td><td class="mono">VX</td><td>—</td><td class="mono">VX</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+          <tr><td>reports</td><td class="mono">VCEDAX</td><td class="mono">VCEDAX</td><td class="mono">VX</td><td class="mono">VCEAX</td><td class="mono">V</td><td class="mono">V</td><td class="mono">VX</td><td class="mono">V</td></tr>
+          <tr><td>dashboard</td><td class="mono">VCEDAX</td><td class="mono">VX</td><td class="mono">V</td><td class="mono">V</td><td class="mono">V</td><td class="mono">V</td><td class="mono">V</td><td class="mono">V</td></tr>
+          <tr><td>admin_module</td><td class="mono">VCEDAX</td><td class="mono">VCEAX</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note"><b>*</b> id_card_management approve/reject for hq_sub_admin / divisional_sub_admin is granted at the matrix level, but <code>idcard.service.ts</code> additionally requires <code>users.card_signing_authority = 1</code> on the acting account. Only the four seeded <code>admin_*</code> divisional_admin accounts have that flag out of the box — so in practice, only Divisional Admins can approve/sign ID cards today, even though the matrix appears to grant it to sub-admins too. Script this exact discrepancy as a live test in Segment 5.</div>
+      <div class="note warn">Two modules are matrix rows with <strong>no dedicated nav item or page</strong>: <code>unit_management</code> (Units live inside the Location Masters page) and <code>admin_module</code> (its permission gates only <code>dropdown_options</code> CRUD, scattered across the Complaint Type, Inspection Type, and Unit contract-category screens — there's no single "Admin Module" destination). Don't script a click on a nav item that doesn't exist.</div>
+    </section>
+
+    <section class="block" id="nav">
+      <p class="kicker">Ground truth · 4</p>
+      <h2>Navigation &amp; route map</h2>
+      <div class="twrap"><table>
+        <thead><tr><th>#</th><th>Sidebar label</th><th>Route</th><th>Gated by</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Dashboard</td><td class="mono">/dashboard</td><td>dashboard:view</td></tr>
+          <tr><td>2</td><td>User Management</td><td class="mono">/users</td><td>user_management:view</td></tr>
+          <tr><td>3</td><td>Role Management</td><td class="mono">/roles</td><td>role_management:view</td></tr>
+          <tr><td>4</td><td>Location Masters</td><td class="mono">/locations</td><td>location_management:view</td></tr>
+          <tr><td>5</td><td>Vendor Management</td><td class="mono">/vendors</td><td>vendor_management:view</td></tr>
+          <tr><td>6</td><td>Contractor Management</td><td class="mono">/contractors</td><td>contractor_management:view</td></tr>
+          <tr><td>7</td><td>ID Card / QR</td><td class="mono">/id-cards</td><td>id_card_management:view</td></tr>
+          <tr><td>8</td><td>Vendor Renewals</td><td class="mono">/renewals</td><td>vendor_management:view <span class="pill gap">reuses vendor module</span></td></tr>
+          <tr><td>9</td><td>Complaints</td><td class="mono">/complaints</td><td>complaint_management:view</td></tr>
+          <tr><td>10</td><td>Inspections</td><td class="mono">/inspections</td><td>inspection_management:view</td></tr>
+          <tr><td>11</td><td>Penalties</td><td class="mono">/penalties</td><td>penalty_management:view</td></tr>
+          <tr><td>12</td><td>Audit Logs</td><td class="mono">/audit-logs</td><td>audit_logs:view</td></tr>
+          <tr><td>13</td><td>Reports</td><td class="mono">/reports</td><td>reports:view</td></tr>
+          <tr><td>—</td><td>Settings (footer)</td><td class="mono">/settings</td><td>none — any logged-in user</td></tr>
+          <tr><td>—</td><td>Help Center (footer)</td><td class="mono">/help</td><td>none — any logged-in user</td></tr>
+          <tr><td>—</td><td>Notifications (bell icon)</td><td class="mono">/notifications</td><td>none — any logged-in user, self-derived feed</td></tr>
+          <tr><td>—</td><td><em>public, no login</em></td><td class="mono">/verify/:code</td><td>none — public QR verification page</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note">Denial behavior is uniform and worth calling out on camera: <code>ProtectedRoute</code> doesn't show a "403 Forbidden" page — it <strong>silently redirects to <code>/dashboard</code></strong>. A tester unfamiliar with this will think the link is broken rather than correctly blocked. Script this explicitly in Segment 6 so it isn't mistaken for a bug.</div>
+    </section>
+
+    <section class="block" id="completion">
+      <p class="kicker">Ground truth · 5</p>
+      <h2>Module completion matrix</h2>
+      <div class="twrap"><table>
+        <thead><tr><th>Module</th><th>Status</th><th>What's real vs. what to not script</th></tr></thead>
+        <tbody>
+          <tr><td>Dashboard</td><td><span class="pill pass">BUILT</span></td><td>5 stat groups + Critical Alerts + HQ Zone/Division toggle + drill-through + 30s polling — fully wired</td></tr>
+          <tr><td>User Management</td><td><span class="pill pass">BUILT</span></td><td>Full CRUD + dedicated approve/reject; login itself doesn't check status (Bug #1)</td></tr>
+          <tr><td>Role Management</td><td><span class="pill pass">BUILT</span></td><td>Bulk permission-matrix editor per role</td></tr>
+          <tr><td>Vendor Management</td><td><span class="pill pass">BUILT</span></td><td>Full lifecycle incl. Police/Medical verification, transfer-unit, transfer-contractor</td></tr>
+          <tr><td>Contractor Management</td><td><span class="pill pass">BUILT</span></td><td>Full CRUD + unit assignment + blacklist status</td></tr>
+          <tr><td>Location Masters</td><td><span class="pill gap">PARTIAL</span></td><td>Stations/Trains/Clusters have full CRUD; <strong>Zones and Divisions are read-only</strong> — no create/edit route exists for either. Only Stations support bulk import.</td></tr>
+          <tr><td>Units</td><td><span class="pill pass">BUILT</span></td><td>Polymorphic station/train/cluster link, no bulk import</td></tr>
+          <tr><td>Penalty</td><td><span class="pill pass">BUILT</span></td><td>Approve/reject/revoke + forward-only recovery state machine</td></tr>
+          <tr><td>Complaint</td><td><span class="pill pass">BUILT</span></td><td>RailMadad import, assignment, full ATR cycle, status history</td></tr>
+          <tr><td>Inspection</td><td><span class="pill pass">BUILT</span></td><td>Atomic inspection numbers, draft-stage ATR, assignment/delegation</td></tr>
+          <tr><td>ID Card</td><td><span class="pill gap">PARTIAL</span></td><td>Request → approve (PDF+QR) → reject all work; <strong>no revoke/regenerate endpoint</strong> and card status never auto-expires server-side</td></tr>
+          <tr><td>QR Verification</td><td><span class="pill gap">PARTIAL</span></td><td>Public lookup works; <strong>zero cryptographic integrity check</strong> — plain ID-number lookup, not tamper-evident</td></tr>
+          <tr><td>Reports</td><td><span class="pill gap">PARTIAL</span></td><td>7 of the app's modules are reportable (vendors/contractors/units/penalties/idcards/users/complaints/inspections); roles, dropdowns, renewals are not. Export = xlsx/csv only, no PDF.</td></tr>
+          <tr><td>Notifications</td><td><span class="pill gap">PARTIAL</span></td><td><strong>No notifications table at all</strong> — every "notification" is computed live on each page load from other tables. No mark-as-read, no push.</td></tr>
+          <tr><td>Audit Logs</td><td><span class="pill gap">PARTIAL</span></td><td>Rich schema (IP, old/new JSON) and called from nearly every controller, <strong>except</strong> Station CRUD/bulk-import and Notifications — those actions leave no trail</td></tr>
+          <tr><td>Admin Module</td><td><span class="pill gap">PARTIAL</span></td><td>Real permission row, but no unified page — scattered across 3 other screens (see §3 note)</td></tr>
+          <tr><td>Renewals</td><td><span class="pill fail">GAP</span></td><td>Functionally works (approve flips vendor validity/status) but <strong>zero permission gating on any renewal API route</strong> — see Bug #3</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="block" id="timing">
+      <p class="kicker">Plan</p>
+      <h2>6 · Video structure &amp; timing</h2>
+      <div class="twrap"><table>
+        <thead><tr><th>Segment</th><th>Content</th><th>Full cut</th><th>Smoke cut</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Login &amp; auth validation, missing-role account creation</td><td>9 min</td><td>4 min</td></tr>
+          <tr><td>2</td><td>Role &amp; navigation tour (4 scripted + matrix for rest)</td><td>10 min</td><td>3 min <span class="pill gap">matrix only</span></td></tr>
+          <tr><td>3</td><td>Dashboard walkthrough (HQ + division view, toggle, drill-through)</td><td>5 min</td><td>3 min</td></tr>
+          <tr><td>4</td><td>End-to-end business workflow (flagship)</td><td>25 min</td><td>18 min</td></tr>
+          <tr><td>5</td><td>Module-by-module CRUD &amp; validation deep-dive</td><td>20 min</td><td><span class="pill gap">cut</span></td></tr>
+          <tr><td>6</td><td>Security &amp; negative testing</td><td>8 min</td><td>4 min <span class="pill gap">top 4 only</span></td></tr>
+          <tr><td>7</td><td>Division restriction demo</td><td>4 min</td><td>2 min</td></tr>
+          <tr><td>8</td><td>Reports, audit trail, closing summary</td><td>5 min</td><td>3 min</td></tr>
+          <tr><td colspan="2"><b>Total</b></td><td><b>~86 min</b></td><td><b>~37 min</b></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ================= SEGMENT 1 ================= -->
+    <section class="block" id="seg1">
+      <p class="kicker">Script · Segment 1</p>
+      <h2>Login &amp; authentication</h2>
+      <p class="dek">Login only takes <code>username</code> + <code>password</code> (the UI labels it "Employee ID / Username" but posts as <code>username</code>). Auth is a stateless 12h JWT in <code>localStorage</code> — no cookies, no refresh token, no server-side session store.</p>
+
+      <div class="twrap"><table>
+        <thead><tr><th>#</th><th>Action</th><th>Input</th><th>Expected result</th><th>Time</th></tr></thead>
+        <tbody>
+          <tr><td>1.1</td><td>Load <code>/login</code> logged out</td><td>—</td><td>Login form renders; "Forgot Password?" link visible</td><td>15s</td></tr>
+          <tr><td>1.2</td><td>Submit empty form</td><td>blank/blank</td><td>Client-side required-field validation blocks submit</td><td>15s</td></tr>
+          <tr><td>1.3</td><td>Submit wrong password</td><td class="mono">admin_kgp / wrongpass</td><td>401, inline error, no redirect</td><td>15s</td></tr>
+          <tr><td>1.4</td><td>Submit unknown username</td><td class="mono">not_a_user / admin123</td><td>401, generic error (should not reveal whether the username exists)</td><td>15s</td></tr>
+          <tr><td>1.5</td><td>Click "Forgot Password?"</td><td>—</td><td><span class="pill fail">BUG</span> dead anchor (<code>href="#forgot"</code>) — nothing happens. Call this out, don't treat as your own recording error.</td><td>10s</td></tr>
+          <tr><td>1.6</td><td>Log in as an <b>inactive</b> account</td><td class="mono">pratik_patel / admin123</td><td><span class="pill fail">BUG</span> login succeeds despite <code>users_status='inactive'</code> — status is never checked at auth time (Bug #1). Narrate this as a finding, not an expected pass.</td><td>30s</td></tr>
+          <tr><td>1.7</td><td>Log out, log in correctly</td><td class="mono">superadminhq / superadmin123</td><td>Redirects to <code>/dashboard</code>; sidebar shows full 13-item nav (super_admin_hq bypass)</td><td>20s</td></tr>
+          <tr><td>1.8</td><td>Create the 5 missing-role accounts</td><td>see §1 table</td><td>Each appears in User Management list, status defaults active</td><td>4 min</td></tr>
+          <tr><td>1.9</td><td>Log out via sidebar</td><td>—</td><td>localStorage cleared, redirected to <code>/login</code>. Note on camera: this is <b>client-only</b> — the JWT itself isn't invalidated server-side and would still work if replayed until its 12h expiry (relevant again in Segment 6)</td><td>20s</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ================= SEGMENT 2 ================= -->
+    <section class="block" id="seg2">
+      <p class="kicker">Script · Segment 2</p>
+      <h2>Role &amp; navigation tour</h2>
+      <p class="dek">Full step-card treatment for 4 representative roles spanning the scoping models (unscoped HQ, scoped Division, self-scoped Inspector, division-scoped-but-narrow Complaint Cell). The remaining 4 roles are covered by the compact matrix underneath — their nav behavior follows the same mechanical rule (render iff <code>can(module,"view")</code>), so a full re-walk adds no new information.</p>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">2.1</span><span class="step-title">HQ Admin — unscoped, near-full access</span><span class="step-time">90s</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Role</div><div class="v">hq_admin (created in 1.8)</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v">Log in, screenshot sidebar</div></div>
+          <div class="step-field"><div class="k">Expected</div><div class="v">All 13 nav items visible except Admin Module has no dedicated page (correct — see §3); no division filter forced anywhere</div></div>
+          <div class="step-field wide"><div class="k">Unauthorized-access probe</div><div class="v">Manually type <code>/roles</code> — visible (has role_management access). Manually type a URL for a page requiring a permission HQ Admin lacks: there isn't one in the matrix — HQ Admin is near-full. Instead prove the boundary via <b>audit_logs delete</b>: attempt <code>DELETE</code>-shaped action in Audit Logs UI — no delete control renders (view+export only), matching <code class="mono">VX</code> in the matrix.</div></div>
+          <div class="step-field wide"><div class="k">Narration cue</div><div class="v">"HQ Admin can see every division's data in view mode but the matrix still withholds delete on Audit Logs and full control on Admin Module — full access isn't unlimited access."</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">2.2</span><span class="step-title">Divisional Admin — division-scoped</span><span class="step-time">90s</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Role</div><div class="v">divisional_admin — <code>admin_ckp</code> (CKP)</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v">Log in, open Vendor Management</div></div>
+          <div class="step-field"><div class="k">Expected</div><div class="v">List is pre-filtered to CKP-division vendors only, no division dropdown to escape it</div></div>
+          <div class="step-field wide"><div class="k">Unauthorized-access probe</div><div class="v">Copy a vendor's <code>id</code> that belongs to another division (grab one from KGP while logged in as superadminhq first) and load <code>/vendors</code> then attempt to open that record directly by editing the URL/ID if the UI exposes one. Expected: <b>404</b>, not 403 — <code>assertRecordAccessible()</code> deliberately returns 404 so scoped-out users can't tell a record exists.</div></div>
+          <div class="step-field wide"><div class="k">Narration cue</div><div class="v">"Notice it's a 404, not a 403 — the app won't even confirm this vendor exists to someone outside CKP division."</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">2.3</span><span class="step-title">Inspector — self-scoped</span><span class="step-time">75s</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Role</div><div class="v">inspector — <code>kiran_maurya</code> (KGP)</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v">Log in, open Inspections list</div></div>
+          <div class="step-field"><div class="k">Expected</div><div class="v">Only inspections where <code>inspector_id = kiran_maurya's id</code> — not even all of KGP division, just their own filings</div></div>
+          <div class="step-field wide"><div class="k">Unauthorized-access probe</div><div class="v">Try <code>/roles</code>, <code>/audit-logs</code>, <code>/penalties</code> by URL — each silently redirects to <code>/dashboard</code> (matrix gives Inspector a dash on role_management/audit_logs, view-only on penalty_management so <code>/penalties</code> actually loads but read-only, no create button)</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">2.4</span><span class="step-title">Complaint Cell — narrow division-scoped role</span><span class="step-time">75s</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Role</div><div class="v">complaint_cell — <code>ckp_complaintcell_demo</code> (created in 1.8)</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v">Log in, compare sidebar to Divisional Admin's</div></div>
+          <div class="step-field"><div class="k">Expected</div><div class="v">Only Dashboard, Vendor/Contractor/Unit/Location (view-only), Complaints (view+create+edit), Reports (view). No Penalties, Inspections, ID Cards, Audit Logs, Users, Roles</div></div>
+          <div class="step-field wide"><div class="k">Unauthorized-access probe</div><div class="v">Try <code>/inspections</code> and <code>/id-cards</code> by URL — both redirect silently to <code>/dashboard</code>, confirming complaint_cell has a dash on both modules</div></div>
+        </div>
+      </div>
+
+      <h3 class="sub">Remaining 4 roles — compact pass</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Role</th><th>Nav items visible</th><th>One URL to probe (expect redirect)</th></tr></thead>
+        <tbody>
+          <tr><td>super_admin_hq</td><td>All 13 (see 1.7)</td><td>n/a — full bypass, nothing to probe</td></tr>
+          <tr><td>hq_sub_admin</td><td>Dashboard, Users (view+create only), Vendor/Contractor/Location/Unit (VCE), ID Card (VCEA — but approve blocked unless <code>card_signing_authority</code>), Complaint (VCE), Inspection (VCE), Reports (view+export only)</td><td><code>/roles</code> → redirect (no role_management row at all)</td></tr>
+          <tr><td>divisional_sub_admin</td><td>Same shape as hq_sub_admin but division-scoped; no Penalty create/edit (view-only)</td><td><code>/audit-logs</code> → redirect</td></tr>
+          <tr><td>dealing_section</td><td>Vendor/Contractor/Unit/Location (view), ID Card (view), Penalty (view — but can still hit <code>/:id/recovery</code>, a deliberate <code>requireAnyRole</code> carve-out outside the matrix), Complaint (view+edit), Inspection (view+edit), Reports (view+export)</td><td><code>/users</code> → redirect</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ================= SEGMENT 3 ================= -->
+    <section class="block" id="seg3">
+      <p class="kicker">Script · Segment 3</p>
+      <h2>Dashboard walkthrough</h2>
+      <div class="twrap"><table>
+        <thead><tr><th>#</th><th>Action</th><th>Role</th><th>Expected</th><th>Time</th></tr></thead>
+        <tbody>
+          <tr><td>3.1</td><td>Open Dashboard, screenshot the 5 stat groups</td><td>admin_ckp</td><td>Units (Active/Idle/Inactive), Contractors (Active/Inactive/Blacklisted), Vendors (same 3), Penalty (Imposed/Recovered/Due, Due split 7/14/30/overdue), Pending Action (Complaint ATR / Inspection ATR / License due) — CKP-scoped counts only</td><td>60s</td></tr>
+          <tr><td>3.2</td><td>Click a stat group card</td><td>admin_ckp</td><td>Lazily fetches <code>/dashboard/graph/:group</code> and reveals a chart for just that group — confirm no chart shows before the click</td><td>30s</td></tr>
+          <tr><td>3.3</td><td>Click through to Critical Alerts panel</td><td>admin_ckp</td><td>Contract Expiry, Unit Compliance (License/Electric Bill/FSSAI), Vendor Compliance (PVR/Medical), Penalty Overdue — cumulative "expiring within N days" windows, distinct from Penalty group's mutually-exclusive tiers; point out this difference on camera</td><td>45s</td></tr>
+          <tr><td>3.4</td><td>Log in as superadminhq, open Dashboard</td><td>superadminhq</td><td>HQ Zone/Division toggle bar appears: Zone / ADRA / CKP / KGP / RNC / HQ</td><td>30s</td></tr>
+          <tr><td>3.5</td><td>Click each toggle option</td><td>superadminhq</td><td>Whole dashboard re-scopes; "HQ" = records with <code>division_id IS NULL</code>; "Zone" = everything rolled up (including TATA/HLD, which have no dedicated button but are still summed in)</td><td>60s</td></tr>
+          <tr><td>3.6</td><td>Drill through a card into its module</td><td>superadminhq</td><td>Navigates to e.g. Units filtered by <code>?status=idle</code> — confirm the URL param actually pre-filters the list</td><td>30s</td></tr>
+          <tr><td>3.7</td><td>Leave the tab open 30+ seconds, watch a count change elsewhere</td><td>any</td><td>Auto-refresh via 30s polling — no manual refresh needed. Not real push/WebSocket, worth noting for the audience</td><td>40s</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ================= SEGMENT 4 — FLAGSHIP ================= -->
+    <section class="block" id="seg4">
+      <p class="kicker">Script · Segment 4 — flagship</p>
+      <h2>End-to-end business workflow</h2>
+      <p class="dek">The brief's 15-step scenario adapted to what the app actually supports — notably, <b>Divisions cannot be created via the UI</b> (no create route exists; only Zones/Divisions are seed-fixed), so the flow opens with a Station instead. Every field, status value, and endpoint below is real.</p>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.1</span><span class="step-title">Divisional Admin adds a Station</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Module</div><div class="v">Location Masters</div></div>
+          <div class="step-field"><div class="k">Role</div><div class="v">divisional_admin — admin_ckp</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v">Locations → Stations tab → Add Station</div></div>
+          <div class="step-field"><div class="k">Input data</div><div class="v">Division: CKP · Station Name: "Chakradharpur Junction" · Station Code: "CHK" · Platforms: 6</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">Station appears in list, station_code unique-checked</div></div>
+          <div class="step-field"><div class="k">Validation</div><div class="v">Try duplicate station_code "CHK" again → rejected as duplicate</div></div>
+          <div class="step-field wide"><div class="k">Known gap to narrate</div><div class="v"><span class="pill gap">GAP</span> This create does <b>not</b> appear in Audit Logs — <code>master.controller.ts</code> never calls <code>logAudit()</code>. Screenshot Audit Logs immediately after to show the absence (you'll contrast this with a logged action later).</div></div>
+          <div class="step-field"><div class="k">Screenshot</div><div class="v">Station list + empty audit search for module=stations</div></div>
+          <div class="step-field"><div class="k">Camera focus</div><div class="v">Form validation error on duplicate code</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.2</span><span class="step-title">Divisional Admin registers a Contractor</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Module</div><div class="v">Contractor Management</div></div>
+          <div class="step-field"><div class="k">Role</div><div class="v">admin_ckp</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v">Contractors → New Contractor</div></div>
+          <div class="step-field"><div class="k">Input data</div><div class="v">Company: "Chakradharpur Facility Services" · PAN: "AAAPL1234C" (10 chars) · GSTIN: "20AAAPL1234C1Z5" (15 chars) · Division: CKP · Award Date: today · Tenure: 24 months · Annual Contract Value: 1200000</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">contractor_code auto-assigned sequentially (CON-00N); contract_end_date computed = award_date + 24mo; contractors_status = active</div></div>
+          <div class="step-field"><div class="k">Validation</div><div class="v">Try PAN with 9 chars → rejected; try GSTIN with 14 chars → rejected</div></div>
+          <div class="step-field"><div class="k">Screenshot</div><div class="v">Contractor detail showing computed contract_end_date</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.3</span><span class="step-title">Divisional Admin creates a Unit at the new station</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Module</div><div class="v">Units (inside Location Masters)</div></div>
+          <div class="step-field"><div class="k">Input data</div><div class="v">location_type: station → CHK · Contract Type: earning · Contract Category: (pick a seeded dropdown value) · Unit Name/Code: "CHK-STALL-01" · Area + Sketch upload (since Contract Type = earning) · Monthly Fee: 8000 · License Period: today → +1yr · Contractor: Chakradharpur Facility Services</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">units_status = active; unit now shows under Contractor's assigned units</div></div>
+          <div class="step-field wide"><div class="k">Validation</div><div class="v">Switch Contract Type to "expenditure" on a second attempt and confirm Area/Sketch become optional/hidden per the conditional rule</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.4</span><span class="step-title">Divisional Admin registers a Vendor</span><span class="step-time">3 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Module</div><div class="v">Vendor Management</div></div>
+          <div class="step-field"><div class="k">Input data</div><div class="v">Full Name, Mobile (10 digits), Aadhaar (exactly 12 digits), vendor_type: station_stall, Contractor: Chakradharpur Facility Services, Unit: CHK-STALL-01, Division: CKP</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">vendor_code auto <code>V-2026-000N</code> — <span class="pill gap">note</span> "2026" is hardcoded in <code>vendor.service.ts</code>, not computed from the current year (Bug #2 — flag but don't dwell); vendor_status = pending; a linked <code>vendor_id_cards</code> row is silently created at status pending too</div></div>
+          <div class="step-field"><div class="k">Validation</div><div class="v">Enter 11-digit Aadhaar → rejected; leave Contractor blank → rejected (required)</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.5</span><span class="step-title">Vendor documents uploaded</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Action</div><div class="v">Upload Aadhaar, Police Verification, Medical Verification documents</div></div>
+          <div class="step-field"><div class="k">Input data</div><div class="v">PDF/JPG/PNG only, ≤20MB each</div></div>
+          <div class="step-field"><div class="k">Validation</div><div class="v">Try a .exe or a 25MB file → rejected by multer before it reaches storage</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.6</span><span class="step-title">Divisional Admin verifies Police &amp; Medical documents</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Action</div><div class="v">Vendor detail → Verification tab → mark Police Verification "verified", issue date today, valid_till +2yr; repeat for Medical</div></div>
+          <div class="step-field"><div class="k">Validation</div><div class="v">Set valid_till <em>before</em> issue_date → rejected</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">Both verification statuses flip to "verified"; these dates now back the Dashboard's Critical Alerts vendor-compliance group</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.7</span><span class="step-title">Divisional Admin requests, then approves, an ID Card</span><span class="step-time">2.5 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Module</div><div class="v">ID Card / QR</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v">Request card → choose expiry_source: medical → card row set pending_approval → Approve (as admin_ckp, who has card_signing_authority=1)</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">PDF generated with photo/signature/QR embedded, id_number = <code>CRIS-ID-&lt;digits&gt;</code>, cards_status → active, signature_applied → true</div></div>
+          <div class="step-field wide"><div class="k">Validation to also show</div><div class="v">Try requesting a card for a vendor whose chosen expiry_source (e.g. police) has no valid_till on file → rejected with a clear error</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.8</span><span class="step-title">Public QR verification</span><span class="step-time">1.5 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Action</div><div class="v">Log out completely, open <code>/verify/CRIS-ID-XXXXXXXX</code> in an incognito tab</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">Public page shows vendor name/photo/contractor/unit/validity, badge "ACTIVE" (client computes <code>cards_status==='active' && approval_status==='approved'</code>)</div></div>
+          <div class="step-field"><div class="k">Validation</div><div class="v">Edit the last digit of the URL to a non-existent ID → 404 "Invalid or unrecognized ID card / QR code"</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.9</span><span class="step-title">Inspector files an Inspection</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Role</div><div class="v">inspector — needs a CKP inspector; create one in Segment 1 if not already, or reuse kiran_maurya after editing to CKP for this demo</div></div>
+          <div class="step-field"><div class="k">Input data</div><div class="v">Unit: CHK-STALL-01, Category/Type (cascading dropdown), Inspection Date: today, Observations, Deficiencies</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">inspection_no auto <code>INSP-2026-0000NN</code>, status = draft → Submit → status = submitted</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.10</span><span class="step-title">Sub-admin delegates the Inspection</span><span class="step-time">1.5 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Role</div><div class="v">divisional_sub_admin — ckp_subadmin_demo</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v">Inspections list → Assign → Dealing Section (ckp_dealing_demo)</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">status → assigned; new row in inspection_assignments (assignment_type=initial); Dealing Section's Notifications feed now surfaces it</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.11</span><span class="step-title">Dealing Section files the ATR</span><span class="step-time">2.5 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Role</div><div class="v">dealing_section — ckp_dealing_demo</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v">Open assigned inspection → Create ATR → Save Draft (unique to Inspection's ATR, unlike Complaint's) → attach a .docx (accepted here, unlike Vendor/Complaint uploads which reject Word docs) → Submit</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">review_status: draft → pending_review; inspection status → atr_submitted</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.12</span><span class="step-title">Sub-admin reviews, Admin decides, inspection closes</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Action</div><div class="v">ckp_subadmin_demo: Review ATR → sub_admin_reviewed. admin_ckp: Decide → Accept → status → approved. Then Close Inspection, set result: satisfactory</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">status → closed; completion_status → completed; full trail visible in inspection_status_history</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.13</span><span class="step-title">Complaint Cell registers a manual complaint</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Role</div><div class="v">complaint_cell — ckp_complaintcell_demo</div></div>
+          <div class="step-field"><div class="k">Input data</div><div class="v">complaint_source: manual, Unit: CHK-STALL-01, Type/Sub-type (dropdown), Complainant Name/Mobile, Description, occurrence_date</div></div>
+          <div class="step-field"><div class="k">Validation</div><div class="v">Leave Type but no Sub-type → rejected (cascading required pair)</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">complaint_code auto CMP-##### random; status = pending</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.14</span><span class="step-title">Complaint assignment → ATR → close</span><span class="step-time">3 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Action</div><div class="v">admin_ckp assigns to ckp_dealing_demo → under_review; Dealing Section submits ATR directly to pending_review (no draft stage here — different from Inspection's ATR, call that out); admin_ckp decides Accept → approved → Close</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">status: pending → assigned → under_review → action_taken → approved → closed; full complaint_status_history trail</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.15</span><span class="step-title">Divisional Admin imposes a Penalty</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Input data</div><div class="v">reference_type: complaint, linked to the closed complaint; Contractor: Chakradharpur Facility Services; Vendor + Unit; Amount: 5000; Reason; Due Date +30d</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">penalty_code auto PNL-2026-####; approval_status forced to pending_approval regardless of what the form shows; recovery_status = pending</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.16</span><span class="step-title">HQ Admin approves the Penalty</span><span class="step-time">1.5 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Role</div><div class="v">hq_admin — hq_admin_demo (unscoped — can see a CKP-division penalty)</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v">Penalties → Approve</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">approval_status → approved</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.17</span><span class="step-title">Dealing Section records partial recovery</span><span class="step-time">1.5 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Role</div><div class="v">dealing_section — ckp_dealing_demo</div></div>
+          <div class="step-field"><div class="k">Action</div><div class="v"><code>PATCH /:id/recovery</code> — amount: 2000, MR number/date</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">recovery_status: pending → partially_recovered — note on camera this works despite Dealing Section having <code>can_edit=0</code> on penalty_management; it's reachable through a deliberate <code>requireAnyRole</code> carve-out on this one route only</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.18</span><span class="step-title">Vendor renewal cycle</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Action</div><div class="v">Vendor Renewals → New Renewal for the demo vendor → attach medical fitness doc + PVR number → renewals_status: draft → pending_approval → Approve</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">On approve: vendor's <code>validity_end</code> is overwritten with the renewal's new_expiry and <code>vendor_status</code> flips to active as a side-effect</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.19</span><span class="step-title">Reports generated</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Action</div><div class="v">Reports → Builder → module: Penalties → pick fields → filter division=CKP → Generate preview → Export xlsx</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">Downloaded file opens with correct rows/totals; export logged in report_exports + Export History page</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.20</span><span class="step-title">Dashboard reflects everything</span><span class="step-time">1.5 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Action</div><div class="v">Return to CKP Dashboard</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">Units +1, Contractors +1, Vendors +1 (active after renewal), Penalty Imposed +1/Recovered partial reflected, Pending Action counts back to 0 for this record's complaint/inspection since both closed</div></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="step-num">4.21</span><span class="step-title">Audit trail verified — including the gap</span><span class="step-time">2 min</span></div>
+        <div class="step-grid">
+          <div class="step-field"><div class="k">Action</div><div class="v">Audit Logs → filter by today's date, then by record_id for the vendor/contractor/penalty created above</div></div>
+          <div class="step-field"><div class="k">Expected result</div><div class="v">Every create/update/approve/reject/recover action above appears with timestamp, user, role, IP, old/new JSON — <b>except</b> the Station created in step 4.1, which is absent (confirming the gap flagged there)</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SEGMENT 5 ================= -->
+    <section class="block" id="seg5">
+      <p class="kicker">Script · Segment 5</p>
+      <h2>Module-by-module CRUD &amp; validation deep-dive</h2>
+      <p class="dek">Compact format. All list endpoints support search + pagination + entity filters unless noted; <b>none</b> of them expose Restore — there's no soft-delete-undo endpoint anywhere in the app (delete = <code>status=0</code>, permanent from the UI's perspective). Don't script a "Restore" step for any module.</p>
+
+      <h3 class="sub">User Management</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Input / validation probe</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.1</td><td>Create user, username &lt;3 chars</td><td class="mono">"ab"</td><td>Rejected — 3–50 char rule</td></tr>
+          <tr><td>5.2</td><td>Create user, password &lt;6 chars</td><td class="mono">"123"</td><td>Rejected</td></tr>
+          <tr><td>5.3</td><td>Duplicate employee_id</td><td>reuse an existing one</td><td>Rejected — unique constraint</td></tr>
+          <tr><td>5.4</td><td>Toggle user active/inactive</td><td><code>PATCH /:id/toggle</code></td><td>Status flips in list instantly</td></tr>
+          <tr><td>5.5</td><td>Approve a pending_approval user</td><td><code>POST /:id/approve</code>, as hq_admin</td><td>users_status → active; try the same action logged in as a sub-admin who created the user → 403 (approve is Admin-only, not Create-tier)</td></tr>
+          <tr><td>5.6</td><td>Change own password with wrong current password</td><td>wrong current pw</td><td>Rejected before hashing the new one</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">Role Management</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.7</td><td>Create a new custom role</td><td>All 14 modules auto-seeded with all-false permissions — confirm nothing is granted by default</td></tr>
+          <tr><td>5.8</td><td>Bulk-edit its permission matrix, save</td><td>One upsert call updates all changed rows at once</td></tr>
+          <tr><td>5.9</td><td>Delete the custom role</td><td>Soft-deleted (status=0), disappears from role dropdowns on User creation</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">Vendor Management</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.10</td><td>Search vendors by name/mobile</td><td>LIKE-filtered list, division-scoped for divisional roles</td></tr>
+          <tr><td>5.11</td><td>Filter by vendor_status=blacklisted</td><td>Only reachable via dedicated <code>POST /:id/status</code>, not the generic edit form</td></tr>
+          <tr><td>5.12</td><td>Transfer vendor to a different unit</td><td><code>POST /:id/transfer-unit</code> — audit log records old vs new unit_id</td></tr>
+          <tr><td>5.13</td><td>Delete a vendor, then try to view it</td><td>Soft-deleted, drops out of active list; direct-link access still 404s cleanly for other roles</td></tr>
+          <tr><td>5.14</td><td>Note: no dedicated Vendor export button</td><td>Confirm — export only reachable via Report Builder, not a page-level "Export" control (unlike Complaints/Inspections/Audit Logs which do have one)</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">Contractor Management</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.15</td><td>Assign / unassign a Unit to a Contractor</td><td><code>POST</code>/<code>DELETE /:id/units/:unitId</code> — unit's contractor_id updates, affects Dashboard's "Idle Units" derivation live</td></tr>
+          <tr><td>5.16</td><td>Set fee_status=overdue and confirm Dashboard flag</td><td>Should surface wherever contractor fee status is referenced</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">Location Masters</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.17</td><td>Try to add a new Division</td><td><span class="pill fail">GAP</span> No create control exists — Divisions are read-only, seed-fixed. Don't script this as if it should work.</td></tr>
+          <tr><td>5.18</td><td>Bulk-import Stations via Excel</td><td>Columns: Division/Station Name/Station Code/No of Platforms; duplicate station_code rows are skipped, not erroring the whole batch</td></tr>
+          <tr><td>5.19</td><td>Create a Train with an opposite-direction pair</td><td>train_number unique; opposite_* fields optional</td></tr>
+          <tr><td>5.20</td><td>Create a mixed-type Cluster (station + train)</td><td>Rejected — a cluster must be homogeneous (all-station or all-train) and single-division</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">Penalty</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.21</td><td>Reject a pending penalty</td><td>approval_status → rejected, requires a reason</td></tr>
+          <tr><td>5.22</td><td>Revoke an approved penalty</td><td>approval_status → revoked, reason required — separate action from reject</td></tr>
+          <tr><td>5.23</td><td>Try recovery_status backwards (recovered → pending)</td><td>Rejected — forward-only state machine</td></tr>
+          <tr><td>5.24</td><td>Upload evidence to an existing penalty</td><td><code>POST /:id/documents</code></td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">Complaint</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.25</td><td>Import a RailMadad Excel batch</td><td>Auto-creates unrecognized Type/Sub-type dropdown values rather than rejecting rows; duplicates on (source, complaint_ref_no) silently skipped and counted in the import summary</td></tr>
+          <tr><td>5.26</td><td>Re-submit a CPGRAMS complaint with a used portal_registration_number</td><td>Rejected — "already exists for this reference"</td></tr>
+          <tr><td>5.27</td><td>Manage Complaint Type/Sub-type dropdown</td><td>Only reachable by hq_admin/divisional_admin/hq_sub_admin/divisional_sub_admin — try as dealing_section → 403 even though it's a "dropdown," not gated by admin_module</td></tr>
+          <tr><td>5.28</td><td>Reassign (not just initial-assign) a complaint</td><td>assignment_type=reassign row added, history preserved</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">Inspection</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.29</td><td>Sub-admin returns an inspection to the inspector</td><td>status → returned (branch off before assignment)</td></tr>
+          <tr><td>5.30</td><td>Non-owner inspector tries to submit someone else's draft</td><td>Rejected — <code>submitInspection</code> requires caller = original inspector_id</td></tr>
+          <tr><td>5.31</td><td>Upload a .docx to an inspection ATR</td><td>Accepted (inspection uploads uniquely allow DOC/DOCX)</td></tr>
+          <tr><td>5.32</td><td>Upload the same .docx to a Complaint's evidence field</td><td>Rejected — complaint uploads are PDF/JPG/PNG only</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">ID Card &amp; QR</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.33</td><td>hq_sub_admin (no card_signing_authority) attempts to approve a card</td><td>403 "Only a designated Card Signing Authority can approve ID cards" — even though the matrix cell shows <code>A</code></td></tr>
+          <tr><td>5.34</td><td>Divisional Admin attempts to approve a card from another division</td><td>Rejected — division check in service layer</td></tr>
+          <tr><td>5.35</td><td>Try to "revoke" a card</td><td><span class="pill fail">GAP</span> No revoke endpoint exists — only re-requesting resets it to pending_approval. Don't script a Revoke button that isn't there.</td></tr>
+          <tr><td>5.36</td><td>Let a card's expiry_date pass, reload verify page</td><td><span class="pill gap">GAP</span> Server never flips cards_status to expired — page shows stale "ACTIVE" badge with a negative/small "days remaining" computed client-side</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">Reports</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.37</td><td>Save a report template, toggle Share</td><td>is_shared flips 0→1, becomes visible to other users with reports:view</td></tr>
+          <tr><td>5.38</td><td>Try to build a report on "Roles" module</td><td><span class="pill gap">GAP</span> Not in the registry — module picker won't offer it</td></tr>
+          <tr><td>5.39</td><td>Export as PDF</td><td><span class="pill gap">GAP</span> Not implemented — only xlsx/csv exist for the Report Builder</td></tr>
+          <tr><td>5.40</td><td>divisional_admin submits a filter for a different division_id</td><td>Server silently overrides it with the caller's own division — confirm via Network tab that the response never leaks another division's rows</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">Notifications</h3>
+      <div class="twrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>5.41</td><td>Open Notifications as Inspector vs Dealing Section</td><td>Inspector sees only their own inspections' events; Dealing Section sees only events for inspections assigned to them — other feeds (vendor/complaint/penalty/user) aren't ownership-filtered for either role</td></tr>
+          <tr><td>5.42</td><td>Look for a "mark as read" control</td><td><span class="pill fail">GAP</span> Doesn't exist — there's no notifications table, the feed is recomputed fresh on every load</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ================= SEGMENT 6 ================= -->
+    <section class="block" id="seg6">
+      <p class="kicker">Script · Segment 6</p>
+      <h2>Security &amp; negative testing</h2>
+      <div class="twrap"><table>
+        <thead><tr><th>#</th><th>Test</th><th>Method</th><th>Expected / actual</th></tr></thead>
+        <tbody>
+          <tr><td>6.1</td><td>Inactive user can still authenticate</td><td>Repeat login as <code>pratik_patel</code></td><td><span class="pill fail">CONFIRMED GAP</span> Login succeeds — status is never checked (Bug #1)</td></tr>
+          <tr><td>6.2</td><td>Renewal API has no permission gating</td><td>Bearer token from an Inspector session → <code>POST /api/renewals</code> in Postman with a valid vendor_id</td><td><span class="pill fail">CONFIRMED GAP</span> Succeeds — Inspector has no vendor_management create right in the UI, but the raw renewal route enforces nothing (Bug #3)</td></tr>
+          <tr><td>6.3</td><td>QR/ID-card lookup has no integrity check</td><td>Increment the numeric suffix of a known <code>CRIS-ID-XXXXXXXX</code> by 1, load <code>/verify/</code> that guessed code</td><td>Since <code>id_number</code> is derived from the sequential vendor_code, adjacent codes are often live records — <span class="pill fail">CONFIRMED GAP</span> full name/photo/contractor/unit exposed to an unauthenticated guesser, no signature check exists</td></tr>
+          <tr><td>6.4</td><td>Direct URL access without permission</td><td>As complaint_cell, type <code>/inspections</code> in the address bar</td><td>Silent redirect to <code>/dashboard</code> — confirm this is intended UX, not a broken link (already noted in §4)</td></tr>
+          <tr><td>6.5</td><td>IDOR on getById across division</td><td>As admin_ckp, request another division's vendor/contractor/penalty/complaint/inspection record by ID</td><td>404 in every case — <code>assertRecordAccessible()</code> fix confirmed working across all 6 record types</td></tr>
+          <tr><td>6.6</td><td>SQL injection in search fields</td><td>Enter <code>' OR '1'='1</code> into any list search box</td><td>Parameterized queries throughout — expect a normal empty/no-match result, not an error or data leak</td></tr>
+          <tr><td>6.7</td><td>XSS in free-text fields</td><td>Enter <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> into Complaint Description</td><td>React escapes by default — confirm it renders as literal text, not executes</td></tr>
+          <tr><td>6.8</td><td>Session persists after logout</td><td>Copy the JWT before logging out (DevTools → Application → localStorage), log out, replay the token via Postman against any API route</td><td><span class="pill fail">CONFIRMED GAP</span> Still works until natural 12h expiry — logout is client-only, no server-side blacklist</td></tr>
+          <tr><td>6.9</td><td>Expired/tampered JWT</td><td>Edit one character of the stored token, reload</td><td>401 "Session expired, please log in again"</td></tr>
+          <tr><td>6.10</td><td>Oversized file upload</td><td>Upload a 25MB PDF as Aadhaar document</td><td>Rejected by multer before persistence (20MB cap)</td></tr>
+          <tr><td>6.11</td><td>Disallowed file extension</td><td>Upload a <code>.exe</code> renamed to <code>.pdf</code></td><td>Multer checks MIME/extension — confirm rejection, note this is extension/MIME-based, not deep content inspection</td></tr>
+          <tr><td>6.12</td><td>Duplicate complaint reference resubmission</td><td>Re-import the same RailMadad row twice</td><td>Second occurrence skipped, counted as duplicate in import summary, not a hard error</td></tr>
+          <tr><td>6.13</td><td>Browser back-button after submit</td><td>Submit a Vendor create, then press Back</td><td>SPA client-side routing — lands on the previous route with no resubmission risk (no raw form POST to replay)</td></tr>
+          <tr><td>6.14</td><td>No password-change enforcement despite temp-password flag</td><td>Log in with a freshly-created user's temp password</td><td><span class="pill gap">GAP</span> No forced-reset prompt appears — <code>is_temp_password</code> is set but unused (Bug #6)</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ================= SEGMENT 7 ================= -->
+    <section class="block" id="seg7">
+      <p class="kicker">Script · Segment 7</p>
+      <h2>Division restriction demonstration</h2>
+      <div class="twrap"><table>
+        <thead><tr><th>#</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>7.1</td><td>Side-by-side: admin_kgp vs admin_ckp on Vendor Management</td><td>Each sees exclusively their own division's rows, zero overlap, no division selector to widen it</td></tr>
+          <tr><td>7.2</td><td>superadminhq on the same page</td><td>All divisions combined, plus a division column/filter that scoped roles never see</td></tr>
+          <tr><td>7.3</td><td>Divisional Admin on Audit Logs</td><td>Forced <code>division_id</code> filter applied server-side (logs are stamped with the <em>acting user's</em> division, not the record's) — confirm a CKP admin never sees a KGP admin's actions</td></tr>
+          <tr><td>7.4</td><td>Inspector vs Dealing Section on Inspections</td><td>Neither is truly "division-scoped" — Inspector = self only, Dealing Section = currently-assigned only; demonstrate both see a strict subset even of their own division's full inspection list</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ================= SEGMENT 8 ================= -->
+    <section class="block" id="seg8">
+      <p class="kicker">Script · Segment 8</p>
+      <h2>Reports, audit trail &amp; closing</h2>
+      <div class="twrap"><table>
+        <thead><tr><th>#</th><th>Action</th><th>Expected</th></tr></thead>
+        <tbody>
+          <tr><td>8.1</td><td>Generate an Audit Logs export</td><td>Only module with a real PDF export (<code>GET /export/pdf</code>) — contrast with Reports' xlsx/csv-only</td></tr>
+          <tr><td>8.2</td><td>Filter Audit Logs by action=APPROVE, module=penalty</td><td>Shows exactly the 4.16 approval with old/new JSON diff and IP address</td></tr>
+          <tr><td>8.3</td><td>Recap module completion matrix on screen</td><td>Use §5's table as a closing summary slide</td></tr>
+          <tr><td>8.4</td><td>Recap the confirmed bugs list</td><td>Use §9 below</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ================= CHECKLISTS ================= -->
+    <section class="block" id="checklists">
+      <p class="kicker">Sign-off · 7</p>
+      <h2>Checklists</h2>
+
+      <div class="grid-2">
+        <div>
+          <h4 class="sub2">Smoke checklist (critical path only)</h4>
+          <ul class="checklist">
+            <li>Login works for a valid account, fails for a wrong password</li>
+            <li>Dashboard loads with 5 stat groups for a division-scoped role</li>
+            <li>Vendor can be created end-to-end incl. document upload</li>
+            <li>ID Card can be requested and approved by a signing authority</li>
+            <li>Public QR verification page resolves an approved card</li>
+            <li>Complaint can be created, assigned, and closed</li>
+            <li>Penalty can be created, approved, and partially recovered</li>
+            <li>A report can be generated and exported</li>
+            <li>Audit Logs shows the actions above</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="sub2">Sanity checklist (post-fix re-verify)</h4>
+          <ul class="checklist">
+            <li>Whichever module changed since the last build still passes its Segment-5 rows</li>
+            <li>Permission matrix for the touched module unchanged for all 8 roles</li>
+            <li>No new console errors on the touched page</li>
+            <li>Division scoping still holds for the touched module</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <h4 class="sub2">Functional checklist</h4>
+          <ul class="checklist">
+            <li>Every CRUD action in Segment 5 passes for its documented role</li>
+            <li>Every validation rule in Segment 5 correctly rejects bad input</li>
+            <li>Every workflow state machine (Penalty recovery, Complaint status, Inspection status, ID Card approval, ATR review) only allows documented transitions</li>
+            <li>Every dropdown (Complaint Type/Sub-type, Inspection Category/Type, Contract Category) cascades correctly and is admin-editable only by the 4 named roles</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="sub2">Regression checklist</h4>
+          <ul class="checklist">
+            <li>hq_admin's <code>reports.can_delete</code> — confirm which value is actually live (schema vs seed drift, see §9 Bug #9)</li>
+            <li>Legacy <code>inspections.result</code>/donut-chart consumers still populate for old rows</li>
+            <li>Penalty's legacy 3-state <code>penalties_status</code> mirror still in sync with the new 2-axis approval/recovery status</li>
+            <li>Master "lite" picker endpoints (<code>/master/units</code>, <code>/complaints</code>, etc.) remain division-filtered, not just permission-gated</li>
+          </ul>
+        </div>
+      </div>
+
+      <h4 class="sub2">UAT checklist (business sign-off)</h4>
+      <ul class="checklist">
+        <li>HQ Admin can view every division; Divisional roles cannot see outside their own — verified in Segment 7</li>
+        <li>Only a designated Card Signing Authority (not just anyone with the id_card_management permission) can approve an ID card — verified in Segment 5</li>
+        <li>Penalty revocation is a distinct, named action (not folded into reject) — verified in Segment 5</li>
+        <li>User creation and user approval are split: Sub-admins create, only Admins approve — verified in Segment 5</li>
+        <li>Reports module covers the agreed first-batch modules (vendors, contractors, units, penalties, idcards, users, complaints, inspections) — remaining modules are a known, agreed-to-be-later gap, not a defect</li>
+      </ul>
+    </section>
+
+    <section class="block" id="missing">
+      <p class="kicker">Sign-off · 8</p>
+      <h2>Missing features list</h2>
+      <ul class="checklist">
+        <li>No create/edit route for Zones or Divisions — both are effectively seed-fixed data</li>
+        <li>Bulk import exists only for Stations — no other master (Trains, Clusters, Units, Contractors, Vendors) supports Excel import</li>
+        <li>No ID Card revoke/regenerate action distinct from re-requesting</li>
+        <li>No automatic ID-card expiry job — <code>cards_status</code> never self-transitions to expired</li>
+        <li>No QR/ID tamper detection or signed payload — plain ID-number lookup</li>
+        <li>No notifications persistence — no mark-as-read, no push, feed is recomputed on every page load</li>
+        <li>No restore/un-delete endpoint anywhere — every delete is a one-way soft-delete via the UI</li>
+        <li>No unified Admin Module page — the permission exists but the functionality is scattered across 3 unrelated screens</li>
+        <li>Report Builder covers 8 of the app's modules; Roles, Dropdowns, and Renewals are not reportable</li>
+        <li>No PDF export anywhere except Audit Logs (Reports module is xlsx/csv only)</li>
+        <li>No forced password change despite an <code>is_temp_password</code> flag existing on every new user</li>
+        <li>No working "Forgot Password" flow</li>
+        <li>No MFA/2FA on login</li>
+        <li>No server-side token invalidation on logout (no blacklist/refresh-token rotation)</li>
+      </ul>
+    </section>
+
+    <section class="block" id="bugs">
+      <p class="kicker">Sign-off · 9</p>
+      <h2>Bugs found</h2>
+      <div class="twrap"><table>
+        <thead><tr><th>#</th><th>Bug</th><th>Severity</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Login does not check <code>users_status</code> — inactive/suspended/pending_approval accounts can still authenticate and use the app</td><td><span class="pill fail">High</span></td><td>user auth flow (LocalStrategy)</td></tr>
+          <tr><td>2</td><td>Renewal API routes (<code>/api/renewals/*</code>) have zero <code>requirePermission</code> gating — any authenticated role can create/list/update renewals directly, bypassing the UI's vendor_management gate</td><td><span class="pill fail">High</span></td><td>renewal.route.ts</td></tr>
+          <tr><td>3</td><td>QR/ID-card verification is a plain, unsigned DB lookup keyed by a predictable, sequentially-derived ID number — no tamper evidence, enumerable</td><td><span class="pill fail">High</span></td><td>idcard verify endpoint</td></tr>
+          <tr><td>4</td><td>ID card <code>cards_status</code> never auto-transitions to <code>expired</code> — stays "active" indefinitely past its own expiry_date unless someone manually intervenes</td><td><span class="pill gap">Medium</span></td><td>idcard.service.ts</td></tr>
+          <tr><td>5</td><td>Vendor code year prefix ("2026") is a hardcoded literal, not derived from the current year — codes won't roll over correctly next year</td><td><span class="pill gap">Medium</span></td><td>vendor.service.ts</td></tr>
+          <tr><td>6</td><td><code>is_temp_password</code> flag is set on every new user but nothing enforces a forced password change</td><td><span class="pill gap">Low</span></td><td>user creation flow</td></tr>
+          <tr><td>7</td><td>Station CRUD and bulk-import (<code>master.controller.ts</code>) never call <code>logAudit()</code> — these actions leave no audit trail at all</td><td><span class="pill gap">Medium</span></td><td>master.controller.ts</td></tr>
+          <tr><td>8</td><td>"Forgot Password?" link on the login page is a dead anchor with no handler</td><td><span class="pill gap">Low</span></td><td>LoginPage.tsx</td></tr>
+          <tr><td>9</td><td><code>hq_admin</code>'s <code>reports.can_delete</code> differs between <code>seed.ts</code> (0) and the live <code>db_schema.sql</code> dump (1) — the two sources have drifted</td><td><span class="pill gap">Low</span></td><td>seed.ts vs db_schema.sql</td></tr>
+          <tr><td>10</td><td>JWT is not invalidated server-side on logout — a captured token remains fully valid until its natural 12h expiry even after the user logs out</td><td><span class="pill gap">Medium</span></td><td>auth flow, no blacklist</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="block" id="suggestions">
+      <p class="kicker">Sign-off · 10</p>
+      <h2>Improvement suggestions</h2>
+      <ul class="checklist">
+        <li>Gate login on <code>users_status</code> — block <code>inactive</code>/<code>suspended</code>/<code>pending_approval</code> before issuing a JWT, with a clear error per state</li>
+        <li>Add <code>requirePermission("vendor_management", ...)</code> to every Renewal route, matching what the UI already implies</li>
+        <li>Sign the QR payload (HMAC or a short-lived signed token in the URL) instead of a raw guessable ID-number lookup</li>
+        <li>Add a scheduled job (or a lazy check-on-read, matching the existing "effectiveStatus()" pattern already used for vendor verification) to flip <code>cards_status</code> to expired</li>
+        <li>Replace the hardcoded vendor-code year with <code>new Date().getFullYear()</code></li>
+        <li>Add <code>logAudit()</code> calls to <code>master.controller.ts</code> for parity with every other module</li>
+        <li>Either wire up "Forgot Password" or remove the link until it's built</li>
+        <li>Reconcile <code>seed.ts</code> and <code>db_schema.sql</code> as a single source of truth, or document which one wins</li>
+        <li>Add a token blacklist (even a short-TTL one keyed by jti) so logout is meaningful server-side</li>
+        <li>Consolidate the scattered Admin Module functionality (dropdown management, bulk imports, user approval) behind one real <code>/admin</code> page matching its own permission row</li>
+      </ul>
+    </section>
+
+    <section class="block" id="appendix">
+      <p class="kicker">Appendix · 11</p>
+      <h2>Seed data quick-reference</h2>
+      <div class="twrap"><table>
+        <thead><tr><th>Division code</th><th>Division name</th><th>Seeded stations</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">KGP</td><td>Kharagpur Division</td><td>Kharagpur Junction, Santragachi, Howrah Station</td></tr>
+          <tr><td class="mono">ADRA</td><td>Adra Division</td><td>Bokaro Steel City</td></tr>
+          <tr><td class="mono">CKP</td><td>Chakradharpur Division</td><td>— (add "Chakradharpur Junction" live in 4.1)</td></tr>
+          <tr><td class="mono">RNC</td><td>Ranchi Division</td><td>Ranchi</td></tr>
+          <tr><td class="mono">TATA</td><td>Tatanagar Division</td><td>Tatanagar</td></tr>
+          <tr><td class="mono">HLD</td><td>Haldia Division</td><td>Haldia Station</td></tr>
+        </tbody>
+      </table></div>
+      <p class="dek">All divisions sit under the single seeded zone "South Eastern Railway." Two seeded Contractors exist out of the box (CON-001 Eastern Catering Pvt. Ltd. / KGP, CON-002 Railway Pantry Services / ADRA) — the E2E script creates a fresh one for CKP rather than reusing these.</p>
+    </section>
+
+    </div>
+
+    <footer class="end">Compiled 2026-08-02 against branch <code>feature/reports-update</code>. Ground truth sourced directly from <code>server/db_schema.sql</code>, <code>server/seed.ts</code>, and the route/controller/service files under <code>server/app/api/*</code> and <code>client/src/</code> — re-verify against the branch you actually record from, since routes/permissions may have moved since this pass.</footer>
+  </main>
+</div>

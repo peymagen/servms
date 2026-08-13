@@ -41,19 +41,49 @@ export const revokePenaltyValidation = [
   body("reason").trim().notEmpty().withMessage("A revocation reason is required"),
 ];
 
+// Captured at the moment of approval/imposition — all optional since a penalty
+// can also still be corrected later via editPenalty.
+export const approvePenaltyValidation = [
+  param("id").isInt().withMessage("id param must be an integer"),
+  body("due_date").optional().isDate().withMessage("Must be a valid date"),
+  body("order_number").optional().isString(),
+  body("order_date").optional().isDate().withMessage("Must be a valid date"),
+  body("remarks").optional().isString(),
+];
+
 export const updateRecoveryValidation = [
   param("id").isInt().withMessage("id param must be an integer"),
 
+  // "closed" is deliberately excluded — recovery entry can only reach "recovered";
+  // an Admin/Divisional Admin must separately verify it to reach "closed" (see
+  // verifyRecoveryValidation / POST /:id/recovery/verify).
   body("recovery_status")
     .notEmpty().withMessage("recovery_status is required")
-    .isIn(["pending", "partially_recovered", "recovered", "closed"])
+    .isIn(["pending", "partially_recovered", "recovered"])
     .withMessage("Invalid recovery status value"),
 
   body("recovery_amount").optional().isFloat({ min: 0 }).withMessage("Recovery amount must be a positive number"),
   body("recovery_date").optional().isDate().withMessage("Must be a valid date"),
+  body("payment_reference").optional().isString(),
   body("mr_number").optional().isString(),
   body("mr_date").optional().isDate().withMessage("Must be a valid date"),
   body("order_number").optional().isString(),
   body("order_date").optional().isDate().withMessage("Must be a valid date"),
   body("remarks").optional().isString(),
+];
+
+export const verifyRecoveryValidation = [
+  param("id").isInt().withMessage("id param must be an integer"),
+  body("decision")
+    .notEmpty().withMessage("decision is required")
+    .isIn(["verified", "rejected"]).withMessage("decision must be 'verified' or 'rejected'"),
+  body("remarks").optional().isString(),
+];
+
+export const uploadPenaltyDocumentValidation = [
+  param("id").isInt().withMessage("id param must be an integer"),
+  body("document_type")
+    .optional()
+    .isIn(["penalty_order", "approval", "recovery_receipt", "other"])
+    .withMessage("Invalid document_type value"),
 ];

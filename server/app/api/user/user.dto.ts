@@ -12,6 +12,7 @@ export interface IUser extends BaseSchema {
   designation?: string;
   designation_grade?: DesignationGrade | null;
   card_signing_authority?: boolean | number;
+  card_signing_authority_designation?: string | null;
   email?: string;
   mobile?: string;
   password?: string; // mapped from password_hash
@@ -36,6 +37,7 @@ export interface IUserCreate {
   designation?: string;
   designation_grade?: DesignationGrade | null;
   card_signing_authority?: boolean;
+  card_signing_authority_designation?: string | null;
   email?: string;
   mobile?: string;
   password: string; // plain text
@@ -56,6 +58,7 @@ export interface IUserUpdate {
   designation?: string;
   designation_grade?: DesignationGrade | null;
   card_signing_authority?: boolean;
+  card_signing_authority_designation?: string | null;
   email?: string;
   mobile?: string;
   password?: string; // plain text if changing

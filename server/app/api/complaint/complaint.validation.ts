@@ -1,7 +1,8 @@
 import { body, param } from "express-validator";
 
-// Manual entry supports CPGRAMS and Manual Complaint sources only — RailMadad
-// complaints only ever enter the system through the Excel import endpoint.
+// Manual entry supports CPGRAMS, Manual Complaint, and single-record RailMadad
+// sources — bulk RailMadad complaints are still normally registered via the
+// Excel import endpoint, but a single one can also be entered here directly.
 export const createComplaintValidation = [
   body("unit_id")
     .notEmpty().withMessage("Concerned Unit is required")
@@ -9,12 +10,17 @@ export const createComplaintValidation = [
 
   body("complaint_source")
     .optional()
-    .isIn(["cpgrams", "manual"]).withMessage("complaint_source must be cpgrams or manual for manual entry"),
+    .isIn(["railmadad", "cpgrams", "manual"]).withMessage("complaint_source must be railmadad, cpgrams, or manual"),
 
   body("portal_registration_number")
     .if(body("complaint_source").equals("cpgrams"))
     .trim()
     .notEmpty().withMessage("Portal Registration Number is required for CPGRAMS complaints"),
+
+  body("complaint_ref_no")
+    .if(body("complaint_source").equals("railmadad"))
+    .trim()
+    .notEmpty().withMessage("RailMadad Reference Number is required for RailMadad complaints"),
 
   body("complaint_type_id")
     .notEmpty().withMessage("Complaint Type is required")

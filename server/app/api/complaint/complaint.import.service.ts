@@ -2,6 +2,7 @@ import { pool } from "../../common/services/sql.service";
 import { type RowDataPacket, type ResultSetHeader } from "mysql2";
 import * as XLSX from "xlsx";
 import fs from "fs";
+import { getUnitDivisionId, generateComplaintCode, isComplaintCodeCollision } from "./complaint.service";
 
 interface RailMadadRow {
   complaintRefNo?: string | number;
@@ -99,7 +100,14 @@ export const importRailMadadComplaints = async (
 ): Promise<ImportSummary> => {
   const workbook = XLSX.readFile(filePath);
   const sheet = workbook.Sheets[workbook.SheetNames[0] as string];
-  const rows = XLSX.utils.sheet_to_json<RailMadadRow>(sheet as XLSX.WorkSheet, { defval: "" });
+  // raw:false — without it, numeric-looking cells (RailMadad reference numbers,
+  // mobile numbers) come through as JS `number`, which is an IEEE-754 double and
+  // silently loses precision past ~15-16 significant digits. Distinct long
+  // reference numbers can then collapse onto the same rounded value, which both
+  // shows up as "duplicate" reference numbers on screen and makes later rows
+  // with the same rounded value get skipped by the dedup check below. raw:false
+  // reads the cell's displayed/formatted text instead, preserving the exact digits.
+  const rows = XLSX.utils.sheet_to_json<RailMadadRow>(sheet as XLSX.WorkSheet, { defval: "", raw: false });
   fs.unlink(filePath, () => {});
 
   const [divisionRows] = await pool.execute<RowDataPacket[]>("SELECT id, division_code FROM divisions WHERE status = 1");
@@ -110,6 +118,31 @@ export const importRailMadadComplaints = async (
 
   const [trainRows] = await pool.execute<RowDataPacket[]>("SELECT id, train_number FROM trains WHERE status = 1");
   const trainByNumber = new Map(trainRows.map((t) => [String(t.train_number).trim(), t.id]));
+
+  // RailMadad's own export has no unit identifier (only station/train) — a unit
+  // can only be inferred automatically when a station/train maps to exactly one
+  // active unit; anything more (or zero) is left NULL for the existing manual
+  // assign endpoint, per the spec's "automatically/manual mapping" wording.
+  const [unitRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT id, station_id, train_id FROM units WHERE units_status <> 'inactive' AND (station_id IS NOT NULL OR train_id IS NOT NULL)"
+  );
+  const unitsByStation = new Map<number, number[]>();
+  const unitsByTrain = new Map<number, number[]>();
+  for (const u of unitRows) {
+    if (u.station_id) unitsByStation.set(u.station_id, [...(unitsByStation.get(u.station_id) ?? []), u.id]);
+    if (u.train_id) unitsByTrain.set(u.train_id, [...(unitsByTrain.get(u.train_id) ?? []), u.id]);
+  }
+  const soleUnitFor = (stationId: number | null, trainId: number | null): number | null => {
+    if (stationId) {
+      const units = unitsByStation.get(stationId);
+      if (units?.length === 1) return units[0]!;
+    }
+    if (trainId) {
+      const units = unitsByTrain.get(trainId);
+      if (units?.length === 1) return units[0]!;
+    }
+    return null;
+  };
 
   const dropdownCache = new Map<string, number>();
 
@@ -143,7 +176,7 @@ export const importRailMadadComplaints = async (
     }
 
     const divCode = cleanString(row.divCode)?.toUpperCase() ?? null;
-    const divisionId = divCode ? divisionByCode.get(divCode) ?? null : null;
+    let divisionId = divCode ? divisionByCode.get(divCode) ?? null : null;
 
     const complaintMode = cleanString(row.complaintMode);
     const trainStationRaw = cleanString(row.trainStation);
@@ -155,6 +188,14 @@ export const importRailMadadComplaints = async (
       } else {
         stationId = stationByCode.get(trainStationRaw.toUpperCase()) ?? null;
       }
+    }
+
+    const unitId = soleUnitFor(stationId, trainId);
+    // Excel's own divCode (e.g. "HQ") takes precedence, but if it didn't resolve
+    // to a real division and a unit was unambiguously matched, backfill the
+    // division from that unit — same convention as assignComplaint's backfill.
+    if (!divisionId && unitId) {
+      divisionId = await getUnitDivisionId(unitId);
     }
 
     const typeLabel = cleanString(row.compTypeName) ?? "Miscellaneous";
@@ -181,35 +222,49 @@ export const importRailMadadComplaints = async (
         if (value !== null) extra[key] = value;
       }
 
-      const complaintCode = `CMP-${Math.floor(10000 + Math.random() * 90000)}`;
       const isClosed = mappedStatus === "closed";
 
-      const [insertResult] = await pool.execute<ResultSetHeader>(
-        `INSERT INTO complaints (
-          complaint_code, complaint_source, complaint_ref_no, division_id, train_id, station_id,
-          complaint_type_id, complaint_subtype_id, description, complainant_mobile,
-          complaint_date, priority, complaints_status, registered_by,
-          closed_at, railmadad_extra
-        ) VALUES (?, 'railmadad', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'medium', ?, ?, ?, ?)`,
-        [
-          complaintCode,
-          refNo,
-          divisionId,
-          trainId,
-          stationId,
-          typeId,
-          subtypeId,
-          description,
-          cleanString(row.userMobile),
-          complaintDate,
-          mappedStatus,
-          userId,
-          isClosed ? modifiedDate ?? complaintDate : null,
-          JSON.stringify(extra),
-        ]
-      );
+      // complaint_code collisions are re-rolled (not treated as a real failure)
+      // since they're just a random-id clash, not a data problem with this row —
+      // see isComplaintCodeCollision's comment for why this is distinguished from
+      // a genuine complaint_ref_no duplicate.
+      let insertResult: ResultSetHeader | undefined;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const complaintCode = generateComplaintCode();
+        try {
+          [insertResult] = await pool.execute<ResultSetHeader>(
+            `INSERT INTO complaints (
+              complaint_code, complaint_source, complaint_ref_no, division_id, unit_id, train_id, station_id,
+              complaint_type_id, complaint_subtype_id, description, complainant_mobile,
+              complaint_date, priority, complaints_status, registered_by,
+              closed_at, railmadad_extra
+            ) VALUES (?, 'railmadad', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'medium', ?, ?, ?, ?)`,
+            [
+              complaintCode,
+              refNo,
+              divisionId,
+              unitId,
+              trainId,
+              stationId,
+              typeId,
+              subtypeId,
+              description,
+              cleanString(row.userMobile),
+              complaintDate,
+              mappedStatus,
+              userId,
+              isClosed ? modifiedDate ?? complaintDate : null,
+              JSON.stringify(extra),
+            ]
+          );
+          break;
+        } catch (err: any) {
+          if (isComplaintCodeCollision(err) && attempt < 4) continue;
+          throw err;
+        }
+      }
 
-      const complaintId = insertResult.insertId;
+      const complaintId = insertResult!.insertId;
       await pool.execute(
         `INSERT INTO complaint_status_history (complaint_id, from_status, to_status, changed_by, remarks) VALUES (?, NULL, ?, ?, ?)`,
         [complaintId, mappedStatus, userId, "Imported from RailMadad Excel"]
@@ -254,4 +309,13 @@ export const getImportHistory = async (limit = 50) => {
      ORDER BY ih.created_at DESC LIMIT ${Number.isInteger(limit) ? limit : 50}`
   );
   return rows;
+};
+
+// complaint_import_history has no `status` soft-delete column (unlike most tables
+// in this app) and complaints don't carry a live FK back to it, so this only
+// removes the log entry itself — complaints already imported are untouched,
+// exactly like clearing an import receipt, not undoing the import.
+export const deleteImportHistory = async (id: string) => {
+  const [result] = await pool.execute<ResultSetHeader>("DELETE FROM complaint_import_history WHERE id = ?", [id]);
+  if (result.affectedRows === 0) throw new Error("Import history record not found");
 };

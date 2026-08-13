@@ -53,7 +53,7 @@ export const createUnit = async (data: IUnitCreate, userId: number) => {
     INSERT INTO units (
       unit_code, unit_name, location_type, station_id, train_id, cluster_id,
       platform_location, duration_type, contract_type, contract_category_id,
-      area_description, sketch_map_file, contractor_id, monthly_fee,
+      area_description, sketch_map_file, contractor_id, annual_fee,
       license_period_start, license_period_end, units_status, created_by
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
@@ -72,7 +72,7 @@ export const createUnit = async (data: IUnitCreate, userId: number) => {
     data.area_description ?? null,
     data.sketch_map_file ?? null,
     data.contractor_id ?? null,
-    data.monthly_fee ?? 0,
+    data.annual_fee ?? 0,
     data.license_period_start ?? null,
     data.license_period_end ?? null,
     data.units_status ?? "active",
@@ -182,7 +182,7 @@ export const editUnit = async (id: string, data: IUnitUpdate) => {
   const allowedFields: Array<keyof IUnitUpdate> = [
     "unit_name", "platform_location", "duration_type", "contract_type", "contract_category_id",
     "area_description", "sketch_map_file", "contractor_id",
-    "monthly_fee", "license_period_start", "license_period_end", "units_status",
+    "annual_fee", "license_period_start", "license_period_end", "units_status",
   ];
 
   for (const field of allowedFields) {
@@ -228,7 +228,7 @@ export const getUnitMetrics = async (divisionId?: number) => {
       COUNT(*) as total,
       SUM(CASE WHEN u.units_status = 'active' THEN 1 ELSE 0 END) as active_units,
       SUM(CASE WHEN u.units_status = 'inspection_pending' THEN 1 ELSE 0 END) as pending_audit,
-      SUM(u.monthly_fee) as revenue_mtd,
+      SUM(u.annual_fee) as annual_revenue,
       SUM(CASE WHEN NOT EXISTS (
         SELECT 1 FROM inspections i WHERE i.unit_id = u.id AND i.inspector_id IS NOT NULL
       ) THEN 1 ELSE 0 END) as unassigned
@@ -261,6 +261,6 @@ export const getUnitMetrics = async (divisionId?: number) => {
     inspectors: Number(inspectorRows[0]?.inspector_count ?? 0),
     unassigned: Number(stats.unassigned ?? 0),
     pendingAudit: Number(stats.pending_audit ?? 0),
-    revenueMtd: Number(stats.revenue_mtd ?? 0),
+    annualRevenue: Number(stats.annual_revenue ?? 0),
   };
 };

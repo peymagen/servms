@@ -57,7 +57,7 @@ export const editDropdownOption = async (id: string, data: IDropdownOptionUpdate
   if (updates.length === 0) throw new Error("No fields provided to update");
   values.push(id);
   await pool.execute(`UPDATE dropdown_options SET ${updates.join(", ")} WHERE id = ?`, values);
-  return { id, ...data };
+  return { ...data, id };
 };
 
 export const deleteDropdownOption = async (id: string) => {

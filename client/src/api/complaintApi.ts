@@ -44,7 +44,8 @@ export interface ComplaintMetrics {
 }
 
 export interface CreateComplaintBody {
-  complaint_source?: "cpgrams" | "manual";
+  complaint_source?: "railmadad" | "cpgrams" | "manual";
+  complaint_ref_no?: string;
   portal_registration_number?: string;
   manual_dak_reference_number?: string;
   eoffice_computer_number?: string;
@@ -267,6 +268,10 @@ export const complaintApi = apiSlice.injectEndpoints({
       query: () => "/complaints/import/history",
       providesTags: [{ type: "ComplaintImport" as const, id: "LIST" }],
     }),
+    deleteImportHistory: builder.mutation<unknown, number>({
+      query: (id) => ({ url: `/complaints/import/history/${id}`, method: "DELETE" }),
+      invalidatesTags: [{ type: "ComplaintImport" as const, id: "LIST" }],
+    }),
 
     // ── Complaint Type / Sub-type master ──
     getComplaintTypes: builder.query<DropdownOption[], { includeInactive?: boolean } | void>({
@@ -331,6 +336,7 @@ export const {
   useDecideAtrMutation,
   useImportRailMadadMutation,
   useGetImportHistoryQuery,
+  useDeleteImportHistoryMutation,
   useGetComplaintTypesQuery,
   useGetComplaintSubtypesQuery,
   useCreateComplaintTypeMutation,

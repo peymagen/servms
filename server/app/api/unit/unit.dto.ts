@@ -19,7 +19,7 @@ export interface IUnit extends BaseSchema {
   area_description?: string | null;
   sketch_map_file?: string | null;
   contractor_id?: number | null;
-  monthly_fee?: number | null;
+  annual_fee?: number | null;
   license_period_start?: string | null;
   license_period_end?: string | null;
   units_status?: UnitStatus;
@@ -40,7 +40,7 @@ export interface IUnitCreate {
   area_description?: string;
   sketch_map_file?: string;
   contractor_id?: number;
-  monthly_fee?: number;
+  annual_fee?: number;
   license_period_start?: string;
   license_period_end?: string;
   units_status?: UnitStatus;

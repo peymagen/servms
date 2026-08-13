@@ -8,8 +8,12 @@ import { logAudit } from "../../common/services/auditLog.service";
 export const createRenewal = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id ?? 1;
 
-  if (req.file) {
-    req.body.medical_fitness_doc = `/uploads/${req.file.filename}`;
+  const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+  if (files?.medical_fitness_doc?.[0]) {
+    req.body.medical_fitness_doc = `/uploads/${files.medical_fitness_doc[0].filename}`;
+  }
+  if (files?.pvr_document?.[0]) {
+    req.body.pvr_document = `/uploads/${files.pvr_document[0].filename}`;
   }
 
   const result = await renewalService.createRenewal(req.body, userId);

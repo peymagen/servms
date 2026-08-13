@@ -144,7 +144,7 @@ const REGISTRY: ReportModuleDef[] = [
       f("duration_type", "Duration Type", "u.duration_type", "enum", {
         enumValues: ["long_term", "short_term", "temporary"],
       }),
-      f("monthly_fee", "Monthly Fee", "u.monthly_fee", "number"),
+      f("annual_fee", "Annual Fee", "u.annual_fee", "number"),
       f("station_name", "Station", "st.station_name", "string"),
       f("train_number", "Train No.", "tr.train_number", "string"),
       f("contractor_name", "Contractor", "ct.company_name", "string"),

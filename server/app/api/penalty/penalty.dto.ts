@@ -3,6 +3,12 @@ import { type BaseSchema } from "../../common/dto/base.dto";
 export type PenaltyReferenceType = "complaint" | "inspection";
 export type PenaltyApprovalStatus = "pending_approval" | "approved" | "rejected" | "revoked";
 export type PenaltyRecoveryStatus = "pending" | "partially_recovered" | "recovered" | "closed";
+// "not_applicable" until a recovery entry actually reaches "recovered" (nothing to
+// verify before then); "pending" once Dealing Section marks it fully recovered —
+// an Admin/Divisional Admin must then verify the recovery documents before the
+// record can move to recovery_status "closed" (see penalty.service.ts's verifyRecovery).
+export type PenaltyRecoveryVerificationStatus = "not_applicable" | "pending" | "verified" | "rejected";
+export type PenaltyDocumentType = "penalty_order" | "approval" | "recovery_receipt" | "other";
 
 // Forward-only recovery workflow per UAT: Pending → Partially Recovered → Recovered → Closed.
 export const RECOVERY_STATUS_ORDER: PenaltyRecoveryStatus[] = [
@@ -33,6 +39,10 @@ export interface IPenalty extends BaseSchema {
   revoke_reason?: string | null;
   recovery_status: PenaltyRecoveryStatus;
   recovery_amount: number;
+  payment_reference?: string | null;
+  recovery_verification_status: PenaltyRecoveryVerificationStatus;
+  recovery_verified_by?: number | null;
+  recovery_verified_at?: string | null;
   due_date?: string | null;
   recovery_date?: string | null;
   mr_number?: string | null;
@@ -70,10 +80,25 @@ export interface IPenaltyRecoveryUpdate {
   recovery_status: PenaltyRecoveryStatus;
   recovery_amount?: number;
   recovery_date?: string;
+  payment_reference?: string;
   mr_number?: string;
   mr_date?: string;
   order_number?: string;
   order_date?: string;
+  remarks?: string;
+}
+
+// Captured at the moment of approval — "Penalty Imposition Date" is approved_at
+// itself (set by the DB at approval time), not a separately-entered field.
+export interface IPenaltyApprove {
+  due_date?: string;
+  order_number?: string;
+  order_date?: string;
+  remarks?: string;
+}
+
+export interface IPenaltyRecoveryVerify {
+  decision: "verified" | "rejected";
   remarks?: string;
 }
 

@@ -10,6 +10,8 @@ import {
   useRejectPenaltyMutation,
   useRevokePenaltyMutation,
   useUpdatePenaltyRecoveryMutation,
+  useVerifyPenaltyRecoveryMutation,
+  useUploadPenaltyDocumentMutation,
   useLazyGetPenaltiesQuery,
 } from "../api/penaltyApi";
 import {
@@ -22,6 +24,7 @@ import {
 import type {
   Penalty,
   PenaltyApprovalStatus,
+  PenaltyDocumentType,
   PenaltyRecoveryStatus,
   PenaltyReferenceType,
 } from "../types";
@@ -48,6 +51,13 @@ const RECOVERY_LABELS: Record<PenaltyRecoveryStatus, string> = {
   closed: "Closed",
 };
 
+const DOCUMENT_TYPE_LABELS: Record<PenaltyDocumentType, string> = {
+  penalty_order: "Penalty Order",
+  approval: "Approval Document",
+  recovery_receipt: "Recovery Receipt / Proof",
+  other: "Supporting Document",
+};
+
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   const d = new Date(value);
@@ -70,10 +80,14 @@ function recoveryBadgeClass(status: PenaltyRecoveryStatus): string {
 }
 
 export default function PenaltiesPage() {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const canApprove = can("penalty_management", "approve_reject");
   const canEdit = can("penalty_management", "edit");
   const canCreate = can("penalty_management", "create");
+  // Recovery entry is Dealing-Section-exclusive server-side (super_admin_hq always
+  // bypasses too) — gated separately from canEdit since Dealing Section holds no
+  // generic penalty_management edit permission at all.
+  const isDealingSection = user?.role_name === "dealing_section" || user?.role_name === "super_admin_hq";
 
   const [offset, setOffset] = useState(0);
   // Seeds initial filters from the URL once (e.g. the Dashboard's Penalty card
@@ -99,7 +113,9 @@ export default function PenaltiesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewPenalty, setViewPenalty] = useState<Penalty | null>(null);
   const [editPenaltyTarget, setEditPenaltyTarget] = useState<Penalty | null>(null);
+  const [approveTarget, setApproveTarget] = useState<Penalty | null>(null);
   const [recoveryTarget, setRecoveryTarget] = useState<Penalty | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<Penalty | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<Penalty | null>(null);
 
   const filters = useMemo(
@@ -125,7 +141,6 @@ export default function PenaltiesPage() {
   const { data: vendors = [] } = useGetVendorsLiteQuery(contractorFilter || undefined);
   const [triggerExport] = useLazyGetPenaltiesQuery();
 
-  const [approvePenalty, { isLoading: isApproving }] = useApprovePenaltyMutation();
   const [rejectPenalty, { isLoading: isRejecting }] = useRejectPenaltyMutation();
 
   const penalties = listData?.rows ?? [];
@@ -144,7 +159,7 @@ export default function PenaltiesPage() {
         "Due Date",
         "Approval Status",
         "Recovery Status",
-        "Recovery Date",
+        "Date of Receipt",
         "MR Number",
         "Order Number",
       ];
@@ -175,15 +190,6 @@ export default function PenaltiesPage() {
       setError("Unable to export penalty ledger");
     } finally {
       setIsExporting(false);
-    }
-  }
-
-  async function handleApprove(id: number) {
-    setError(null);
-    try {
-      await approvePenalty(id).unwrap();
-    } catch (err: any) {
-      setError(err?.data?.message ?? err?.message ?? "Unable to approve penalty");
     }
   }
 
@@ -441,8 +447,7 @@ export default function PenaltiesPage() {
                             type="button"
                             className={styles.pageBtn}
                             title="Approve"
-                            disabled={isApproving}
-                            onClick={() => handleApprove(p.id)}
+                            onClick={() => setApproveTarget(p)}
                           >
                             ✓
                           </button>
@@ -462,9 +467,21 @@ export default function PenaltiesPage() {
                           Revoke
                         </button>
                       )}
-                      {canEdit && p.approval_status === "approved" && p.recovery_status !== "closed" && (
-                        <button type="button" className={styles.pageBtn} title="Update recovery" onClick={() => setRecoveryTarget(p)}>
+                      {isDealingSection && p.approval_status === "approved" && p.recovery_status !== "recovered" && p.recovery_status !== "closed" && (
+                        <button type="button" className={styles.pageBtn} title="Record recovery" onClick={() => setRecoveryTarget(p)}>
                           <StatusIcon />
+                        </button>
+                      )}
+                      {isDealingSection &&
+                        p.recovery_status === "recovered" &&
+                        p.recovery_verification_status === "rejected" && (
+                          <button type="button" className={styles.pageBtn} title="Resubmit recovery" onClick={() => setRecoveryTarget(p)}>
+                            <StatusIcon />
+                          </button>
+                        )}
+                      {canApprove && p.recovery_status === "recovered" && p.recovery_verification_status === "pending" && (
+                        <button type="button" className={styles.pageBtn} title="Verify recovery documents" onClick={() => setVerifyTarget(p)}>
+                          Verify
                         </button>
                       )}
                     </div>
@@ -487,8 +504,16 @@ export default function PenaltiesPage() {
         <EditPenaltyModal penalty={editPenaltyTarget} onClose={() => setEditPenaltyTarget(null)} />
       )}
 
+      {approveTarget && (
+        <ApproveModal penalty={approveTarget} onClose={() => setApproveTarget(null)} />
+      )}
+
       {recoveryTarget && (
         <RecoveryModal penalty={recoveryTarget} onClose={() => setRecoveryTarget(null)} />
+      )}
+
+      {verifyTarget && (
+        <VerifyRecoveryModal penalty={verifyTarget} onClose={() => setVerifyTarget(null)} />
       )}
 
       {revokeTarget && <RevokeModal penalty={revokeTarget} onClose={() => setRevokeTarget(null)} />}
@@ -515,6 +540,22 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 }
 
 function ViewPenaltyModal({ penalty, onClose }: { penalty: Penalty; onClose: () => void }) {
+  const { can, user } = useAuth();
+  const canUpload = can("penalty_management", "approve_reject") || user?.role_name === "dealing_section";
+  const [uploadDocument, { isLoading: isUploading }] = useUploadPenaltyDocumentMutation();
+  const [docType, setDocType] = useState<PenaltyDocumentType>("penalty_order");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function handleUpload(file: File | null) {
+    if (!file) return;
+    setUploadError(null);
+    try {
+      await uploadDocument({ id: penalty.id, file, documentType: docType }).unwrap();
+    } catch (err: any) {
+      setUploadError(err?.data?.message ?? err?.message ?? "Unable to upload document");
+    }
+  }
+
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -537,9 +578,21 @@ function ViewPenaltyModal({ penalty, onClose }: { penalty: Penalty; onClose: () 
           <DetailItem label="Due Date" value={formatDate(penalty.due_date)} />
           <DetailItem label="Approval Status" value={APPROVAL_LABELS[penalty.approval_status]} />
           <DetailItem label="Approved By" value={penalty.approved_by_name ?? "—"} />
+          <DetailItem label="Penalty Imposition Date" value={formatDate(penalty.approved_at)} />
           <DetailItem label="Recovery Status" value={RECOVERY_LABELS[penalty.recovery_status]} />
           <DetailItem label="Recovery Amount" value={currency.format(penalty.recovery_amount)} />
-          <DetailItem label="Recovery Date" value={formatDate(penalty.recovery_date)} />
+          <DetailItem label="Date of Receipt" value={formatDate(penalty.recovery_date)} />
+          <DetailItem label="Payment Reference" value={penalty.payment_reference ?? "—"} />
+          <DetailItem
+            label="Document Verification"
+            value={
+              penalty.recovery_verification_status === "not_applicable"
+                ? "—"
+                : `${penalty.recovery_verification_status[0]!.toUpperCase()}${penalty.recovery_verification_status.slice(1)}${
+                    penalty.recovery_verified_by_name ? ` by ${penalty.recovery_verified_by_name}` : ""
+                  }`
+            }
+          />
           <DetailItem label="MR Number / Date" value={`${penalty.mr_number ?? "—"} / ${formatDate(penalty.mr_date)}`} />
           <DetailItem label="Order Number / Date" value={`${penalty.order_number ?? "—"} / ${formatDate(penalty.order_date)}`} />
           {penalty.approval_status === "revoked" && (
@@ -556,9 +609,184 @@ function ViewPenaltyModal({ penalty, onClose }: { penalty: Penalty; onClose: () 
             </div>
           )}
         </div>
+
+        <div style={{ marginTop: 18, borderTop: "1px solid var(--color-border)", paddingTop: 14 }}>
+          <div className={styles.fieldLabel} style={{ marginBottom: 8 }}>Documents</div>
+          {penalty.documents && penalty.documents.length > 0 ? (
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {penalty.documents.map((doc) => (
+                <li key={doc.id} style={{ marginBottom: 4 }}>
+                  <a href={doc.document_path} target="_blank" rel="noreferrer">
+                    {doc.original_name ?? doc.document_path}
+                  </a>{" "}
+                  <span className={styles.sub}>
+                    ({DOCUMENT_TYPE_LABELS[doc.document_type]}
+                    {doc.uploaded_by_name ? ` — ${doc.uploaded_by_name}` : ""}, {formatDate(doc.uploaded_at)})
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className={styles.sub}>No documents uploaded yet.</div>
+          )}
+
+          {canUpload && (
+            <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <select
+                className={styles.select}
+                value={docType}
+                onChange={(e) => setDocType(e.target.value as PenaltyDocumentType)}
+              >
+                {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <label className={styles.pageBtn} style={{ cursor: isUploading ? "not-allowed" : "pointer" }}>
+                {isUploading ? "Uploading…" : "Upload"}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  hidden
+                  disabled={isUploading}
+                  onChange={(e) => handleUpload(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          )}
+          {uploadError && <div className={styles.errorBanner} style={{ marginTop: 8 }}>{uploadError}</div>}
+        </div>
+
         <div className={styles.modalActions}>
           <button className={styles.cancelBtn} onClick={onClose}>
             Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ApproveModal({ penalty, onClose }: { penalty: Penalty; onClose: () => void }) {
+  const [approvePenalty, { isLoading: isSubmitting }] = useApprovePenaltyMutation();
+  const [dueDate, setDueDate] = useState(penalty.due_date?.slice(0, 10) ?? "");
+  const [orderNumber, setOrderNumber] = useState(penalty.order_number ?? "");
+  const [orderDate, setOrderDate] = useState(penalty.order_date?.slice(0, 10) ?? "");
+  const [remarks, setRemarks] = useState(penalty.remarks ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await approvePenalty({
+        id: penalty.id,
+        data: {
+          due_date: dueDate || undefined,
+          order_number: orderNumber || undefined,
+          order_date: orderDate || undefined,
+          remarks: remarks || undefined,
+        },
+      }).unwrap();
+      onClose();
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to approve penalty");
+    }
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
+        <h2 className={styles.modalTitle}>Approve {penalty.penalty_code}</h2>
+        <p className={styles.sub}>Confirm the recovery due date and penalty order details at the moment of imposition.</p>
+        <div className={styles.formGrid}>
+          <Field label="Recovery Due Date">
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </Field>
+          <Field label="Penalty Order Number">
+            <input value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} />
+          </Field>
+          <Field label="Order Date">
+            <input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+          </Field>
+          <div className={styles.fieldWide}>
+            <Field label="Remarks">
+              <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+            </Field>
+          </div>
+        </div>
+        {error && <div className={styles.errorBanner}>{error}</div>}
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.cancelBtn} onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className={styles.addBtn} disabled={isSubmitting}>
+            {isSubmitting ? "Approving…" : "Approve Penalty"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function VerifyRecoveryModal({ penalty, onClose }: { penalty: Penalty; onClose: () => void }) {
+  const [verifyRecovery, { isLoading: isSubmitting }] = useVerifyPenaltyRecoveryMutation();
+  const [remarks, setRemarks] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDecision(decision: "verified" | "rejected") {
+    setError(null);
+    try {
+      await verifyRecovery({ id: penalty.id, data: { decision, remarks: remarks || undefined } }).unwrap();
+      onClose();
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to record verification decision");
+    }
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <h2 className={styles.modalTitle}>Verify Recovery — {penalty.penalty_code}</h2>
+        <div className={styles.formGrid}>
+          <DetailItem label="Recovery Amount" value={currency.format(penalty.recovery_amount)} />
+          <DetailItem label="Date of Receipt" value={formatDate(penalty.recovery_date)} />
+          <DetailItem label="Payment Reference" value={penalty.payment_reference ?? "—"} />
+        </div>
+        <div className={styles.fieldWide} style={{ marginTop: 10 }}>
+          <div className={styles.fieldLabel} style={{ marginBottom: 8 }}>Recovery Documents</div>
+          {penalty.documents?.filter((d) => d.document_type === "recovery_receipt").length ? (
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {penalty.documents
+                .filter((d) => d.document_type === "recovery_receipt")
+                .map((doc) => (
+                  <li key={doc.id}>
+                    <a href={doc.document_path} target="_blank" rel="noreferrer">
+                      {doc.original_name ?? doc.document_path}
+                    </a>
+                  </li>
+                ))}
+            </ul>
+          ) : (
+            <div className={styles.sub}>No recovery-proof documents uploaded — verify with caution.</div>
+          )}
+        </div>
+        <div className={styles.fieldWide} style={{ marginTop: 10 }}>
+          <Field label="Remarks (optional)">
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+          </Field>
+        </div>
+        {error && <div className={styles.errorBanner}>{error}</div>}
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.cancelBtn} onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className={styles.pageBtn} disabled={isSubmitting} onClick={() => handleDecision("rejected")}>
+            Reject
+          </button>
+          <button type="button" className={styles.addBtn} disabled={isSubmitting} onClick={() => handleDecision("verified")}>
+            {isSubmitting ? "Saving…" : "Verify & Close"}
           </button>
         </div>
       </div>
@@ -773,19 +1001,22 @@ function EditPenaltyModal({ penalty, onClose }: { penalty: Penalty; onClose: () 
 
 function RecoveryModal({ penalty, onClose }: { penalty: Penalty; onClose: () => void }) {
   const [updateRecovery, { isLoading: isSubmitting }] = useUpdatePenaltyRecoveryMutation();
+  const [uploadDocument, { isLoading: isUploading }] = useUploadPenaltyDocumentMutation();
+  // "closed" is never a Dealing Section option — recovery entry can only reach
+  // "recovered"; an Admin/Divisional Admin verifies it to "closed" separately.
   const currentIndex = RECOVERY_ORDER.indexOf(penalty.recovery_status);
-  const availableStatuses = RECOVERY_ORDER.slice(currentIndex);
+  const availableStatuses = RECOVERY_ORDER.slice(currentIndex, RECOVERY_ORDER.indexOf("recovered") + 1);
 
-  const [recoveryStatus, setRecoveryStatus] = useState<PenaltyRecoveryStatus>(
-    availableStatuses[availableStatuses.length > 1 ? 1 : 0] ?? penalty.recovery_status
+  const [recoveryStatus, setRecoveryStatus] = useState<Exclude<PenaltyRecoveryStatus, "closed">>(
+    (availableStatuses[availableStatuses.length > 1 ? 1 : 0] ?? penalty.recovery_status) as Exclude<PenaltyRecoveryStatus, "closed">
   );
   const [recoveryAmount, setRecoveryAmount] = useState(String(penalty.recovery_amount || ""));
   const [recoveryDate, setRecoveryDate] = useState("");
+  const [paymentReference, setPaymentReference] = useState(penalty.payment_reference ?? "");
   const [mrNumber, setMrNumber] = useState(penalty.mr_number ?? "");
   const [mrDate, setMrDate] = useState(penalty.mr_date?.slice(0, 10) ?? "");
-  const [orderNumber, setOrderNumber] = useState(penalty.order_number ?? "");
-  const [orderDate, setOrderDate] = useState(penalty.order_date?.slice(0, 10) ?? "");
   const [remarks, setRemarks] = useState(penalty.remarks ?? "");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
@@ -798,13 +1029,15 @@ function RecoveryModal({ penalty, onClose }: { penalty: Penalty; onClose: () => 
           recovery_status: recoveryStatus,
           recovery_amount: recoveryAmount ? Number(recoveryAmount) : undefined,
           recovery_date: recoveryDate || undefined,
+          payment_reference: paymentReference || undefined,
           mr_number: mrNumber || undefined,
           mr_date: mrDate || undefined,
-          order_number: orderNumber || undefined,
-          order_date: orderDate || undefined,
           remarks: remarks || undefined,
         },
       }).unwrap();
+      if (receiptFile) {
+        await uploadDocument({ id: penalty.id, file: receiptFile, documentType: "recovery_receipt" }).unwrap();
+      }
       onClose();
     } catch (err: any) {
       setError(err?.data?.message ?? err?.message ?? "Unable to update recovery status");
@@ -814,10 +1047,10 @@ function RecoveryModal({ penalty, onClose }: { penalty: Penalty; onClose: () => 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
-        <h2 className={styles.modalTitle}>Update Recovery — {penalty.penalty_code}</h2>
+        <h2 className={styles.modalTitle}>Record Recovery — {penalty.penalty_code}</h2>
         <div className={styles.formGrid}>
           <Field label="Recovery Status">
-            <select value={recoveryStatus} onChange={(e) => setRecoveryStatus(e.target.value as PenaltyRecoveryStatus)}>
+            <select value={recoveryStatus} onChange={(e) => setRecoveryStatus(e.target.value as Exclude<PenaltyRecoveryStatus, "closed">)}>
               {availableStatuses.map((s) => (
                 <option key={s} value={s}>
                   {RECOVERY_LABELS[s]}
@@ -834,8 +1067,15 @@ function RecoveryModal({ penalty, onClose }: { penalty: Penalty; onClose: () => 
               onChange={(e) => setRecoveryAmount(e.target.value)}
             />
           </Field>
-          <Field label="Recovery Date">
+          <Field label="Date of Receipt">
             <input type="date" value={recoveryDate} onChange={(e) => setRecoveryDate(e.target.value)} />
+          </Field>
+          <Field label="Payment Reference Details">
+            <input
+              value={paymentReference}
+              onChange={(e) => setPaymentReference(e.target.value)}
+              placeholder="e.g. UTR/Cheque/Challan number"
+            />
           </Field>
           <Field label="MR Number">
             <input value={mrNumber} onChange={(e) => setMrNumber(e.target.value)} />
@@ -843,11 +1083,12 @@ function RecoveryModal({ penalty, onClose }: { penalty: Penalty; onClose: () => 
           <Field label="MR Date">
             <input type="date" value={mrDate} onChange={(e) => setMrDate(e.target.value)} />
           </Field>
-          <Field label="Order Number">
-            <input value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} />
-          </Field>
-          <Field label="Order Date">
-            <input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+          <Field label="Payment Receipt / Recovery Proof">
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+            />
           </Field>
           <div className={styles.fieldWide}>
             <Field label="Remarks">
@@ -860,8 +1101,8 @@ function RecoveryModal({ penalty, onClose }: { penalty: Penalty; onClose: () => 
           <button type="button" className={styles.cancelBtn} onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className={styles.addBtn} disabled={isSubmitting}>
-            {isSubmitting ? "Saving…" : "Update Recovery"}
+          <button type="submit" className={styles.addBtn} disabled={isSubmitting || isUploading}>
+            {isSubmitting || isUploading ? "Saving…" : "Save Recovery Entry"}
           </button>
         </div>
       </form>

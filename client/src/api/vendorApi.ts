@@ -41,10 +41,12 @@ export interface VendorFormData {
   validity_start?: string;
   validity_end?: string;
   police_verification_status?: VerificationStatus;
+  police_verification_number?: string;
   police_verification_issue_date?: string;
   police_verification_valid_till?: string;
   police_verification_remarks?: string;
   medical_verification_status?: VerificationStatus;
+  medical_verification_number?: string;
   medical_verification_issue_date?: string;
   medical_verification_valid_till?: string;
   medical_verification_remarks?: string;
@@ -136,11 +138,11 @@ export const vendorApi = apiSlice.injectEndpoints({
         { type: "VendorTransfer" as const, id },
       ],
     }),
-    updatePoliceVerification: builder.mutation<Vendor, { id: number; status: string; issue_date?: string; valid_till?: string; remarks?: string; document?: File }>({
+    updatePoliceVerification: builder.mutation<Vendor, { id: number; status: string; number?: string; issue_date?: string; valid_till?: string; remarks?: string; document?: File }>({
       query: ({ id, ...body }) => ({ url: `/vendors/${id}/verification/police`, method: "PATCH", body: toFormData(body as any) }),
       invalidatesTags: (_result, _error, { id }) => [{ type: "Vendor" as const, id }, { type: "Vendor" as const, id: "LIST" }, { type: "Vendor" as const, id: "METRICS" }],
     }),
-    updateMedicalVerification: builder.mutation<Vendor, { id: number; status: string; issue_date?: string; valid_till?: string; remarks?: string; document?: File }>({
+    updateMedicalVerification: builder.mutation<Vendor, { id: number; status: string; number?: string; issue_date?: string; valid_till?: string; remarks?: string; document?: File }>({
       query: ({ id, ...body }) => ({ url: `/vendors/${id}/verification/medical`, method: "PATCH", body: toFormData(body as any) }),
       invalidatesTags: (_result, _error, { id }) => [{ type: "Vendor" as const, id }, { type: "Vendor" as const, id: "LIST" }, { type: "Vendor" as const, id: "METRICS" }],
     }),

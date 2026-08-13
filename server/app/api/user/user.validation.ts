@@ -60,6 +60,10 @@ export const createUserValidation = [
   body("card_signing_authority")
     .optional()
     .toBoolean(),
+
+  body("card_signing_authority_designation")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim(),
 ];
 
 export const updateUserValidation = [
@@ -125,6 +129,10 @@ export const updateUserValidation = [
   body("card_signing_authority")
     .optional()
     .toBoolean(),
+
+  body("card_signing_authority_designation")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim(),
 ];
 
 export const loginValidation = [

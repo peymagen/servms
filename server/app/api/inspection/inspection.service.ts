@@ -356,7 +356,7 @@ export const editInspection = async (id: string, data: IInspectionUpdate) => {
 
   values.push(id);
   await pool.execute(`UPDATE inspections SET ${updates.join(", ")} WHERE id = ?`, values);
-  return { id, ...data };
+  return { ...data, id };
 };
 
 export const deleteInspection = async (id: string) => {

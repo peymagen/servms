@@ -2,6 +2,8 @@ import { Router } from "express";
 import { type Request, type Response, type NextFunction } from "express";
 import { validationResult } from "express-validator";
 import * as userController from "./user.controller";
+import * as passwordResetController from "./user.password-reset-request.controller";
+import * as transferController from "./user.transfer-request.controller";
 import { roleAuth } from "../../common/middleware/role-auth.middleware";
 import { requirePermission } from "../../common/middleware/permission.middleware";
 import { signatureUpload } from "../../common/middleware/multer.middleware";
@@ -11,6 +13,11 @@ import {
   loginValidation,
   changePasswordValidation,
 } from "./user.validation";
+import {
+  raisePasswordResetRequestValidation,
+  decidePasswordResetRequestValidation,
+} from "./user.password-reset-request.validation";
+import { raiseTransferRequestValidation, decideTransferRequestValidation } from "./user.transfer-request.validation";
 
 // Inline validator — no external middleware import needed
 const validate = (req: Request, res: Response, next: NextFunction) => {
@@ -47,6 +54,70 @@ router.post(
   userController.createUser
 );
 router.get("/", requirePermission("user_management", "view"), userController.getAllUser);
+
+// ─── Password Reset Requests (must precede /:id) ────────────────────────────────
+// "Request should be raised to servmshqadmin@gmail.com" — raising is open to any
+// authenticated user (self-service, or an admin on someone's behalf); only
+// user_management.approve_reject can review/decide, mirroring the existing
+// user approve/reject convention below.
+router.post(
+  "/password-reset-requests",
+  raisePasswordResetRequestValidation,
+  validate,
+  passwordResetController.raisePasswordResetRequest
+);
+router.get(
+  "/password-reset-requests",
+  requirePermission("user_management", "approve_reject"),
+  passwordResetController.getPasswordResetRequests
+);
+router.post(
+  "/password-reset-requests/:id/approve",
+  requirePermission("user_management", "approve_reject"),
+  decidePasswordResetRequestValidation,
+  validate,
+  passwordResetController.approvePasswordResetRequest
+);
+router.post(
+  "/password-reset-requests/:id/reject",
+  requirePermission("user_management", "approve_reject"),
+  decidePasswordResetRequestValidation,
+  validate,
+  passwordResetController.rejectPasswordResetRequest
+);
+
+// ─── User Transfer Requests (must precede /:id) ─────────────────────────────────
+// "Transfer Request Raised → HQ Admin Review → Approval → User Division/Role
+// Updated" — raising requires edit access (an admin initiating on a user's
+// behalf); review/decide requires approve_reject, same HQ-Admin-tier gate as
+// every other approval workflow in this codebase.
+router.post(
+  "/transfer-requests",
+  requirePermission("user_management", "edit"),
+  raiseTransferRequestValidation,
+  validate,
+  transferController.raiseTransferRequest
+);
+router.get(
+  "/transfer-requests",
+  requirePermission("user_management", "approve_reject"),
+  transferController.getTransferRequests
+);
+router.post(
+  "/transfer-requests/:id/approve",
+  requirePermission("user_management", "approve_reject"),
+  decideTransferRequestValidation,
+  validate,
+  transferController.approveTransferRequest
+);
+router.post(
+  "/transfer-requests/:id/reject",
+  requirePermission("user_management", "approve_reject"),
+  decideTransferRequestValidation,
+  validate,
+  transferController.rejectTransferRequest
+);
+
 router.get("/:id", requirePermission("user_management", "view"), userController.getUserById);
 router.put(
   "/:id",
