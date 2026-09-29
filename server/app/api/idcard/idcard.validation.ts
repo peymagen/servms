@@ -14,3 +14,11 @@ export const rejectIdCardValidation = [
   param("vendorId").isInt().withMessage("vendorId param must be an integer"),
   body("reason").trim().notEmpty().withMessage("A rejection reason is required"),
 ];
+
+export const updateIdCardStatusLinkValidation = [
+  param("vendorId").isInt().withMessage("vendorId param must be an integer"),
+  body("excel_status_link")
+    .optional({ nullable: true, values: "falsy" })
+    .isURL({ protocols: ["http", "https"], require_protocol: true })
+    .withMessage("excel_status_link must be a valid http(s) URL"),
+];

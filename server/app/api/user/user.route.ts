@@ -118,6 +118,8 @@ router.post(
   transferController.rejectTransferRequest
 );
 
+// The caller's own, current account (division/role may have changed since login).
+router.get("/me", userController.getMe);
 router.get("/:id", requirePermission("user_management", "view"), userController.getUserById);
 router.put(
   "/:id",

@@ -64,9 +64,13 @@ export const raisePasswordResetRequest = async (
   return { id: result.insertId, requested_user_id: requestedUserId };
 };
 
-export const getPasswordResetRequests = async (approvalStatus?: string) => {
+export const getPasswordResetRequests = async (approvalStatus?: string, divisionId?: number) => {
   const params: any[] = [];
   let whereSql = "WHERE prr.status = 1";
+  if (divisionId !== undefined) {
+    whereSql += " AND ru.division_id = ?";
+    params.push(divisionId);
+  }
   if (approvalStatus) {
     whereSql += " AND prr.approval_status = ?";
     params.push(approvalStatus);
@@ -76,6 +80,14 @@ export const getPasswordResetRequests = async (approvalStatus?: string) => {
     params
   );
   return rows;
+};
+
+export const getRequestedUserId = async (id: string): Promise<number | null> => {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT requested_user_id FROM password_reset_requests WHERE id = ? AND status = 1`,
+    [id]
+  );
+  return rows[0]?.requested_user_id ?? null;
 };
 
 const assertPending = async (id: string): Promise<RowDataPacket> => {

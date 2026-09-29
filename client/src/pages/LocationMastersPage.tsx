@@ -1,4 +1,5 @@
-import { useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useAuth, useDivisionLock } from "../context/AuthContext";
 import { useSearchParams } from "react-router-dom";
 import {
   useGetUnitsQuery,
@@ -129,6 +130,10 @@ function TrashIcon() {
 /* ═══════════════════════════════ UNITS TAB ═══════════════════════════════ */
 
 function UnitsTab() {
+  const { can } = useAuth();
+  const canCreate = can("unit_management", "create");
+  const canEdit = can("unit_management", "edit");
+  const canDelete = can("unit_management", "delete");
   // Seeds initial filters from the URL once (e.g. the Dashboard's Registered
   // Units card links here as `/locations?status=idle&division_id=2`) without
   // migrating this page to fully URL-synced state.
@@ -192,9 +197,11 @@ function UnitsTab() {
     <div>
       <div className={styles.header}>
         <div />
-        <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>
-          + Add New Unit
-        </button>
+        {canCreate && (
+          <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>
+            + Add New Unit
+          </button>
+        )}
       </div>
 
       <div className={styles.statGrid}>
@@ -398,12 +405,16 @@ function UnitsTab() {
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" className={styles.pageBtn} title="Edit unit" onClick={() => setEditUnitTarget(u)}>
-                        <EditIcon />
-                      </button>
-                      <button type="button" className={styles.pageBtn} title="Deactivate unit" onClick={() => handleDelete(u)}>
-                        <TrashIcon />
-                      </button>
+                      {canEdit && (
+                        <button type="button" className={styles.pageBtn} title="Edit unit" onClick={() => setEditUnitTarget(u)}>
+                          <EditIcon />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button type="button" className={styles.pageBtn} title="Deactivate unit" onClick={() => handleDelete(u)}>
+                          <TrashIcon />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -427,7 +438,12 @@ function UnitFormModal({ unit, onClose, onSaved }: { unit?: Unit; onClose: () =>
 
   // Field order per UAT: Division → Station/Train/Cluster → Contract Type → Contract
   // Category → Unit Name/Code → Area (if applicable) → Sketch (if Earning).
-  const [divisionId, setDivisionId] = useState<number | "">(unit?.division_id ?? "");
+  const { locked: divisionLocked, ownDivisionId } = useDivisionLock();
+  const [divisionId, setDivisionId] = useState<number | "">(unit?.division_id ?? ownDivisionId);
+
+  useEffect(() => {
+    if (divisionLocked && ownDivisionId) setDivisionId(ownDivisionId);
+  }, [divisionLocked, ownDivisionId]);
   const [locationType, setLocationType] = useState<UnitLocationType>(unit?.location_type ?? "station");
   const [stationId, setStationId] = useState<number | "">(unit?.station_id ?? "");
   const [trainId, setTrainId] = useState<number | "">(unit?.train_id ?? "");
@@ -498,7 +514,7 @@ function UnitFormModal({ unit, onClose, onSaved }: { unit?: Unit; onClose: () =>
                 setClusterId("");
               }}
               required
-              disabled={isEdit}
+              disabled={isEdit || divisionLocked}
             >
               <option value="">Select Division</option>
               {divisions.map((d) => (
@@ -627,6 +643,10 @@ function UnitFormModal({ unit, onClose, onSaved }: { unit?: Unit; onClose: () =>
 /* ═══════════════════════════════ STATIONS TAB ═══════════════════════════════ */
 
 function StationsTab() {
+  const { can } = useAuth();
+  const canCreate = can("location_management", "create");
+  const canEdit = can("location_management", "edit");
+  const canDelete = can("location_management", "delete");
   const [divisionFilter, setDivisionFilter] = useState<number | "">("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Station | null>(null);
@@ -652,8 +672,12 @@ function StationsTab() {
       <div className={styles.header}>
         <div />
         <div style={{ display: "flex", gap: 10 }}>
-          <button className={styles.cancelBtn} onClick={() => setIsImportOpen(true)}>⬆ Bulk Import</button>
-          <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>+ Add Station</button>
+          {canCreate && (
+            <button className={styles.cancelBtn} onClick={() => setIsImportOpen(true)}>⬆ Bulk Import</button>
+          )}
+          {canCreate && (
+            <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>+ Add Station</button>
+          )}
         </div>
       </div>
 
@@ -695,12 +719,16 @@ function StationsTab() {
                   <td>{s.platform_count ?? "—"}</td>
                   <td>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" className={styles.pageBtn} title="Edit station" onClick={() => setEditTarget(s)}>
-                        <EditIcon />
-                      </button>
-                      <button type="button" className={styles.pageBtn} title="Remove station" onClick={() => handleDelete(s)}>
-                        <TrashIcon />
-                      </button>
+                      {canEdit && (
+                        <button type="button" className={styles.pageBtn} title="Edit station" onClick={() => setEditTarget(s)}>
+                          <EditIcon />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button type="button" className={styles.pageBtn} title="Remove station" onClick={() => handleDelete(s)}>
+                          <TrashIcon />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -719,7 +747,12 @@ function StationsTab() {
 
 function StationFormModal({ station, onClose, onSaved }: { station?: Station; onClose: () => void; onSaved: () => void }) {
   const isEdit = !!station;
-  const [divisionId, setDivisionId] = useState<number | "">(station?.division_id ?? "");
+  const { locked: divisionLocked, ownDivisionId } = useDivisionLock();
+  const [divisionId, setDivisionId] = useState<number | "">(station?.division_id ?? ownDivisionId);
+
+  useEffect(() => {
+    if (divisionLocked && ownDivisionId) setDivisionId(ownDivisionId);
+  }, [divisionLocked, ownDivisionId]);
   const [stationName, setStationName] = useState(station?.station_name ?? "");
   const [stationCode, setStationCode] = useState(station?.station_code ?? "");
   const [platformCount, setPlatformCount] = useState(station?.platform_count ? String(station.platform_count) : "");
@@ -757,7 +790,7 @@ function StationFormModal({ station, onClose, onSaved }: { station?: Station; on
         <h2 className={styles.modalTitle}>{isEdit ? "Edit Station" : "New Station"}</h2>
         <div className={styles.formGrid}>
           <Field label="Division">
-            <select value={divisionId} onChange={(e) => setDivisionId(e.target.value ? Number(e.target.value) : "")} required>
+            <select value={divisionId} disabled={divisionLocked} onChange={(e) => setDivisionId(e.target.value ? Number(e.target.value) : "")} required>
               <option value="">Select Division</option>
               {divisions.map((d) => (
                 <option key={d.id} value={d.id}>{d.division_name}</option>
@@ -847,6 +880,10 @@ function StationBulkImportModal({ onClose }: { onClose: () => void }) {
 /* ═══════════════════════════════ TRAINS TAB ═══════════════════════════════ */
 
 function TrainsTab() {
+  const { can } = useAuth();
+  const canCreate = can("location_management", "create");
+  const canEdit = can("location_management", "edit");
+  const canDelete = can("location_management", "delete");
   const [divisionFilter, setDivisionFilter] = useState<number | "">("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Train | null>(null);
@@ -871,7 +908,9 @@ function TrainsTab() {
     <div>
       <div className={styles.header}>
         <div />
-        <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>+ Add Train</button>
+        {canCreate && (
+          <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>+ Add Train</button>
+        )}
       </div>
 
       <div className={styles.filterRow} style={{ marginBottom: 12 }}>
@@ -918,12 +957,16 @@ function TrainsTab() {
                   <td>{t.division_name ?? "—"}</td>
                   <td>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" className={styles.pageBtn} title="Edit train" onClick={() => setEditTarget(t)}>
-                        <EditIcon />
-                      </button>
-                      <button type="button" className={styles.pageBtn} title="Remove train" onClick={() => handleDelete(t)}>
-                        <TrashIcon />
-                      </button>
+                      {canEdit && (
+                        <button type="button" className={styles.pageBtn} title="Edit train" onClick={() => setEditTarget(t)}>
+                          <EditIcon />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button type="button" className={styles.pageBtn} title="Remove train" onClick={() => handleDelete(t)}>
+                          <TrashIcon />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -941,7 +984,12 @@ function TrainsTab() {
 
 function TrainFormModal({ train, onClose, onSaved }: { train?: Train; onClose: () => void; onSaved: () => void }) {
   const isEdit = !!train;
-  const [divisionId, setDivisionId] = useState<number | "">(train?.division_id ?? "");
+  const { locked: divisionLocked, ownDivisionId } = useDivisionLock();
+  const [divisionId, setDivisionId] = useState<number | "">(train?.division_id ?? ownDivisionId);
+
+  useEffect(() => {
+    if (divisionLocked && ownDivisionId) setDivisionId(ownDivisionId);
+  }, [divisionLocked, ownDivisionId]);
   const [trainNumber, setTrainNumber] = useState(train?.train_number ?? "");
   const [trainName, setTrainName] = useState(train?.train_name ?? "");
   const [source, setSource] = useState(train?.source ?? "");
@@ -989,7 +1037,7 @@ function TrainFormModal({ train, onClose, onSaved }: { train?: Train; onClose: (
         <h2 className={styles.modalTitle}>{isEdit ? "Edit Train" : "New Train"}</h2>
         <div className={styles.formGrid}>
           <Field label="Owning Division">
-            <select value={divisionId} onChange={(e) => setDivisionId(e.target.value ? Number(e.target.value) : "")} required>
+            <select value={divisionId} disabled={divisionLocked} onChange={(e) => setDivisionId(e.target.value ? Number(e.target.value) : "")} required>
               <option value="">Select Division</option>
               {divisions.map((d) => (
                 <option key={d.id} value={d.id}>{d.division_name}</option>
@@ -1034,6 +1082,9 @@ function TrainFormModal({ train, onClose, onSaved }: { train?: Train; onClose: (
 /* ═══════════════════════════════ CLUSTERS TAB ═══════════════════════════════ */
 
 function ClustersTab() {
+  const { can } = useAuth();
+  const canCreate = can("location_management", "create");
+  const canDelete = can("location_management", "delete");
   const [divisionFilter, setDivisionFilter] = useState<number | "">("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1057,7 +1108,9 @@ function ClustersTab() {
     <div>
       <div className={styles.header}>
         <div />
-        <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>+ Create Cluster</button>
+        {canCreate && (
+          <button className={styles.addBtn} onClick={() => setIsFormOpen(true)}>+ Create Cluster</button>
+        )}
       </div>
 
       <div className={styles.filterRow} style={{ marginBottom: 12 }}>
@@ -1097,9 +1150,11 @@ function ClustersTab() {
                   <td>{c.division_name ?? "—"}</td>
                   <td>{c.member_count ?? 0}</td>
                   <td>
-                    <button type="button" className={styles.pageBtn} title="Remove cluster" onClick={() => handleDelete(c.id, c.cluster_name)}>
-                      <TrashIcon />
-                    </button>
+                    {canDelete && (
+                      <button type="button" className={styles.pageBtn} title="Remove cluster" onClick={() => handleDelete(c.id, c.cluster_name)}>
+                        <TrashIcon />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
@@ -1114,7 +1169,12 @@ function ClustersTab() {
 }
 
 function ClusterFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [divisionId, setDivisionId] = useState<number | "">("");
+  const { locked: divisionLocked, ownDivisionId } = useDivisionLock();
+  const [divisionId, setDivisionId] = useState<number | "">(ownDivisionId);
+
+  useEffect(() => {
+    if (divisionLocked && ownDivisionId) setDivisionId(ownDivisionId);
+  }, [divisionLocked, ownDivisionId]);
   const [clusterType, setClusterType] = useState<ClusterType>("station");
   const [clusterName, setClusterName] = useState("");
   const [memberIds, setMemberIds] = useState<number[]>([]);
@@ -1154,6 +1214,7 @@ function ClusterFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
           <Field label="Division">
             <select
               value={divisionId}
+              disabled={divisionLocked}
               onChange={(e) => {
                 setDivisionId(e.target.value ? Number(e.target.value) : "");
                 setMemberIds([]);

@@ -90,6 +90,17 @@ export default function QrVerificationPage() {
                   <InfoField label="Issue Date" value={result.issued_date ? new Date(result.issued_date).toLocaleDateString() : "—"} />
                 </div>
               </div>
+
+              <div className={styles.infoCard}>
+                <h2 className={styles.infoTitle}>ID Card Status</h2>
+                {result.excel_status_link ? (
+                  <a className={styles.statusLinkBtn} href={result.excel_status_link}>
+                    Check ID Card Status
+                  </a>
+                ) : (
+                  <p className={styles.statusLinkUnavailable}>ID Card Status information is currently unavailable.</p>
+                )}
+              </div>
             </div>
           </div>
         )}

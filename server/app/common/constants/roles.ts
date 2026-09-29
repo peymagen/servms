@@ -15,13 +15,31 @@ export const ROLE = {
 
 // Roles whose data access is restricted to their own division (used to scope
 // list/metrics queries by req.user.division_id across every operational module).
-// Complaint Cell is division-scoped (not self/assignee-scoped like Inspector/
-// Dealing Section) since it has no per-record ownership concept — it's a
-// division-level operational role, same shape as Divisional Admin/Sub-admin.
-const DIVISION_SCOPED_ROLES: string[] = [ROLE.DIVISIONAL_ADMIN, ROLE.DIVISIONAL_SUB_ADMIN, ROLE.COMPLAINT_CELL];
+// Complaint Cell is division-scoped since it has no per-record ownership
+// concept — it's a division-level operational role, same shape as Divisional
+// Admin/Sub-admin. Dealing Section is division-scoped too: each division has its
+// own Dealing Section, which enters that division's Location Master and
+// Contractor data (on top of its assignee scope for delegated inspections).
+const DIVISION_SCOPED_ROLES: string[] = [
+  ROLE.DIVISIONAL_ADMIN,
+  ROLE.DIVISIONAL_SUB_ADMIN,
+  ROLE.COMPLAINT_CELL,
+  ROLE.DEALING_SECTION,
+];
 
 export const isDivisionScoped = (roleName: string | undefined | null): boolean =>
   !!roleName && DIVISION_SCOPED_ROLES.includes(roleName);
+
+// A division-scoped account without a division would see nothing and write
+// records with no division, so creating/editing one requires a division.
+export const assertDivisionForScopedRole = (
+  roleName: string | null | undefined,
+  divisionId: unknown
+): void => {
+  if (isDivisionScoped(roleName) && (divisionId === undefined || divisionId === null || divisionId === "")) {
+    throw createHttpError(400, "Division is required for this role");
+  }
+};
 
 // Inspector sees only inspections they filed themselves (no division/org-wide
 // view) — the Inspection Management Module's "View Own Inspections" rule.
@@ -30,8 +48,9 @@ const SELF_SCOPED_ROLES: string[] = [ROLE.INSPECTOR];
 export const isSelfScoped = (roleName: string | undefined | null): boolean =>
   !!roleName && SELF_SCOPED_ROLES.includes(roleName);
 
-// Dealing Section sees only inspections currently delegated to them.
-const ASSIGNEE_SCOPED_ROLES: string[] = [ROLE.DEALING_SECTION];
+// Roles that see only inspections currently delegated to them. Empty since
+// Dealing Section was given Divisional Admin's powers (whole-division view).
+const ASSIGNEE_SCOPED_ROLES: string[] = [];
 
 export const isAssigneeScoped = (roleName: string | undefined | null): boolean =>
   !!roleName && ASSIGNEE_SCOPED_ROLES.includes(roleName);
@@ -52,8 +71,9 @@ export const assertRecordAccessible = (
   if (!record) return;
   const roleName = user?.role_name;
 
-  if (isDivisionScoped(roleName) && record.division_id != null) {
-    if (Number(record.division_id) !== Number(user?.division_id)) {
+  // A record with no division is HQ-level data — outside every division's reach.
+  if (isDivisionScoped(roleName) && "division_id" in record) {
+    if (record.division_id == null || Number(record.division_id) !== Number(user?.division_id)) {
       throw createHttpError(404, "Record not found");
     }
   }
@@ -66,6 +86,44 @@ export const assertRecordAccessible = (
     if (Number(record[opts.assigneeField]) !== Number(user?.id)) {
       throw createHttpError(404, "Record not found");
     }
+  }
+};
+
+// Stricter than assertRecordAccessible: a record with no division (HQ-level
+// user, HQ-uploaded complaint) is also out of a division-scoped actor's reach.
+// Used for write actions where the record must sit in the actor's own division.
+export const assertOwnDivisionRecord = (
+  user: { role_name?: string | null; division_id?: number | null } | undefined | null,
+  record: { division_id?: number | null } | null | undefined
+): void => {
+  if (!record || !isDivisionScoped(user?.role_name)) return;
+  if (record.division_id == null || Number(record.division_id) !== Number(user?.division_id)) {
+    throw createHttpError(404, "Record not found");
+  }
+};
+
+// Every division enters data only into its own division: for a division-scoped
+// actor, a create/edit payload's division_id is overwritten with their own —
+// whatever the form sent. HQ roles keep the division they picked.
+export const pinToOwnDivision = (
+  user: { role_name?: string | null; division_id?: number | null } | undefined | null,
+  body: Record<string, any>
+): void => {
+  if (isDivisionScoped(user?.role_name)) {
+    body.division_id = user?.division_id ?? null;
+  }
+};
+
+// For records whose division comes from something they reference (a unit's
+// station/train/cluster, a penalty's contractor) rather than a division_id field:
+// a division-scoped actor may only reference things inside their own division.
+export const assertInOwnDivision = (
+  user: { role_name?: string | null; division_id?: number | null } | undefined | null,
+  divisionId: number | null | undefined,
+  what: string
+): void => {
+  if (isDivisionScoped(user?.role_name) && divisionId != null && Number(divisionId) !== Number(user?.division_id)) {
+    throw createHttpError(403, `${what} belongs to a different division`);
   }
 };
 

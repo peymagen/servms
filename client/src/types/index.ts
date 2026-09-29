@@ -243,15 +243,22 @@ export interface Contractor {
   joined_date: string | null;
   award_date: string | null;
   tenure_months: number | null;
+  // Derived server-side as award_date + tenure_months.
+  contract_end_date?: string | null;
   annual_contract_value: number | null;
+  epf_registration?: string | null;
 }
 
 export interface ContractorUnit {
   id: number;
   unit_code: string;
   unit_name: string;
+  location_type?: UnitLocationType;
   station_id: number | null;
   station_name: string | null;
+  // Station name, "train_number - train_name", or cluster name — whichever the unit is on.
+  location_name?: string | null;
+  division_id?: number | null;
   units_status: "active" | "expiring" | "inactive" | "inspection_pending";
 }
 
@@ -710,6 +717,7 @@ export interface IdCard {
   expiry_date?: string | null;
   signature_applied?: boolean | number;
   pdf_path?: string | null;
+  excel_status_link?: string | null;
   last_checked_at: string | null;
   validity_start?: string | null;
   validity_end?: string | null;
@@ -719,6 +727,7 @@ export interface IdCard {
   medical_verification_valid_till?: string | null;
   contractor_name?: string | null;
   contractor_mobile?: string | null;
+  mobile_number?: string | null;
   blood_group?: string | null;
   address?: string | null;
   aadhaar_number?: string | null;
@@ -750,6 +759,7 @@ export interface IdCardVerification {
   issuing_authority_name: string | null;
   issuing_authority_designation: string | null;
   blood_group: string | null;
+  excel_status_link: string | null;
 }
 
 export type RenewalType = "pvr" | "medical" | "both";

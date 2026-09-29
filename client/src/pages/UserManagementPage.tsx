@@ -26,11 +26,11 @@ const LIMIT = 10;
 // designation_grade is JS or SS — mirrors the server-side SIGNING_ELIGIBLE_ROLES
 // in user.service.ts. Divisional/HQ Admin included, not just Sub Admin — a
 // division's signing authority is commonly its own Divisional Admin.
-const SIGNING_ELIGIBLE_ROLES = ["hq_admin", "hq_sub_admin", "divisional_admin", "divisional_sub_admin"];
+const SIGNING_ELIGIBLE_ROLES = ["hq_admin", "hq_sub_admin", "divisional_admin", "divisional_sub_admin", "dealing_section"];
 const SIGNING_ELIGIBLE_GRADES: DesignationGrade[] = ["JS", "SS"];
 
 // Roles that see the "Active Users" / "Total Active in Last 7 Days" stat cards (per UAT doc).
-const STATS_VISIBLE_ROLES = ["super_admin_hq", "hq_admin", "divisional_admin"];
+const STATS_VISIBLE_ROLES = ["super_admin_hq", "hq_admin", "divisional_admin", "dealing_section"];
 
 // Admin-tier roles whose creation/edit/disable is Super-Admin-exclusive server-side
 // (see assertCanManageAdminTier in roles.ts) — mirrored here purely for UX so

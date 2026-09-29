@@ -20,6 +20,12 @@ const assertAtrExists = async (atrId: string) => {
   return rows[0]!;
 };
 
+// Rejects an ATR id that isn't one of the complaint's own ATRs (routes carry both).
+export const assertAtrBelongsTo = async (atrId: string, complaintId: string) => {
+  const atr = await assertAtrExists(atrId);
+  if (Number(atr.complaint_id) !== Number(complaintId)) throw new Error("Action Taken Report not found");
+};
+
 // ─── DEALING SECTION: submit a new ATR ─────────────────────────────────────────
 export const submitAtr = async (complaintId: string, remarks: string, userId: number) => {
   const complaint = await assertComplaintExists(complaintId);

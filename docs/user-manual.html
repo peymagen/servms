@@ -1,0 +1,1882 @@
+<title>SERVMS User Manual</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+:root{
+  --paper:#F1F3F1; --surface:#FFFFFF; --surface-2:#E8ECEA;
+  --ink:#16232B; --ink-2:#33454F; --grey:#67757E; --hair:#C9D2D2;
+  --rail:#16495C; --rail-soft:#E3EDF0;
+  --green:#1C6B48; --green-soft:#E0EFE7;
+  --amber:#9C6412; --amber-soft:#F5EBDA;
+  --red:#A32E28; --red-soft:#F6E4E2;
+  --shadow:0 1px 2px rgba(22,35,43,.06),0 8px 24px -16px rgba(22,35,43,.28);
+  --f-display:"Bitter",Georgia,"Times New Roman",serif;
+  --f-body:"Public Sans","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#101A20; --surface:#17242B; --surface-2:#1E2E36;
+    --ink:#E4EAE9; --ink-2:#B4C2C4; --grey:#8B9BA2; --hair:#2B3E47;
+    --rail:#6FB6CE; --rail-soft:#17323D;
+    --green:#63C193; --green-soft:#152E24;
+    --amber:#DCA75A; --amber-soft:#332612;
+    --red:#E8867E; --red-soft:#37201E;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#101A20; --surface:#17242B; --surface-2:#1E2E36;
+  --ink:#E4EAE9; --ink-2:#B4C2C4; --grey:#8B9BA2; --hair:#2B3E47;
+  --rail:#6FB6CE; --rail-soft:#17323D;
+  --green:#63C193; --green-soft:#152E24;
+  --amber:#DCA75A; --amber-soft:#332612;
+  --red:#E8867E; --red-soft:#37201E;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--f-body); font-size:16px; line-height:1.62;
+  -webkit-font-smoothing:antialiased; margin:0;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px 96px;
+  display:grid;grid-template-columns:250px minmax(0,1fr);gap:56px;align-items:start}
+@media(max-width:940px){.wrap{grid-template-columns:1fr;gap:0}}
+
+.mast{grid-column:1/-1;border-bottom:2px solid var(--ink);padding:44px 0 22px;margin-bottom:44px}
+.mast-kicker{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--rail);display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.mast h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.1rem,5.4vw,3.5rem);
+  line-height:1.04;letter-spacing:-.022em;margin:0 0 12px;text-wrap:balance}
+.mast p{margin:0;max-width:64ch;color:var(--ink-2);font-size:1.02rem}
+.mast-meta{margin-top:22px;display:flex;gap:8px;flex-wrap:wrap;
+  font-family:var(--f-mono);font-size:11.5px;color:var(--grey)}
+.mast-meta b{color:var(--ink);font-weight:600}
+.sep{color:var(--hair)}
+
+nav.toc{position:sticky;top:24px;font-size:13.4px;line-height:1.45;max-height:calc(100vh - 48px);overflow-y:auto}
+@media(max-width:940px){nav.toc{position:static;max-height:none;margin-bottom:44px;
+  border:1px solid var(--hair);border-radius:3px;padding:18px 20px;background:var(--surface)}}
+nav.toc h2{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--grey);margin:0 0 14px;font-weight:600}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+nav.toc a{display:grid;grid-template-columns:26px 1fr;gap:8px;padding:5px 8px 5px 8px;
+  color:var(--ink-2);text-decoration:none;border-radius:2px;border-left:2px solid transparent}
+nav.toc a:hover{color:var(--rail);background:var(--rail-soft);border-left-color:var(--rail)}
+nav.toc a:focus-visible{outline:2px solid var(--rail);outline-offset:2px}
+nav.toc .n{font-family:var(--f-mono);font-size:11px;color:var(--grey);padding-top:2px}
+
+main{min-width:0}
+section.chap{scroll-margin-top:20px;margin-bottom:64px}
+.chap-head{border-top:2px solid var(--ink);padding-top:14px;margin-bottom:26px}
+.chap-num{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;color:var(--rail);
+  text-transform:uppercase;display:block;margin-bottom:8px}
+.chap-head h2{font-family:var(--f-display);font-weight:700;font-size:clamp(1.5rem,3.1vw,2.05rem);
+  line-height:1.14;letter-spacing:-.016em;margin:0;text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:600;font-size:1.16rem;line-height:1.28;
+  letter-spacing:-.008em;margin:38px 0 12px;text-wrap:balance}
+h4{font-family:var(--f-body);font-weight:700;font-size:.94rem;letter-spacing:.01em;margin:26px 0 8px}
+p,li{max-width:74ch}
+p{margin:0 0 14px}
+main ul,main ol{margin:0 0 16px;padding-left:22px;display:flex;flex-direction:column;gap:7px}
+main ol{padding-left:24px}
+li::marker{color:var(--grey)}
+code{font-family:var(--f-mono);font-size:.855em;background:var(--surface-2);
+  padding:.1em .38em;border-radius:2px;color:var(--ink)}
+a{color:var(--rail)}
+hr{border:0;border-top:1px solid var(--hair);margin:34px 0}
+
+.tw{overflow-x:auto;margin:0 0 22px;border:1px solid var(--hair);border-radius:3px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.4px;line-height:1.45}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--hair);vertical-align:top}
+thead th{background:var(--surface-2);font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap;
+  position:sticky;top:0;border-bottom:1.5px solid var(--hair)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600}
+.mx td:not(:first-child),.mx th:not(:first-child){text-align:center}
+.mx td:not(:first-child){font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+.y{color:var(--green);font-weight:700}
+.no{color:var(--grey)}
+caption{caption-side:top;text-align:left;font-family:var(--f-mono);font-size:10.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--grey);padding:10px 13px 8px}
+
+.chip{font-family:var(--f-mono);font-size:11px;padding:1.5px 7px;border-radius:2px;
+  border:1px solid var(--hair);background:var(--surface-2);color:var(--ink-2);
+  white-space:nowrap;display:inline-block;line-height:1.55}
+.chip.ok{background:var(--green-soft);border-color:transparent;color:var(--green)}
+.chip.warn{background:var(--amber-soft);border-color:transparent;color:var(--amber)}
+.chip.bad{background:var(--red-soft);border-color:transparent;color:var(--red)}
+.chip.info{background:var(--rail-soft);border-color:transparent;color:var(--rail)}
+
+.call{border-left:3px solid var(--rail);background:var(--surface);padding:14px 18px;
+  margin:0 0 22px;border-radius:0 3px 3px 0;box-shadow:var(--shadow);max-width:80ch}
+.call p:last-child{margin-bottom:0}
+.call ul{margin-bottom:0}
+.call .lbl{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--rail);font-weight:600;display:block;margin-bottom:6px}
+.call.caution{border-left-color:var(--amber)}
+.call.caution .lbl{color:var(--amber)}
+.call.gap{border-left-color:var(--red)}
+.call.gap .lbl{color:var(--red)}
+.call.tip{border-left-color:var(--green)}
+.call.tip .lbl{color:var(--green)}
+
+.flow{display:flex;flex-wrap:wrap;gap:0;margin:0 0 24px;border:1px solid var(--hair);
+  border-radius:3px;overflow:hidden;background:var(--surface)}
+.flow div{flex:1 1 120px;padding:12px 14px;border-right:1px solid var(--hair);min-width:0}
+.flow div:last-child{border-right:0}
+.flow .s{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;color:var(--grey);
+  text-transform:uppercase;display:block;margin-bottom:5px}
+.flow .t{font-weight:700;font-size:13px;line-height:1.3;display:block}
+.flow .w{font-size:11.5px;color:var(--grey);line-height:1.35;display:block;margin-top:3px}
+
+ol.steps{counter-reset:st;list-style:none;padding-left:0;gap:0}
+ol.steps>li{counter-increment:st;position:relative;padding:0 0 12px 40px;max-width:76ch}
+ol.steps>li::before{content:counter(st,decimal-leading-zero);position:absolute;left:0;top:1px;
+  font-family:var(--f-mono);font-size:11px;color:var(--rail);border:1px solid var(--hair);
+  border-radius:2px;padding:1px 5px;background:var(--surface)}
+
+footer{grid-column:1/-1;border-top:2px solid var(--ink);margin-top:32px;padding-top:20px;
+  font-family:var(--f-mono);font-size:11.5px;color:var(--grey);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="mast-kicker">
+    <span>South Eastern Railway</span><span class="sep">/</span>
+    <span>CRIS</span><span class="sep">/</span>
+    <span>Part A &mdash; End User Manual</span>
+  </div>
+  <h1>SERVMS User Manual</h1>
+  <p>Operating instructions for the South Eastern Railway Vendor Management System &mdash; vendor and contractor registry, unit and location masters, ID card issuance, complaints, inspections, penalty recovery, and reporting.</p>
+  <div class="mast-meta">
+    <span><b>Edition</b> 1.0</span><span class="sep">&middot;</span>
+    <span><b>Basis</b> current implementation, branch <code>servms-updates</code></span><span class="sep">&middot;</span>
+    <span><b>Roles covered</b> 8</span><span class="sep">&middot;</span>
+    <span><b>Modules covered</b> 14</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#s1"><span class="n">1</span><span>Introduction</span></a></li>
+    <li><a href="#s2"><span class="n">2</span><span>System Requirements</span></a></li>
+    <li><a href="#s3"><span class="n">3</span><span>Login &amp; Authentication</span></a></li>
+    <li><a href="#s4"><span class="n">4</span><span>Dashboard</span></a></li>
+    <li><a href="#s5"><span class="n">5</span><span>Navigation</span></a></li>
+    <li><a href="#s6"><span class="n">6</span><span>Roles &amp; Permissions</span></a></li>
+    <li><a href="#s7"><span class="n">7</span><span>User Management</span></a></li>
+    <li><a href="#s8"><span class="n">8</span><span>Role Management</span></a></li>
+    <li><a href="#s9"><span class="n">9</span><span>Location &amp; Unit Management</span></a></li>
+    <li><a href="#s10"><span class="n">10</span><span>Contractor Management</span></a></li>
+    <li><a href="#s11"><span class="n">11</span><span>Vendor Management</span></a></li>
+    <li><a href="#s12"><span class="n">12</span><span>ID Card &amp; QR</span></a></li>
+    <li><a href="#s13"><span class="n">13</span><span>Vendor Renewals</span></a></li>
+    <li><a href="#s14"><span class="n">14</span><span>Complaints</span></a></li>
+    <li><a href="#s15"><span class="n">15</span><span>Inspections</span></a></li>
+    <li><a href="#s16"><span class="n">16</span><span>Penalties &amp; Recovery</span></a></li>
+    <li><a href="#s17"><span class="n">17</span><span>Reports</span></a></li>
+    <li><a href="#s18"><span class="n">18</span><span>Import &amp; Export</span></a></li>
+    <li><a href="#s19"><span class="n">19</span><span>Notification Centre</span></a></li>
+    <li><a href="#s20"><span class="n">20</span><span>Audit Logs</span></a></li>
+    <li><a href="#s21"><span class="n">21</span><span>Document Uploads</span></a></li>
+    <li><a href="#s22"><span class="n">22</span><span>Error Messages</span></a></li>
+    <li><a href="#s23"><span class="n">23</span><span>Security Guidelines</span></a></li>
+    <li><a href="#s24"><span class="n">24</span><span>FAQ</span></a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ═══ 1 ═══ -->
+<section class="chap" id="s1">
+  <div class="chap-head"><span class="chap-num">Section 1</span><h2>Introduction</h2></div>
+
+  <h3>Application name</h3>
+  <p><strong>SERVMS</strong> &mdash; South Eastern Railway Vendor Management System. The application titles itself <em>SERVMS Admin</em> in the sidebar and <em>South Eastern Railway</em> as its sub-title. The login screen is branded &ldquo;Secure Sign In &mdash; Access the Vendor Management System dashboard&rdquo; and carries the footer &ldquo;&copy; 2026 Centre for Railway Information Systems (CRIS)&rdquo;.</p>
+
+  <h3>Purpose</h3>
+  <p>SERVMS is the single register of record for commercial vendors and contractors operating on South Eastern Railway premises &mdash; platforms, stalls, and on-board train services. It replaces separate divisional registers with one role-scoped system that holds the vendor identity record, the contractor commercial record, the physical unit each contract relates to, and every downstream compliance event: police and medical verification, ID card issuance, public credential verification, complaints, inspections, and penalty recovery.</p>
+
+  <h3>Intended users</h3>
+  <p>SERVMS is an internal, staff-only application. The login page states <strong>&ldquo;Internal Intranet Access Only&rdquo;</strong>. There is no vendor-facing or public-facing self-service portal &mdash; vendors and contractors never log in. Accounts belong to railway staff in eight roles across two tiers (HQ and Divisional) plus three operational roles: see <a href="#s6">Section 6</a>.</p>
+  <p>The single exception is the <strong>public ID card verification page</strong> at <code>/verify/&lt;card number&gt;</code>, reached by scanning the QR code on a printed vendor ID card. This page requires no login and is intended for on-platform checking staff, RPF, and the travelling public.</p>
+
+  <h3>Main objectives</h3>
+  <ul>
+    <li>Maintain one authoritative vendor and contractor register, scoped so each division sees its own data.</li>
+    <li>Enforce that no vendor ID card is issued without a nominated <em>Card Signing Authority</em> approving it.</li>
+    <li>Make a vendor credential verifiable in seconds from a platform by QR scan.</li>
+    <li>Route every complaint and inspection through a recorded Action Taken Report review chain.</li>
+    <li>Track penalty imposition through to recovery and independent verification of the recovery.</li>
+    <li>Record every create, update, delete, approve, and reject action in a tamper-evident audit trail.</li>
+  </ul>
+
+  <h3>Scope</h3>
+  <p>This manual documents only functionality that is implemented and reachable through the user interface in the current build. Where an API endpoint or database column exists without a corresponding screen, or where a screen element does not do what its label implies, that is stated explicitly and flagged. Nothing in this manual is aspirational.</p>
+
+  <h3>System overview</h3>
+  <div class="flow">
+    <div><span class="s">Tier 1</span><span class="t">Browser</span><span class="w">React single-page application</span></div>
+    <div><span class="s">Tier 2</span><span class="t">API</span><span class="w">Express service under <code>/api</code>, JWT-authenticated</span></div>
+    <div><span class="s">Tier 3</span><span class="t">Database</span><span class="w">MySQL, 38 tables</span></div>
+    <div><span class="s">Storage</span><span class="t">File store</span><span class="w">Uploaded documents and generated card PDFs served from <code>/uploads</code></span></div>
+  </div>
+  <p>Every screen you use talks only to the API; the API alone reads and writes the database. Permission is checked twice &mdash; the browser hides what your role cannot use, and the API independently rejects it. Hiding a button is a convenience, not the security boundary.</p>
+</section>
+
+<!-- ═══ 2 ═══ -->
+<section class="chap" id="s2">
+  <div class="chap-head"><span class="chap-num">Section 2</span><h2>System Requirements</h2></div>
+
+  <h3>Browser</h3>
+  <p>SERVMS is a modern single-page application. It requires an evergreen browser released within roughly the last three years &mdash; current versions of Google Chrome, Microsoft Edge, Mozilla Firefox, or Safari. It uses ES2020-era JavaScript, CSS Grid, CSS custom properties, and the Fetch API. Internet Explorer is not supported and the application will not render on it.</p>
+  <p>The following browser features must be enabled or the application will not work correctly:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Feature</th><th>Used for</th><th>If disabled</th></tr></thead>
+    <tbody>
+      <tr><td>JavaScript</td><td>The entire application</td><td>Blank page</td></tr>
+      <tr><td><code>localStorage</code></td><td>Session token, notification read-state, notification preferences</td><td>You are signed out on every page load</td></tr>
+      <tr><td>Pop-ups / downloads</td><td>CSV, Excel, and PDF exports; ID card PDF download</td><td>Exports silently fail to save</td></tr>
+      <tr><td>Inline PDF viewer</td><td>Document preview inside vendor document modals</td><td>Preview pane is blank; Download still works</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Network</h3>
+  <p>SERVMS is designed for railway intranet access. The browser must be able to reach both the web front end and the API host &mdash; these may be different addresses. Uploads accept files up to <strong>20&nbsp;MB</strong>, so a connection that can sustain a 20&nbsp;MB POST without timing out is required for document-heavy work.</p>
+  <p>The public verification page (<code>/verify/&lt;card number&gt;</code>) must be reachable from whichever network the scanning device is on. If ID cards are to be verified from personal mobile phones on a platform, that page must be published beyond the intranet.</p>
+
+  <h3>Display</h3>
+  <p>The application uses a fixed 250&nbsp;px navigation sidebar alongside a fluid content area, and its widest screens &mdash; the Role Management permission matrix (14 rows &times; 6 permission columns) and the Penalties ledger (8 columns) &mdash; are built for desktop. A minimum of <strong>1366 &times; 768</strong> is recommended; <strong>1920 &times; 1080</strong> is comfortable. The layout is not optimised for phones or small tablets; tables will require horizontal scrolling.</p>
+
+  <h3>Access requirements</h3>
+  <ul>
+    <li>An active SERVMS account, created for you by an administrator. There is <strong>no self-registration</strong>.</li>
+    <li>Your <strong>username</strong> and password. Note that the login field is labelled &ldquo;Employee ID / Username&rdquo; but the system authenticates on <em>username</em> only &mdash; entering your Employee Number will not sign you in unless it happens to be identical to your username.</li>
+    <li>A role that grants <code>view</code> on at least one module. A user with no permissions can sign in but will see an empty sidebar.</li>
+  </ul>
+</section>
+
+<!-- ═══ 3 ═══ -->
+<section class="chap" id="s3">
+  <div class="chap-head"><span class="chap-num">Section 3</span><h2>Login and Authentication</h2></div>
+
+  <h3>3.1 Reaching the application</h3>
+  <ol class="steps">
+    <li>Open your browser and go to the SERVMS address supplied by your division administrator.</li>
+    <li>Any address you enter while signed out redirects to <code>/login</code>. There is no landing or marketing page.</li>
+    <li>The login screen shows the SERVMS crest, the badge <strong>&ldquo;Internal Intranet Access Only&rdquo;</strong>, and the sign-in card.</li>
+  </ol>
+
+  <h3>3.2 Signing in</h3>
+  <ol class="steps">
+    <li>In <strong>Employee ID / Username</strong>, type your username.</li>
+    <li>In <strong>Password</strong>, type your password. Use the eye button at the right of the field to reveal what you typed if you need to check it.</li>
+    <li>Press <strong>Secure Login &rarr;</strong>. The button changes to &ldquo;Signing in&hellip;&rdquo; while the request is in flight.</li>
+    <li>On success you land on the <strong>Dashboard</strong>. On failure a red banner appears above the button.</li>
+  </ol>
+  <p>There is no captcha, no one-time password, and no second factor.</p>
+
+  <h3>3.3 Password rules</h3>
+  <p>Password rules are enforced only at the point an administrator <em>sets</em> a password, not at login:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Rule</th><th>Value</th><th>Where enforced</th></tr></thead>
+    <tbody>
+      <tr><td>Minimum length</td><td>6 characters</td><td>Add New User; user update; change password</td></tr>
+      <tr><td>Complexity</td><td>None &mdash; no uppercase, digit, or symbol requirement</td><td>&mdash;</td></tr>
+      <tr><td>Expiry / rotation</td><td>None</td><td>&mdash;</td></tr>
+      <tr><td>Reuse prevention</td><td>None</td><td>&mdash;</td></tr>
+      <tr><td>Lockout after failed attempts</td><td>None &mdash; attempts are unlimited</td><td>&mdash;</td></tr>
+      <tr><td>Storage</td><td>bcrypt hash, cost factor 12</td><td>Server</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call caution"><span class="lbl">Caution</span>
+    <p>Because there is no lockout and no complexity rule, the strength of a SERVMS account rests entirely on the password an administrator chooses. Choose a long passphrase when creating accounts, not a six-character minimum.</p>
+  </div>
+
+  <h3>3.4 Forgotten passwords</h3>
+  <div class="call gap"><span class="lbl">Not implemented</span>
+    <p>The <strong>Forgot Password?</strong> link on the login screen is not connected to anything. It is an inert anchor that changes the page address to <code>#forgot</code> and does nothing else. <strong>There is no self-service password reset.</strong></p>
+  </div>
+  <p>To recover a forgotten password you must contact an administrator, who follows the assisted reset procedure in <a href="#s7">Section 7.4</a>. The reset produces a temporary password that the administrator relays to you verbally or in person.</p>
+
+  <h3>3.5 Session behaviour</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Behaviour</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Session length</td><td>12 hours from sign-in. The token carries a fixed expiry and is not extended by activity.</td></tr>
+      <tr><td>Idle timeout</td><td>None. A session left open stays valid for its full 12 hours.</td></tr>
+      <tr><td>Where the session lives</td><td>Browser <code>localStorage</code>. It survives closing the tab and restarting the browser.</td></tr>
+      <tr><td>Concurrent sessions</td><td>Permitted. Signing in elsewhere does not end your session.</td></tr>
+      <tr><td>Expiry behaviour</td><td>The next action returns &ldquo;Session expired, please log in again&rdquo;; you are cleared and returned to <code>/login</code>.</td></tr>
+      <tr><td>Permission changes mid-session</td><td>Module permissions are re-fetched from the server as you use the application, so a permission change takes effect without a re-login. Your role, division, and name are read from the token and only refresh on your next sign-in.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.6 Signing out</h3>
+  <p>Press <strong>Logout</strong> at the foot of the left sidebar. This clears the stored token and user record from your browser and returns you to the login screen. Logging out is a browser-side action &mdash; the token is discarded, not revoked server-side.</p>
+
+  <h3>3.7 Unauthorised access</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Situation</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td>Not signed in, any protected address</td><td>Redirected to <code>/login</code></td></tr>
+      <tr><td>Signed in, address for a module your role cannot view</td><td>Redirected to <code>/dashboard</code>. The page never renders.</td></tr>
+      <tr><td>Action your role cannot perform</td><td>Red banner: &ldquo;You do not have permission to <em>&lt;action&gt;</em> <em>&lt;module&gt;</em>&rdquo;</td></tr>
+      <tr><td>Record outside your division</td><td>&ldquo;Record not found&rdquo; &mdash; deliberately identical to a genuinely missing record, so you cannot infer that a record exists elsewhere</td></tr>
+      <tr><td>Tampered or invalid token</td><td>&ldquo;Invalid token&rdquo; and forced sign-out</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call gap"><span class="lbl">Known gap</span>
+    <p><strong>Account status is not checked at sign-in.</strong> Setting a user to Inactive through the <strong>Toggle</strong> action stops nothing &mdash; that user can still sign in and use the system normally. Until this is corrected, deactivating an account must not be relied on to remove access. To reliably cut off a departing member of staff, an administrator must change their password to a value they do not know, using the assisted reset in <a href="#s7">Section 7.4</a>.</p>
+  </div>
+</section>
+
+<!-- ═══ 4 ═══ -->
+<section class="chap" id="s4">
+  <div class="chap-head"><span class="chap-num">Section 4</span><h2>Dashboard</h2></div>
+
+  <p>The Dashboard is the landing screen for every role that holds <code>dashboard: view</code> &mdash; which is all eight roles. Its sub-title reads &ldquo;Role-scoped overview of units, contractors, vendors, penalties, and pending actions.&rdquo; Your role is shown as a tag at the top right. Figures refresh automatically on a polling interval while the page is open.</p>
+
+  <h3>4.1 Layout</h3>
+  <div class="flow">
+    <div><span class="s">Row 1</span><span class="t">Division toggle</span><span class="w">HQ roles only</span></div>
+    <div><span class="s">Row 2</span><span class="t">Filter bar</span><span class="w">From, To, Unit, Contractor, Vendor</span></div>
+    <div><span class="s">Row 3</span><span class="t">Group cards</span><span class="w">Five expandable count cards</span></div>
+    <div><span class="s">Row 4</span><span class="t">Critical Alerts</span><span class="w">Seven compliance panels</span></div>
+  </div>
+
+  <h3>4.2 Division toggle (HQ roles only)</h3>
+  <p>Super Admin HQ, HQ Admin, and HQ Sub Admin see a row of toggle buttons: <span class="chip">All</span> <span class="chip">ADRA</span> <span class="chip">CKP</span> <span class="chip">KGP</span> <span class="chip">RNC</span> <span class="chip">HQ</span>. Selecting a division code narrows every figure on the page to that division. <strong>HQ</strong> shows only records that carry no division at all &mdash; typically RailMadad complaints imported with a division code of HQ. <strong>All</strong> is the unrestricted org-wide view.</p>
+  <p>Divisional Admin, Divisional Sub Admin, and Complaint Cell do not see this toggle; their figures are always locked to their own division. Inspector sees only inspections they filed themselves; Dealing Section sees only inspections currently delegated to them.</p>
+  <div class="call"><span class="lbl">Note</span>
+    <p>The toggle offers four division codes only. Any other division that exists in the database is still counted in <strong>All</strong> but has no button of its own.</p>
+  </div>
+
+  <h3>4.3 Filter bar</h3>
+  <p>Five filters narrow the figures below. They combine with each other and with the division toggle.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Filter</th><th>Type</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>From / To</td><td>Date pickers</td><td>Restricts counts to records created in the range</td></tr>
+      <tr><td>Unit</td><td>Dropdown, all units</td><td>Restricts to one unit where the record type has a unit</td></tr>
+      <tr><td>Contractor</td><td>Dropdown, all contractors</td><td>Restricts to one contractor</td></tr>
+      <tr><td>Vendor</td><td>Dropdown, all vendors</td><td>Restricts to one vendor</td></tr>
+    </tbody>
+  </table></div>
+  <p>There is no &ldquo;Clear filters&rdquo; button on the Dashboard. Set each dropdown back to its <em>All&hellip;</em> option and clear the two date fields to return to the unfiltered view.</p>
+
+  <h3>4.4 Group cards</h3>
+  <p>Five cards, each showing a headline total, a set of sub-group counts, and a &ldquo;Last updated&rdquo; timestamp.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Card</th><th>Headline total</th><th>Sub-groups</th></tr></thead>
+    <tbody>
+      <tr><td>Registered Units</td><td>All units</td><td>Active &middot; Idle &middot; Inactive</td></tr>
+      <tr><td>Registered Contractors</td><td>All contractors</td><td>Active &middot; Inactive &middot; Blacklisted</td></tr>
+      <tr><td>Registered Vendors</td><td>All vendors</td><td>Active &middot; Inactive &middot; Blacklisted</td></tr>
+      <tr><td>Penalty</td><td>Penalties imposed</td><td>Imposed &middot; Recovered &middot; Due Within 7 / 14 / 30 Days &middot; Overdue</td></tr>
+      <tr><td>Pending Action</td><td>Sum of the five sub-groups</td><td>Complaints Pending ATR &middot; Inspections Pending ATR &middot; License Fee Due Within 7 / 14 Days &middot; License Fee Overdue</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Drilling through</h4>
+  <p>Every sub-group figure is a button. Pressing it opens the matching listing page with the filters already applied &mdash; for example <em>Penalty &rarr; Overdue</em> opens Penalties filtered to recovery pending with a due date before today, in the currently selected division.</p>
+  <div class="call caution"><span class="lbl">Caution</span>
+    <p>The three <strong>License Fee</strong> sub-groups on the Pending Action card open Location &amp; Unit Management scoped to the division only &mdash; that page has no licence-fee-due filter, so the figure you clicked will not be reproduced by the list you land on. Treat the figure as the authority, not the resulting list.</p>
+  </div>
+
+  <h4>Charts</h4>
+  <p>Press the header of any group card to expand a chart of its sub-group breakdown. Three chart types are offered: <span class="chip">doughnut</span> <span class="chip">pie</span> <span class="chip">bar</span>. Doughnut is the default. Clicking a segment drills through to the same destination as the matching sub-group button. Only one card can be expanded at a time.</p>
+
+  <h3>4.5 Critical Alerts</h3>
+  <p>A panel of seven compliance cards below the group cards. Each row shows a count; counts above zero are highlighted. Pressing any row navigates to the relevant module scoped to the current division.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Alert card</th><th>Rows</th><th>Opens</th></tr></thead>
+    <tbody>
+      <tr><td>Contract Expiry</td><td>Expired &middot; Expiring within 7 Days &middot; Expiring within 30 Days</td><td>Contractor Management</td></tr>
+      <tr><td>Unit Compliance &mdash; License Fees</td><td>Expired &middot; Due Soon</td><td>Location &amp; Unit Management</td></tr>
+      <tr><td>Unit Compliance &mdash; Electric Bill</td><td>Expired &middot; Due Soon</td><td>Location &amp; Unit Management</td></tr>
+      <tr><td>Unit Compliance &mdash; FSSAI</td><td>Expired &middot; Due Soon</td><td>Location &amp; Unit Management</td></tr>
+      <tr><td>Vendor Compliance &mdash; PVR</td><td>Expired &middot; Due Soon</td><td>Vendor Management</td></tr>
+      <tr><td>Vendor Compliance &mdash; Medical</td><td>Expired &middot; Due Soon</td><td>Vendor Management</td></tr>
+      <tr><td>Penalty Overdue</td><td>Total Overdue</td><td>Penalties, filtered to overdue</td></tr>
+    </tbody>
+  </table></div>
+  <p>Dashboard drill-through clicks are recorded against your account for usage analysis.</p>
+</section>
+
+<!-- ═══ 5 ═══ -->
+<section class="chap" id="s5">
+  <div class="chap-head"><span class="chap-num">Section 5</span><h2>Navigation</h2></div>
+
+  <h3>5.1 The application shell</h3>
+  <p>Every signed-in screen shares the same frame:</p>
+  <ul>
+    <li><strong>Left sidebar</strong> &mdash; the SERVMS crest, the navigation list, and the <strong>Logout</strong> button at the foot.</li>
+    <li><strong>Top bar</strong> &mdash; a search field, a bell icon with an unread badge, and your name, initial, and role.</li>
+    <li><strong>Content area</strong> &mdash; the current screen.</li>
+  </ul>
+  <div class="call gap"><span class="lbl">Not implemented</span>
+    <p>The top-bar field reading <strong>&ldquo;Search across SERVMS&hellip;&rdquo;</strong> is decorative. It accepts typing but has no behaviour attached &mdash; pressing Enter does nothing and no results appear. <strong>There is no global search.</strong> Use the search box inside each module instead; every listing screen has its own.</p>
+  </div>
+  <p>The bell icon opens the <strong>Notification Centre</strong>. Its badge counts unread items, displaying <code>9+</code> above nine.</p>
+
+  <h3>5.2 Sidebar menu</h3>
+  <p>Thirteen items. Each appears only if your role holds <code>view</code> on the module behind it, so two people signed in side by side may see different menus.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Menu item</th><th>Address</th><th>Governing permission</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard</td><td><code>/dashboard</code></td><td><code>dashboard</code></td><td>Role-scoped overview and drill-through</td></tr>
+      <tr><td>User Management</td><td><code>/users</code></td><td><code>user_management</code></td><td>Staff accounts, password reset and transfer requests</td></tr>
+      <tr><td>Role Management</td><td><code>/roles</code></td><td><code>role_management</code></td><td>Roles and the permission matrix</td></tr>
+      <tr><td>Location Masters</td><td><code>/locations</code></td><td><code>location_management</code></td><td>Units, Stations, Trains, Clusters</td></tr>
+      <tr><td>Vendor Management</td><td><code>/vendors</code></td><td><code>vendor_management</code></td><td>Vendor register, verification, documents</td></tr>
+      <tr><td>Contractor Management</td><td><code>/contractors</code></td><td><code>contractor_management</code></td><td>Contractor register and unit assignment</td></tr>
+      <tr><td>ID Card / QR</td><td><code>/id-cards</code></td><td><code>id_card_management</code></td><td>Card request, approval, signing, PDF</td></tr>
+      <tr><td>Vendor Renewals</td><td><code>/renewals</code></td><td><code>vendor_management</code></td><td>PVR and medical certificate renewals</td></tr>
+      <tr><td>Complaints</td><td><code>/complaints</code></td><td><code>complaint_management</code></td><td>Complaint register and ATR chain</td></tr>
+      <tr><td>Inspections</td><td><code>/inspections</code></td><td><code>inspection_management</code></td><td>Inspection register and ATR chain</td></tr>
+      <tr><td>Penalties</td><td><code>/penalties</code></td><td><code>penalty_management</code></td><td>Penalty ledger and recovery</td></tr>
+      <tr><td>Audit Logs</td><td><code>/audit-logs</code></td><td><code>audit_logs</code></td><td>System activity trail</td></tr>
+      <tr><td>Reports</td><td><code>/reports</code></td><td><code>reports</code></td><td>Report hub, builder, exports, imports</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>5.3 Screens reached from within a module</h3>
+  <p>Nine further screens have no sidebar entry and are reached only by a button on their parent screen.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Screen</th><th>Address</th><th>Reached from</th></tr></thead>
+    <tbody>
+      <tr><td>Vendor Registration wizard</td><td><code>/vendors/new</code></td><td>Vendor Management &rarr; <strong>+ Onboard New Vendor</strong></td></tr>
+      <tr><td>Contractor Registration</td><td><code>/contractors/new</code></td><td>Contractor Management &rarr; <strong>+ Register Contractor</strong></td></tr>
+      <tr><td>Complaint Registration</td><td><code>/complaints/new</code></td><td>Complaints &rarr; <strong>+ Register Complaint</strong></td></tr>
+      <tr><td>RailMadad Import</td><td><code>/complaints/import</code></td><td>Complaints &rarr; <strong>Import</strong></td></tr>
+      <tr><td>Complaint Type Master</td><td><code>/complaints/types</code></td><td>Complaints &rarr; <strong>Manage Types</strong></td></tr>
+      <tr><td>Inspection form</td><td><code>/inspections/new</code>, <code>/inspections/:id/edit</code></td><td>Inspections &rarr; <strong>+ New Inspection</strong> or the edit action</td></tr>
+      <tr><td>Inspection Type Master</td><td><code>/inspections/types</code></td><td>Inspections &rarr; <strong>Manage Types</strong></td></tr>
+      <tr><td>Report Builder / Saved Reports / Export History / Import Management</td><td><code>/reports/builder</code>, <code>/saved</code>, <code>/exports</code>, <code>/import</code></td><td>Reports hub buttons</td></tr>
+      <tr><td>Notification Centre</td><td><code>/notifications</code></td><td>Bell icon in the top bar</td></tr>
+    </tbody>
+  </table></div>
+  <p>The Notification Centre is the only screen not gated on a module permission &mdash; every signed-in user can reach it, because its contents are personal.</p>
+
+  <div class="call gap"><span class="lbl">Unreachable</span>
+    <p>Two placeholder screens &mdash; <strong>Settings</strong> and <strong>Help Center</strong> &mdash; exist in the codebase but are not registered as addresses and have no menu entry. They cannot be opened by any means, and both contain only a single line of placeholder text. There is no settings screen in SERVMS. The only user-adjustable preferences anywhere are the notification preferences described in <a href="#s19">Section 19</a>.</p>
+  </div>
+</section>
+
+<!-- ═══ 6 ═══ -->
+<section class="chap" id="s6">
+  <div class="chap-head"><span class="chap-num">Section 6</span><h2>User Roles and Permissions</h2></div>
+
+  <h3>6.1 The eight roles</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Role</th><th>Tier</th><th>Data scope</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>Super Admin HQ</td><td>HQ</td><td>Everything, all divisions</td><td>Complete control. Bypasses the permission matrix entirely.</td></tr>
+      <tr><td>HQ Admin</td><td>HQ</td><td>All divisions</td><td>Full HQ-level operational and approval authority.</td></tr>
+      <tr><td>HQ Sub Admin</td><td>HQ</td><td>All divisions</td><td>Create and edit at HQ level; approval withheld except ID cards.</td></tr>
+      <tr><td>Divisional Admin</td><td>Divisional</td><td>Own division only</td><td>Full authority inside one division.</td></tr>
+      <tr><td>Divisional Sub Admin</td><td>Divisional</td><td>Own division only</td><td>Create and edit inside one division; approval withheld except ID cards.</td></tr>
+      <tr><td>Inspector</td><td>Field</td><td>Own inspections only</td><td>Files inspections and registers complaints. Read-only elsewhere.</td></tr>
+      <tr><td>Dealing Section</td><td>Field</td><td>Inspections delegated to them</td><td>Prepares Action Taken Reports and records penalty recovery.</td></tr>
+      <tr><td>Complaint Cell</td><td>Divisional</td><td>Own division only</td><td>Complaint intake and handling. No access to penalties, contractors, inspections, or ID cards.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>6.2 How permission is decided</h3>
+  <p>Permission is a grid of <strong>14 modules &times; 6 actions</strong>. Every role holds one row per module recording whether it may View, Add, Edit, Delete, Approve/Reject, and Export. A missing entry is a denial.</p>
+  <p>Three rules sit above the grid:</p>
+  <ol>
+    <li><strong>Super Admin HQ bypasses the grid.</strong> Every check passes regardless of what the grid records.</li>
+    <li><strong>Division scoping applies after permission.</strong> Divisional Admin, Divisional Sub Admin, and Complaint Cell only ever act on their own division's records; Inspector only on inspections they filed; Dealing Section only on inspections delegated to them.</li>
+    <li><strong>Some actions name roles directly</strong>, bypassing the grid &mdash; complaint and inspection type masters, permission-matrix editing, and penalty recovery entry. These are noted where they occur.</li>
+  </ol>
+
+  <h3>6.3 Permission matrix</h3>
+  <p>The definitive grid as configured. <span class="y">Y</span>&nbsp;= permitted, <span class="no">&ndash;</span>&nbsp;= denied.</p>
+
+  <div class="tw"><table class="mx">
+    <caption>Actions: V&nbsp;view &middot; A&nbsp;add &middot; E&nbsp;edit &middot; D&nbsp;delete &middot; P&nbsp;approve/reject &middot; X&nbsp;export</caption>
+    <thead><tr>
+      <th>Module</th><th>Super&nbsp;Admin&nbsp;HQ</th><th>HQ&nbsp;Admin</th><th>HQ&nbsp;Sub&nbsp;Admin</th><th>Divisional&nbsp;Admin</th><th>Divisional&nbsp;Sub&nbsp;Admin</th><th>Inspector</th><th>Dealing&nbsp;Section</th><th>Complaint&nbsp;Cell</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Dashboard</td><td>VAEDPX</td><td>V</td><td>V</td><td>V</td><td>V</td><td>V</td><td>V</td><td>V</td></tr>
+      <tr><td>User Management</td><td>VAEDPX</td><td>VAEPX</td><td>VAE</td><td>VAEPX</td><td>VAE</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td></tr>
+      <tr><td>Role Management</td><td>VAEDPX</td><td>VAEDPX</td><td>&ndash;</td><td>VAEDPX</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td></tr>
+      <tr><td>Location Management</td><td>VAEDPX</td><td>VAEPX</td><td>VAE</td><td>VAEPX</td><td>VAE</td><td>V</td><td>V</td><td>V</td></tr>
+      <tr><td>Unit Management</td><td>VAEDPX</td><td>VAEPX</td><td>VAE</td><td>VAEPX</td><td>VAE</td><td>V</td><td>V</td><td>V</td></tr>
+      <tr><td>Vendor Management</td><td>VAEDPX</td><td>VAEPX</td><td>VAE</td><td>VAEPX</td><td>VAE</td><td>V</td><td>V</td><td>V</td></tr>
+      <tr><td>Contractor Management</td><td>VAEDPX</td><td>VAEPX</td><td>VAE</td><td>VAEPX</td><td>VAE</td><td>V</td><td>V</td><td>&ndash;</td></tr>
+      <tr><td>ID Card Management</td><td>VAEDPX</td><td>VAEPX</td><td>VAEP</td><td>VAEPX</td><td>VAEP</td><td>V</td><td>V</td><td>&ndash;</td></tr>
+      <tr><td>Complaint Management</td><td>VAEDPX</td><td>VAEPX</td><td>VAE</td><td>VAEPX</td><td>VAE</td><td>VA</td><td>VE</td><td>VAE</td></tr>
+      <tr><td>Inspection Management</td><td>VAEDPX</td><td>VAEPX</td><td>VAE</td><td>VAEPX</td><td>VAE</td><td>VAE</td><td>VE</td><td>&ndash;</td></tr>
+      <tr><td>Penalty Management</td><td>VAEDPX</td><td>VAEPX</td><td>VAE</td><td>VAEPX</td><td>VAE</td><td>V</td><td>VE</td><td>&ndash;</td></tr>
+      <tr><td>Reports</td><td>VAEDPX</td><td>VAEPX</td><td>VX</td><td>VAEPX</td><td>V</td><td>V</td><td>VX</td><td>V</td></tr>
+      <tr><td>Audit Logs</td><td>VAEDPX</td><td>VX</td><td>&ndash;</td><td>VX</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td></tr>
+      <tr><td>Admin Module</td><td>VAEDPX</td><td>VAEPX</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call"><span class="lbl">Reading the matrix</span>
+    <p><code>VAEPX</code> means View, Add, Edit, Approve/Reject and Export are permitted but Delete is not. <strong>Only Super Admin HQ can delete anything</strong> in any module &mdash; every other role, including HQ Admin and Divisional Admin, is denied Delete throughout. Delete buttons visible to other roles will be rejected by the server.</p>
+  </div>
+
+  <h3>6.4 Rules that override the matrix</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Action</th><th>Who may perform it</th></tr></thead>
+    <tbody>
+      <tr><td>Create, edit, or disable an <strong>Admin-tier account</strong> (Super Admin HQ, HQ Admin, Divisional Admin)</td><td>Super Admin HQ only, regardless of User Management permission</td></tr>
+      <tr><td>Save the <strong>permission matrix</strong> for a role</td><td>Super Admin HQ, HQ Admin, Divisional Admin</td></tr>
+      <tr><td>Manage <strong>Complaint Type / Sub-Type</strong> and <strong>Inspection Category / Type</strong> masters</td><td>Super Admin HQ, HQ Admin, HQ Sub Admin, Divisional Admin, Divisional Sub Admin</td></tr>
+      <tr><td><strong>Approve and sign an ID card</strong></td><td>Any user flagged <em>Card Signing Authority</em> who also holds ID Card approve permission, plus Super Admin HQ</td></tr>
+      <tr><td><strong>Record penalty recovery</strong></td><td>Dealing Section only, plus Super Admin HQ</td></tr>
+      <tr><td><strong>Upload penalty documents</strong></td><td>HQ Admin, Divisional Admin, Dealing Section, plus Super Admin HQ</td></tr>
+      <tr><td><strong>Delete complaint import history</strong></td><td>HQ Admin, Divisional Admin, plus Super Admin HQ</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call gap"><span class="lbl">Known gap</span>
+    <p><strong>Vendor Renewals is not permission-checked.</strong> Every action on that screen &mdash; creating a renewal, approving it, rejecting it &mdash; is available to any signed-in user, whatever their role. The sidebar link is hidden from roles without Vendor Management view, but the underlying operations are not protected and the screen's own buttons are not permission-gated. Treat Vendor Renewals as open to all staff until this is corrected.</p>
+  </div>
+
+  <h3>6.5 Card Signing Authority</h3>
+  <p>A separate credential from the role, set per user. It is the only thing that permits approving and digitally signing a vendor ID card. To be eligible a user must satisfy both conditions:</p>
+  <ul>
+    <li>Role is HQ Admin, HQ Sub Admin, Divisional Admin, or Divisional Sub Admin, <em>and</em></li>
+    <li>Designation Grade is <span class="chip">JS</span> or <span class="chip">SS</span>.</li>
+  </ul>
+  <p>An eligible user must additionally be given an <strong>Authority Designation</strong> &mdash; the wording printed on issued cards, for example &ldquo;Divisional Administrator, Kharagpur Division&rdquo;. A signature image should also be uploaded, or cards will be produced without a visible signature.</p>
+</section>
+
+<!-- ═══ 7 ═══ -->
+<section class="chap" id="s7">
+  <div class="chap-head"><span class="chap-num">Section 7</span><h2>User Management</h2></div>
+
+  <p><strong>Address</strong> <code>/users</code> &middot; <strong>Breadcrumb</strong> Admin Console &gt; User Management &middot; <strong>Available to</strong> Super Admin HQ, HQ Admin, HQ Sub Admin, Divisional Admin, Divisional Sub Admin</p>
+
+  <h3>7.1 The listing</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Column</th><th>Shows</th></tr></thead>
+    <tbody>
+      <tr><td>User</td><td>Initial avatar, full name, then Employee ID &middot; username</td></tr>
+      <tr><td>Designation</td><td>Free-text designation, or &mdash;</td></tr>
+      <tr><td>Role</td><td>Role name as a tag</td></tr>
+      <tr><td>Division</td><td>Division, falling back to Zone, or &mdash;</td></tr>
+      <tr><td>Signing Authority</td><td>&ldquo;Yes&rdquo; or &mdash;</td></tr>
+      <tr><td>Status</td><td>Active in green, anything else in red</td></tr>
+      <tr><td>Last Login</td><td>Date and time, or &ldquo;Never&rdquo;</td></tr>
+      <tr><td>Actions</td><td>Toggle &middot; Reset Password &middot; Transfer</td></tr>
+    </tbody>
+  </table></div>
+  <p>Ten rows per page, paginated at the foot of the table.</p>
+
+  <h4>Search, filter and sort</h4>
+  <p>Search matches full name, username, or Employee ID, and is applied as you type. Filters: <strong>Role</strong>, <strong>Status</strong> (All / Active / Inactive), and &mdash; under <strong>Advanced Filters</strong> &mdash; <strong>Division</strong>. All filtering happens in your browser across the complete user list, so results are instant. Columns are not sortable; rows are always ordered newest-created first.</p>
+
+  <h4>Export CSV</h4>
+  <p><strong>Export CSV</strong> downloads <code>user-management.csv</code> containing exactly the rows matching your current filters, with columns Employee ID, HRMS ID, Full Name, Username, Designation, Role, Division, Zone, Status, Last Login.</p>
+
+  <h4>Statistics</h4>
+  <p>Super Admin HQ, HQ Admin, and Divisional Admin see two cards below the table: <strong>Active Users</strong> (with the inactive and total counts beneath) and <strong>Total Active in Last 7 Days</strong>. Other roles do not.</p>
+
+  <h3>7.2 Adding a user</h3>
+  <p>Press <strong>+ Add New User</strong> to open the Add New User dialog. All fields are on one screen.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Required</th><th>Input</th><th>Notes and validation</th></tr></thead>
+    <tbody>
+      <tr><td>Employee Number</td><td>Yes</td><td>Text</td><td>Must not be blank. Typing here auto-fills Username until you edit Username yourself.</td></tr>
+      <tr><td>Username</td><td>Yes</td><td>Text</td><td>3&ndash;50 characters. This is the value used to sign in.</td></tr>
+      <tr><td>HRMS ID</td><td>No</td><td>Text</td><td>Free text.</td></tr>
+      <tr><td>Temporary Password</td><td>Yes</td><td>Password</td><td>Minimum 6 characters. Communicate it to the user out-of-band.</td></tr>
+      <tr><td>Full Name</td><td>Yes</td><td>Text</td><td>Must not be blank.</td></tr>
+      <tr><td>Designation</td><td>No</td><td>Text</td><td>Free text, e.g. &ldquo;Station Inspector&rdquo;.</td></tr>
+      <tr><td>Designation Grade</td><td>No</td><td>Dropdown</td><td>JAG &middot; SG &middot; Sr. Supervisor &middot; JS &middot; SS &middot; Other. Must be JS or SS for Card Signing Authority.</td></tr>
+      <tr><td>Email</td><td>No</td><td>Email</td><td>Must be a valid address if supplied.</td></tr>
+      <tr><td>Mobile Number</td><td>Yes</td><td>Text</td><td>Required by the form. No format check is applied.</td></tr>
+      <tr><td>Role</td><td>Yes</td><td>Dropdown</td><td>Only Super Admin HQ sees Admin-tier roles in this list.</td></tr>
+      <tr><td>Zone</td><td>No</td><td>Dropdown</td><td>Optional.</td></tr>
+      <tr><td>Division</td><td>No</td><td>Dropdown</td><td>Optional by the form, but a divisional role without a division sees no data.</td></tr>
+      <tr><td>Station</td><td>No</td><td>Dropdown</td><td>Optional. Lists every station regardless of the division chosen.</td></tr>
+      <tr><td>Card Signing Authority</td><td>No</td><td>Yes / No</td><td>Disabled unless Role and Designation Grade are both eligible.</td></tr>
+      <tr><td>Authority Designation</td><td>Yes, if signing authority is Yes</td><td>Text</td><td>Printed on issued ID cards.</td></tr>
+      <tr><td>Signature Upload</td><td>No</td><td>File</td><td>JPG or PNG only, maximum 2&nbsp;MB. Applied automatically to cards this user approves.</td></tr>
+    </tbody>
+  </table></div>
+  <ol class="steps">
+    <li>Complete the required fields.</li>
+    <li>If the account is to sign ID cards, set Role and Designation Grade first &mdash; the Card Signing Authority control stays disabled until both qualify.</li>
+    <li>Press <strong>Create User</strong>. On failure a red banner names the specific problem.</li>
+    <li>Give the temporary password to the user in person or by phone. Never send it by email.</li>
+  </ol>
+  <div class="call caution"><span class="lbl">Caution</span>
+    <p>Division is optional on this form but is not optional in practice. A Divisional Admin, Divisional Sub Admin, or Complaint Cell user created without a division will sign in successfully and see empty lists everywhere, because every query filters on their division.</p>
+  </div>
+
+  <h3>7.3 Editing and deleting users</h3>
+  <div class="call gap"><span class="lbl">Not implemented</span>
+    <p><strong>There is no way to edit or delete a user through the interface.</strong> The listing offers only Toggle, Reset Password, and Transfer. Once a user is created, their name, Employee Number, username, designation, grade, email, mobile, signing authority, station, and signature can never be changed on screen. Role and division can be changed only by raising and approving a <strong>Transfer</strong> request. Correcting a typo in a name requires a database change.</p>
+  </div>
+
+  <h4>Toggle (activate / deactivate)</h4>
+  <p>Press <strong>Toggle</strong> to flip a user between Active and Inactive. There is no confirmation prompt and the change is immediate. The button is hidden for Admin-tier accounts unless you are Super Admin HQ.</p>
+  <div class="call gap"><span class="lbl">Known gap</span>
+    <p>Setting a user Inactive does <strong>not</strong> stop them signing in &mdash; see <a href="#s3">Section 3.7</a>. Toggle changes the badge in the Status column and nothing else.</p>
+  </div>
+
+  <h3>7.4 Password reset (assisted)</h3>
+  <p>SERVMS uses a two-person reset: one administrator raises the request, another approves it. Both parties need User Management permissions &mdash; raising needs Edit, approving needs Approve/Reject.</p>
+  <div class="flow">
+    <div><span class="s">Step 1</span><span class="t">Raise</span><span class="w">Administrator submits with an optional reason</span></div>
+    <div><span class="s">Step 2</span><span class="t">Notify</span><span class="w">Email sent to the HQ admin mailbox</span></div>
+    <div><span class="s">Step 3</span><span class="t">Queue</span><span class="w">Appears under Pending Requests</span></div>
+    <div><span class="s">Step 4</span><span class="t">Decide</span><span class="w">Approve or Reject</span></div>
+    <div><span class="s">Step 5</span><span class="t">Relay</span><span class="w">Temporary password shown once</span></div>
+  </div>
+  <ol class="steps">
+    <li>Find the user and press <strong>Reset Password</strong>.</li>
+    <li>Optionally record a reason, then press <strong>Submit Request</strong>. A confirmation states the request has been routed for review.</li>
+    <li>An approver opens <strong>Pending Requests</strong> and selects the <strong>Password Resets</strong> tab, which shows User, Requested By, Reason, and Date.</li>
+    <li>Press <strong>Approve</strong>. A green banner displays a freshly generated temporary password of roughly eight characters.</li>
+    <li>Copy it now. It is shown once, is never emailed, and cannot be retrieved afterwards. If it is lost, raise a fresh request.</li>
+    <li>Relay it to the user securely. Pressing <strong>Reject</strong> instead closes the request and leaves the password untouched.</li>
+  </ol>
+  <div class="call gap"><span class="lbl">Known gap</span>
+    <p>An approved reset marks the account as holding a temporary password, but <strong>there is no screen on which a user can change their own password.</strong> The user signs in with the temporary password and is never prompted to replace it &mdash; the temporary password simply becomes their permanent one. To change it again, another assisted reset must be raised.</p>
+  </div>
+
+  <h3>7.5 Transfer requests</h3>
+  <p>The only mechanism for changing a user's division or role after creation. Same two-person pattern as password reset.</p>
+  <ol class="steps">
+    <li>Press <strong>Transfer</strong> on the user's row. Current Division and Current Role are shown read-only.</li>
+    <li>Choose a <strong>New Division</strong>, a <strong>New Role</strong>, or both. Leaving both as &ldquo;No change&rdquo; is rejected with &ldquo;Select a new division and/or role to request a transfer.&rdquo;</li>
+    <li>Optionally record a reason and press <strong>Submit Request</strong>.</li>
+    <li>An approver opens <strong>Pending Requests &rarr; Transfers</strong>, which shows the user, the proposed change as <em>from &rarr; to</em>, who requested it, and when.</li>
+    <li>Press <strong>Approve</strong> to apply the change to the account, or <strong>Reject</strong> to close the request unchanged.</li>
+  </ol>
+  <p>The Transfer button is hidden for Admin-tier accounts unless you are Super Admin HQ.</p>
+  <div class="call"><span class="lbl">Note</span>
+    <p>An approved transfer changes the stored account, but the affected user keeps their existing session with the old role and division until they sign out and back in. Ask them to sign out and in again after a transfer is approved.</p>
+  </div>
+</section>
+
+<!-- ═══ 8 ═══ -->
+<section class="chap" id="s8">
+  <div class="chap-head"><span class="chap-num">Section 8</span><h2>Role Management</h2></div>
+
+  <p><strong>Address</strong> <code>/roles</code> &middot; <strong>Available to</strong> Super Admin HQ, HQ Admin, Divisional Admin</p>
+
+  <h3>8.1 The role list</h3>
+  <p>Three summary cards head the page: <strong>Total Roles</strong>, <strong>Active Users</strong> (the sum of all role user counts), and <strong>System Modules</strong> (14). Below them, three tabs filter the list: <span class="chip">ALL</span> <span class="chip">ADMIN</span> <span class="chip">FIELD</span>. FIELD contains only the Inspector role; every other role is classed as ADMIN.</p>
+  <p>Columns: Role Name, Description, User Count, Status, Actions. Ten rows per page. There is no search box on this screen.</p>
+
+  <h3>8.2 Adding a role</h3>
+  <ol class="steps">
+    <li>Press <strong>+ Add New Role</strong>.</li>
+    <li>Enter a <strong>Role Name</strong> (required) and an optional <strong>Description</strong>.</li>
+    <li>Press <strong>Create Role</strong>.</li>
+  </ol>
+  <div class="call caution"><span class="lbl">Caution</span>
+    <p>A newly created role starts with <strong>no permissions at all</strong>. It must be selected in the list and given permissions in the matrix before anyone assigned to it can do anything. Note also that the role name you type is stored raw &mdash; only the eight built-in roles have friendly display names, so a custom role will show its raw name wherever roles are listed.</p>
+  </div>
+
+  <h3>8.3 Editing a role</h3>
+  <p>Press the pencil icon on a role's row. Only two properties can be changed: <strong>Description</strong> and <strong>Status</strong> (Active / Inactive). The role name cannot be changed after creation.</p>
+
+  <h3>8.4 Deleting a role</h3>
+  <p>Press the bin icon. A browser confirmation asks &ldquo;Delete role &lsquo;&hellip;&rsquo;? This cannot be undone.&rdquo; Only Super Admin HQ holds Delete on Role Management, so for every other role the button either does not appear or the action is refused. If the role is in use the server refuses and the reason appears in a red banner.</p>
+
+  <h3>8.5 The permission matrix</h3>
+  <p>Selecting any row in the role list loads its permission matrix below the table, headed <strong>Permission Matrix &mdash; &lt;role&gt;</strong>. Fourteen module rows against six checkbox columns: View, Add / Create, Edit / Update, Delete, Approve / Reject, Export Data.</p>
+  <ol class="steps">
+    <li>Select the role whose permissions you want to change.</li>
+    <li>Tick or untick the boxes. Use <strong>Select All</strong> above the table to set or clear every box at once.</li>
+    <li>Press <strong>Save Changes</strong>. The button reads &ldquo;Saved &check;&rdquo; on success.</li>
+  </ol>
+  <p>Only Super Admin HQ, HQ Admin, and Divisional Admin can save. For every other role the checkboxes render disabled and the Save button is hidden.</p>
+  <div class="call gap"><span class="lbl">Misleading control</span>
+    <p>The button labelled <strong>Reset to Default</strong> does not reset anything to a default. It re-reads the currently saved permissions from the server, discarding unsaved ticks on screen. Read it as <em>&ldquo;Discard my changes&rdquo;</em>. There is no way to restore a role's original shipped permissions once they have been saved over.</p>
+  </div>
+  <div class="call caution"><span class="lbl">Caution</span>
+    <p>Changes take effect the moment they are saved, for every user holding that role, without them signing out. Removing View on a module removes it from their sidebar mid-session. Take particular care with Super Admin HQ: its permissions are ignored in favour of an unconditional bypass, so editing that row has no effect and cannot lock anyone out &mdash; but editing HQ Admin or Divisional Admin can.</p>
+  </div>
+</section>
+
+<!-- ═══ 9 ═══ -->
+<section class="chap" id="s9">
+  <div class="chap-head"><span class="chap-num">Section 9</span><h2>Location and Unit Management</h2></div>
+
+  <p><strong>Address</strong> <code>/locations</code> &middot; <strong>Menu label</strong> Location Masters &middot; <strong>Page title</strong> Location &amp; Unit Management</p>
+  <p>Four tabs: <strong>Units</strong>, <strong>Stations</strong>, <strong>Trains</strong>, <strong>Clusters</strong>. Units is the operational register &mdash; the physical stalls and service points a contract attaches to. The other three are the geography those units sit in.</p>
+
+  <h3>9.1 Units tab</h3>
+  <p>Columns: Unit, Location, Contract Type, Category, Inspector, Status, Actions.</p>
+  <h4>Filters</h4>
+  <div class="tw"><table>
+    <thead><tr><th>Filter</th><th>Options</th></tr></thead>
+    <tbody>
+      <tr><td>Search</td><td>Free text against unit name and code</td></tr>
+      <tr><td>Division</td><td>All Divisions, or one division</td></tr>
+      <tr><td>Location Type</td><td>All &middot; Station &middot; Train &middot; Cluster</td></tr>
+      <tr><td>Status</td><td>Active &middot; Expiring &middot; Inactive &middot; Pending</td></tr>
+      <tr><td>Contract Type</td><td>All Types &middot; Earning &middot; Expenditure</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Adding a unit</h4>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Required</th><th>Input</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Division</td><td>Yes</td><td>Dropdown</td><td>Determines which stations, trains, and clusters are offered.</td></tr>
+      <tr><td>Location Type</td><td>Yes</td><td>Station / Train / Cluster</td><td>Controls which of the next three fields appears.</td></tr>
+      <tr><td>Station <em>or</em> Train <em>or</em> Cluster</td><td>Yes</td><td>Dropdown</td><td>Only the one matching Location Type is shown.</td></tr>
+      <tr><td>Contract Type</td><td>Yes</td><td>Earning / Expenditure</td><td>Earning: the contractor pays the railway. Expenditure: the railway pays the contractor.</td></tr>
+      <tr><td>Contract Category</td><td>No</td><td>Dropdown</td><td>Drawn from the managed <code>contract_category</code> list, filtered by division.</td></tr>
+      <tr><td>Unit Name</td><td>Yes</td><td>Text</td><td>The display name throughout the system.</td></tr>
+      <tr><td>Unit Code / ID</td><td>Yes</td><td>Text</td><td>Short identifier.</td></tr>
+      <tr><td>Area (sq. ft.)</td><td>No</td><td>Text</td><td>Free-text area description.</td></tr>
+      <tr><td>Sketch (attachment)</td><td>No</td><td>File</td><td>Site sketch or plan.</td></tr>
+      <tr><td>Contractor</td><td>No</td><td>Dropdown</td><td>May be left unassigned and linked later from Contractor Management.</td></tr>
+      <tr><td>Annual License Fee (&#8377;)</td><td>No</td><td>Number</td><td>Annual licence fee.</td></tr>
+      <tr><td>Status</td><td>No</td><td>Dropdown</td><td>Active &middot; Expiring &middot; Inactive &middot; Pending.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Editing and deactivating</h4>
+  <p>The pencil icon opens the same form pre-filled. The bin icon is labelled <strong>Deactivate unit</strong> &mdash; a unit is deactivated rather than erased, so its history in complaints, inspections, and penalties survives. Only Super Admin HQ holds Delete on Unit Management.</p>
+
+  <h3>9.2 Stations tab</h3>
+  <p>Columns: Station Name, Station Code, Division, No. of Platforms, Actions. Filter by Division.</p>
+  <p>Fields when adding: <strong>Division</strong>, <strong>Station Name</strong>, <strong>Station Code</strong>, <strong>No. of Platforms</strong>. Edit and remove actions are on each row.</p>
+  <h4>Bulk import</h4>
+  <p>Stations can be loaded in bulk from a single-sheet Excel workbook whose columns are titled exactly <strong>Division</strong>, <strong>Station Name</strong>, <strong>Station Code</strong>, and <strong>No of Platforms</strong>. See <a href="#s18">Section 18</a>.</p>
+
+  <h3>9.3 Trains tab</h3>
+  <p>Columns: Train, Route, Opposite Direction, Owning Division, Actions. Filter by Owning Division.</p>
+  <p>A train record captures both directions of a service in one row. Fields: <strong>Owning Division</strong>, <strong>Train Number</strong>, <strong>Train Name</strong>, <strong>Source</strong>, <strong>Destination</strong>, and four opposite-direction fields &mdash; <strong>Opposite Direction Train Number</strong>, <strong>Train Name</strong>, <strong>Source</strong>, and <strong>Destination</strong>. Edit and remove actions are on each row.</p>
+
+  <h3>9.4 Clusters tab</h3>
+  <p>A cluster groups several stations or several trains so one unit can serve them all. Columns: Cluster Name, Type, Division, Members, Actions. Filter by Division.</p>
+  <p>Fields: <strong>Division</strong>, <strong>Cluster Type</strong> (Station Cluster or Train Cluster), <strong>Cluster Name</strong>, and the member stations or trains.</p>
+  <div class="call gap"><span class="lbl">Not implemented</span>
+    <p>The Clusters tab offers only <strong>Remove cluster</strong>. There is no edit action, so a cluster's name, type, or membership cannot be changed after creation &mdash; it must be removed and recreated. The other three tabs all have edit actions.</p>
+  </div>
+</section>
+
+<!-- ═══ 10 ═══ -->
+<section class="chap" id="s10">
+  <div class="chap-head"><span class="chap-num">Section 10</span><h2>Contractor Management</h2></div>
+
+  <p><strong>Address</strong> <code>/contractors</code> &middot; <strong>Page title</strong> Master Contractor Listing &middot; <strong>Not available to</strong> Complaint Cell</p>
+
+  <h3>10.1 The listing</h3>
+  <p>Columns: Contractor Name, License Number, Contract Value, Award Date, Status, Vendor Count, Actions.</p>
+  <p>Filters: <strong>Search</strong>, <strong>Status</strong>, and <strong>Division</strong>. The Status filter includes an <em>Inactive (Non-Active)</em> option, which is a roll-up of every non-active state rather than a status a contractor can actually hold.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip ok">active</span></td><td>Trading normally</td></tr>
+      <tr><td><span class="chip warn">pending_approval</span></td><td>Registered, awaiting approval</td></tr>
+      <tr><td><span class="chip warn">suspended</span></td><td>Temporarily stopped</td></tr>
+      <tr><td><span class="chip bad">expired</span></td><td>Contract or licence lapsed</td></tr>
+      <tr><td><span class="chip bad">blacklisted</span></td><td>Barred. Settable only through the status-change action, never on a form.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>10.2 Registering a contractor</h3>
+  <p><strong>+ Register Contractor</strong> opens a full-page form at <code>/contractors/new</code>. The contractor code is generated automatically in the form <code>CON-001</code>.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Required</th><th>Input</th><th>Validation</th></tr></thead>
+    <tbody>
+      <tr><td>Contractor/Company Name</td><td>Yes</td><td>Text</td><td>Must not be blank</td></tr>
+      <tr><td>Primary Contact Person</td><td>No</td><td>Text</td><td>&mdash;</td></tr>
+      <tr><td>Registered Office Address</td><td>No</td><td>Textarea</td><td>&mdash;</td></tr>
+      <tr><td>PAN Number</td><td>No</td><td>Text</td><td>Exactly 10 characters if supplied</td></tr>
+      <tr><td>GST Identification (GSTIN)</td><td>No</td><td>Text</td><td>Exactly 15 characters if supplied</td></tr>
+      <tr><td>License Validity</td><td>No</td><td>Date</td><td>Must be a valid date. Drives the Contract Expiry alert.</td></tr>
+      <tr><td>Annual Registration Fee (&#8377;)</td><td>No</td><td>Number</td><td>Zero or greater</td></tr>
+      <tr><td>Award Date</td><td>No</td><td>Date</td><td>Must be a valid date</td></tr>
+      <tr><td>Tenure (months)</td><td>No</td><td>Number</td><td>At least 1</td></tr>
+      <tr><td>Annual Contract Value (&#8377;)</td><td>No</td><td>Number</td><td>Zero or greater</td></tr>
+      <tr><td>Official Email Address</td><td>No</td><td>Email</td><td>Must be a valid address</td></tr>
+      <tr><td>Mobile Number</td><td>No</td><td>Text</td><td>No format check</td></tr>
+      <tr><td>Division</td><td>Yes</td><td>Dropdown</td><td>Required by the server</td></tr>
+      <tr><td>Company logo</td><td>No</td><td>File</td><td>Previewed before submission</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>10.3 Editing a contractor</h3>
+  <p>Open a contractor and press Edit. Nine fields can be changed: Primary Contact, Mobile, Email, License Number, License Validity, Annual Registration Fee, Award Date, Tenure, and Annual Contract Value.</p>
+  <div class="call caution"><span class="lbl">Caution</span>
+    <p>The edit form is narrower than the registration form. <strong>Company Name, PAN, GSTIN, Registered Address, and Division cannot be changed after registration.</strong> Verify these five carefully at registration &mdash; correcting them later requires a database change.</p>
+  </div>
+
+  <h3>10.4 Changing status</h3>
+  <p>Requires Approve/Reject on Contractor Management. Choose the new status and supply a reason; the change and its reason are written to the audit trail. Blacklisting is available only here.</p>
+
+  <h3>10.5 Deleting a contractor</h3>
+  <div class="call gap"><span class="lbl">Not implemented</span>
+    <p>There is no Delete action for contractors anywhere in the interface, for any role, although the capability exists behind the API. Use <strong>status change</strong> to Suspended, Expired, or Blacklisted to take a contractor out of service. This is the correct approach in any case &mdash; it preserves the contractor's history.</p>
+  </div>
+
+  <h3>10.6 Unit assignment</h3>
+  <p>Opening a contractor shows the units assigned to them, with columns Unit, Station, Status, and (with Edit permission) Actions.</p>
+  <ol class="steps">
+    <li>Choose an unassigned unit from the picker &mdash; only units with no contractor are offered.</li>
+    <li>Press Assign. The unit now belongs to this contractor and its vendor count updates.</li>
+    <li>To release a unit, press the unassign action on its row. The unit returns to the unassigned pool; it is not deleted.</li>
+  </ol>
+
+  <h3>10.7 Contractor detail</h3>
+  <p>The detail view shows Primary Contact, Mobile, Email, License Number, License Validity, Annual Registration Fee, Award Date, Tenure, Annual Contract Value, and Status, alongside the assigned units and a change history of When / Action / By / Details.</p>
+  <div class="call"><span class="lbl">Note</span>
+    <p>Four stored contractor attributes &mdash; <em>Compliance Rate</em>, <em>Penalty Index</em>, <em>IRCTC Licensed</em>, and <em>Joined Date</em> &mdash; are held in the database but appear on no screen and can be set through no form. They are dormant and should be disregarded.</p>
+  </div>
+</section>
+
+<!-- ═══ 11 ═══ -->
+<section class="chap" id="s11">
+  <div class="chap-head"><span class="chap-num">Section 11</span><h2>Vendor Management</h2></div>
+
+  <p><strong>Address</strong> <code>/vendors</code> &middot; <strong>Page title</strong> Vendor Master Listing</p>
+
+  <h3>11.1 The listing</h3>
+  <p>Columns: Vendor ID, Vendor Name, Contractor Entity, Unit, Verification, Actions. The Verification column stacks two lines &mdash; Police and Medical &mdash; each colour-coded: green Verified, amber Pending, red Rejected or Expired. Ten rows per page; paging is done on the server.</p>
+  <h4>Filters</h4>
+  <p><strong>Search Database</strong> matches vendor ID, vendor name, or contractor name. <strong>Unit / Division</strong> selects a division. <strong>Validity</strong> filters by status. <strong>More Filters</strong> reveals a <strong>Unit</strong> picker, restricted to the chosen division.</p>
+  <div class="call"><span class="lbl">Note</span>
+    <p>The Validity filter's <em>Inactive (Non-Active)</em> option is a roll-up of Pending and Expired used by the Dashboard, not a status a vendor can hold. The four real statuses are Active, Pending, Expired, and Blacklisted.</p>
+  </div>
+
+  <h4>Statistics</h4>
+  <p>Six cards below the table: Total Active Vendors, Police Verified, Expired Medicals, Expired PVR, Expiring Soon (30 days), Awaiting Approval.</p>
+
+  <h4>Export to Excel</h4>
+  <p><strong>Export to Excel</strong> downloads <code>vendor-master-listing.csv</code> &mdash; a CSV file despite the button label. It contains the rows matching your current filters, capped at 2,000, with columns Vendor ID, Vendor Name, Contractor Entity, Unit, Division, Police Verification, Medical Verification, Validity End, and Status.</p>
+
+  <h3>11.2 Onboarding a vendor</h3>
+  <p><strong>+ Onboard New Vendor</strong> opens a five-step wizard at <code>/vendors/new</code>. Vendor codes are generated automatically as <code>V-2026-1234</code>.</p>
+  <div class="flow">
+    <div><span class="s">Step 1</span><span class="t">Personal Details</span></div>
+    <div><span class="s">Step 2</span><span class="t">Deployment</span></div>
+    <div><span class="s">Step 3</span><span class="t">Verification</span></div>
+    <div><span class="s">Step 4</span><span class="t">Documents</span></div>
+    <div><span class="s">Step 5</span><span class="t">Submit</span></div>
+  </div>
+
+  <h4>Step 1 &mdash; Personal Details</h4>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Required</th><th>Input</th><th>Validation</th></tr></thead>
+    <tbody>
+      <tr><td>Full Name (As per Aadhaar)</td><td>Yes</td><td>Text</td><td>Must not be blank</td></tr>
+      <tr><td>Father&rsquo;s Name</td><td>No</td><td>Text</td><td>&mdash;</td></tr>
+      <tr><td>Date of Birth</td><td>No</td><td>Date</td><td>&mdash;</td></tr>
+      <tr><td>Aadhaar Number</td><td>No</td><td>Text, 12 max</td><td>Exactly 12 digits if supplied</td></tr>
+      <tr><td>Blood Group</td><td>No</td><td>Dropdown</td><td>A+ A&minus; B+ B&minus; AB+ AB&minus; O+ O&minus;</td></tr>
+      <tr><td>Photograph</td><td>No</td><td>Image</td><td>Previewed. Printed on the ID card.</td></tr>
+      <tr><td>Signature</td><td>No</td><td>Image</td><td>Previewed. Printed on the ID card.</td></tr>
+      <tr><td>Mobile Number</td><td>Yes</td><td>Text</td><td>Must not be blank</td></tr>
+      <tr><td>Address</td><td>Yes</td><td>Textarea</td><td>Must not be blank</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Step 2 &mdash; Deployment</h4>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Required</th><th>Input</th><th>Validation</th></tr></thead>
+    <tbody>
+      <tr><td>Vendor Type</td><td>No</td><td>Dropdown</td><td>Train TSV &middot; Station PF &middot; Station Stall &middot; Station Others</td></tr>
+      <tr><td>Division</td><td>Yes</td><td>Dropdown</td><td>Required. Filters Station, Unit, and Contractor.</td></tr>
+      <tr><td>Station</td><td>Conditional</td><td>Dropdown</td><td>Required only if the chosen division has stations configured. Otherwise the label reads &ldquo;Station (optional)&rdquo;.</td></tr>
+      <tr><td>Contractor / Agency</td><td>Yes</td><td>Dropdown</td><td>Required</td></tr>
+      <tr><td>Platform Unit / Stall</td><td>Conditional</td><td>Dropdown</td><td>Required only if units exist for the chosen station or division</td></tr>
+      <tr><td>Validity Start</td><td>No</td><td>Date</td><td>Must be a valid date</td></tr>
+      <tr><td>Validity End</td><td>No</td><td>Date</td><td>Must be a valid date</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Step 3 &mdash; Verification</h4>
+  <p>Two identical blocks, Police Verification and Medical Verification. Each holds a <strong>Verification Status</strong> (Pending / Verified / Rejected), <strong>Issue Date</strong>, a number, a <strong>Valid Till Date</strong>, and optional <strong>Remarks</strong>.</p>
+  <p><strong>Police Verification Number</strong> and <strong>Medical Fitness Certificate Number</strong> are both mandatory &mdash; a vendor cannot be created without them. A Valid Till date earlier than its Issue Date is rejected.</p>
+  <div class="call tip"><span class="lbl">Tip</span>
+    <p>The Valid Till dates matter beyond compliance reporting: an ID card's expiry is taken from one of them (see <a href="#s12">Section 12</a>). A vendor with no Valid Till date on the chosen verification cannot be issued a card at all.</p>
+  </div>
+
+  <h4>Step 4 &mdash; Documents</h4>
+  <p>Three upload slots &mdash; Aadhaar, Medical Verification, and Police Verification &mdash; each accepting PDF, JPG, or PNG. All three are optional at onboarding and can be added later from the vendor's document folder.</p>
+
+  <h4>Step 5 &mdash; Submit</h4>
+  <p>A read-only review of everything entered. Use <strong>Back</strong> to correct any step, then submit. Validation failures return a red banner naming the specific field.</p>
+
+  <h3>11.3 Vendor detail</h3>
+  <p>The eye icon opens a detail view showing Vendor Code, Vendor Type, Mobile, Blood Group, Address, Contractor, Division, Station, Unit, Validity, and Status, together with both verification cards and &mdash; with Edit permission &mdash; the Transfer panel.</p>
+  <div class="call"><span class="lbl">Note</span>
+    <p>Father&rsquo;s Name, Date of Birth, and Aadhaar Number are captured at onboarding but do not appear in this detail view. Aadhaar is visible only on the issued ID card, in its QR payload, and on the public verification page.</p>
+  </div>
+
+  <h3>11.4 Editing and deleting vendors</h3>
+  <div class="call gap"><span class="lbl">Not implemented</span>
+    <p><strong>There is no edit-vendor form and no delete-vendor action</strong> anywhere in the interface. Once onboarded, a vendor's name, father's name, date of birth, Aadhaar number, mobile, address, blood group, vendor type, photograph, signature, and validity dates cannot be corrected on screen.</p>
+    <p>Only four things about a vendor can be changed after onboarding: <strong>status</strong>, <strong>police verification</strong>, <strong>medical verification</strong>, and <strong>unit or contractor by transfer</strong>. Everything else is fixed at onboarding, so check Step 1 carefully before submitting.</p>
+  </div>
+
+  <h3>11.5 Changing vendor status</h3>
+  <p>Requires Approve/Reject. In the detail view, Status becomes a dropdown offering Active, Pending, Expired, and Blacklisted. Selecting Blacklisted raises a confirmation: &ldquo;Blacklist this vendor? This should only be done for serious violations.&rdquo; The change takes effect immediately.</p>
+
+  <h3>11.6 Updating verification</h3>
+  <p>Requires Edit. Both verification cards carry an <strong>Update Verification</strong> button.</p>
+  <ol class="steps">
+    <li>Press <strong>Update Verification</strong> on the Police or Medical card.</li>
+    <li>Set the <strong>Verification Status</strong> to Pending, Verified, or Rejected.</li>
+    <li>Enter the certificate number. This is mandatory &mdash; leaving it blank gives &ldquo;Police Verification Number is required.&rdquo;</li>
+    <li>Set <strong>Issue Date</strong> and <strong>Valid Till Date</strong>. Valid Till may not precede Issue Date.</li>
+    <li>Optionally add Remarks and attach a replacement document (PDF, JPG, or PNG, up to 5&nbsp;MB).</li>
+    <li>Press <strong>Save</strong>.</li>
+  </ol>
+  <p>When not being edited, each card shows the number, dates, remarks, and <strong>View</strong> / <strong>Download</strong> links for the attached document.</p>
+
+  <h3>11.7 Transfers</h3>
+  <p>Requires Edit. Two independent transfers are offered in the detail view:</p>
+  <ul>
+    <li><strong>Transfer to Unit</strong> &mdash; move a vendor to a different platform unit or stall.</li>
+    <li><strong>Transfer to Contractor</strong> &mdash; move a vendor to a different contracting agency.</li>
+  </ul>
+  <p>Choose a target and press Transfer. Both are recorded in the audit trail.</p>
+
+  <h3>11.8 Documents</h3>
+  <p>The folder icon opens Vendor Documents, listing the three document types with the uploaded file name, upload date, and uploader, or &ldquo;Not uploaded&rdquo;.</p>
+  <ul>
+    <li><strong>Upload</strong> / <strong>Replace</strong> &mdash; PDF, JPG, or PNG up to 5&nbsp;MB. Uploading over an existing document replaces it.</li>
+    <li><strong>View</strong> &mdash; PDFs open in an inline frame; images render directly.</li>
+    <li><strong>Download</strong> &mdash; saves the original file.</li>
+  </ul>
+  <p>There is no delete action for a vendor document; replacing it is the only way to change it.</p>
+</section>
+
+<!-- ═══ 12 ═══ -->
+<section class="chap" id="s12">
+  <div class="chap-head"><span class="chap-num">Section 12</span><h2>ID Card and QR Management</h2></div>
+
+  <p><strong>Address</strong> <code>/id-cards</code> &middot; <strong>Not available to</strong> Complaint Cell</p>
+  <p>This module carries the workflow described on its own sub-title: <em>issue-request &rarr; Sub Admin approval &rarr; automatic digital signature &rarr; QR &rarr; PDF</em>.</p>
+
+  <h3>12.1 Layout</h3>
+  <p>Three statistic cards head the page &mdash; <strong>Approved &amp; Issued</strong>, <strong>Pending Approval</strong>, <strong>Total Vendors</strong>. Below, a two-column layout: a searchable vendor list on the left, and the selected vendor's card panel on the right. Search matches name or vendor code.</p>
+  <p>Each vendor in the list shows their card state:</p>
+  <div class="tw"><table>
+    <thead><tr><th>State</th><th>Displayed as</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>draft</code></td><td>Not Requested</td><td>No card has been requested</td></tr>
+      <tr><td><code>pending_approval</code></td><td>Pending Sub Admin Approval</td><td>Requested, awaiting a signing authority</td></tr>
+      <tr><td><code>approved</code></td><td>Approved &amp; Issued</td><td>Signed, QR generated, PDF available</td></tr>
+      <tr><td><code>rejected</code></td><td>Rejected</td><td>Refused, with a reason recorded</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>12.2 Card formats</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Format</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>Format 1 &mdash; Indian Railway</td><td>Annexure B. Plain header, no side strip. Masked Aadhaar on the back.</td></tr>
+      <tr><td>Format 2 &mdash; Entry Pass</td><td>Annexure-II. Orange &ldquo;ON CONTRACT&rdquo; side strip with an Entry Pass header. Contractor name, contract validity, and date of issue on the back.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>12.3 Requesting a card</h3>
+  <p>Requires Add on ID Card Management.</p>
+  <ol class="steps">
+    <li>Select the vendor in the left-hand list.</li>
+    <li>Choose the format under <strong>ID Card Format</strong>.</li>
+    <li>Press <strong>Request ID Card</strong> &mdash; or <strong>Re-issue ID Card</strong> if one has already been issued.</li>
+    <li>Choose the <strong>ID Card Expiry Driver</strong>: <em>Use Medical Expiry</em> or <em>Use Police Verification Expiry</em>. The card's expiry date is copied from whichever you choose.</li>
+    <li>Press <strong>Submit Request</strong>. The state becomes Pending Sub Admin Approval.</li>
+  </ol>
+  <div class="call caution"><span class="lbl">Caution</span>
+    <p>If the chosen verification has no Valid Till date on file, the request is refused with &ldquo;Cannot use medical expiry &mdash; no valid-till date on file&rdquo;. Complete the vendor's verification dates first (<a href="#s11">Section 11.6</a>).</p>
+    <p>Re-issuing an approved card returns it to Pending Approval and clears the previous approval &mdash; the vendor has no valid card until a signing authority approves again.</p>
+  </div>
+
+  <h3>12.4 Approving and signing</h3>
+  <p>The <strong>Approve &amp; Sign</strong> and <strong>Reject</strong> buttons appear only when the card is pending <em>and</em> you are a designated Card Signing Authority (or Super Admin HQ). Approve/Reject permission alone is not enough.</p>
+  <ol class="steps">
+    <li>Select a vendor whose card is Pending Sub Admin Approval.</li>
+    <li>Press <strong>Approve &amp; Sign</strong>. In one action the system applies your stored signature image, generates the QR code, renders the PDF, sets the issue date to today, and marks the card Active.</li>
+    <li>To refuse instead, press <strong>Reject</strong>, enter a <strong>Rejection Reason</strong> (mandatory) and confirm. The reason is shown on the card panel afterwards.</li>
+  </ol>
+  <p>A divisional signing authority may only act on vendors in their own division; attempting otherwise returns &ldquo;You can only approve ID cards for vendors in your own division.&rdquo;</p>
+
+  <h3>12.5 The issued card</h3>
+  <p>Once approved, the panel shows a live front-and-back preview with the QR code. Both formats can be downloaded as PDF regardless of which was requested &mdash; <strong>Download Format 1 &mdash; Indian Railway</strong> and <strong>Download Format 2 &mdash; Entry Pass</strong>.</p>
+  <p>The printed card carries: vendor name and photograph, vendor signature, vendor type, contractor name and mobile, unit, station, blood group, the department line &ldquo;Commercial Department&rdquo;, card number, contract validity dates, issue date, expiry date, the signing authority's name, their authority designation, their signature image, and the QR code.</p>
+
+  <h3>12.6 The QR code</h3>
+  <p>The QR encodes plain text, identical in the on-screen preview and the printed PDF:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Line</th><th>Content</th></tr></thead>
+    <tbody>
+      <tr><td>Name &amp; Address</td><td>Vendor name and address</td></tr>
+      <tr><td>Aadhaar No</td><td>Aadhaar number</td></tr>
+      <tr><td>PVR Validity</td><td>Police verification valid-till date</td></tr>
+      <tr><td>Medical Validity</td><td>Medical verification valid-till date</td></tr>
+      <tr><td>Unit</td><td>Assigned unit</td></tr>
+      <tr><td>Vendor Type</td><td>Train TSV / Station PF / Station Stall / Station Others</td></tr>
+      <tr><td>Contractor</td><td>Contracting agency</td></tr>
+      <tr><td>Validity of ID Card</td><td>Card expiry date</td></tr>
+      <tr><td>Issuing Authority</td><td>Approver name and authority designation</td></tr>
+      <tr><td>Verify</td><td>Link to the public verification page</td></tr>
+      <tr><td>Check ID Card Status</td><td>Link to the status spreadsheet</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call caution"><span class="lbl">Data protection</span>
+    <p>The QR payload contains the vendor's <strong>full Aadhaar number and home address in plain text</strong>. Anyone who scans a printed card obtains both. Handle printed cards accordingly and take this into account when deciding whether to publish the verification page beyond the intranet.</p>
+  </div>
+
+  <h3>12.7 Public verification</h3>
+  <p>Scanning the QR, or opening <code>/verify/&lt;card number&gt;</code>, reaches the <strong>Identity Verification Result</strong> page. No sign-in is required.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Panel</th><th>Shows</th></tr></thead>
+    <tbody>
+      <tr><td>Status</td><td><span class="chip ok">VALID</span> when the card is Active and Approved; <span class="chip bad">NOT ISSUED</span> when not approved; otherwise the card state. Plus &ldquo;Last Checked&rdquo;.</td></tr>
+      <tr><td>Vendor Information</td><td>Full Name, Vendor Type, Contractor / Agency, Assigned Unit, Aadhaar Number, Blood Group, Address</td></tr>
+      <tr><td>Validity</td><td>ID Card Validity date and Days Remaining</td></tr>
+      <tr><td>Verification Step</td><td>Police Verification and Medical Verification completion indicators</td></tr>
+    </tbody>
+  </table></div>
+  <p>Every scan updates the card's &ldquo;Last Checked&rdquo; timestamp, so the page shows when it was last verified by anyone.</p>
+
+  <h3>12.8 Per-card status link</h3>
+  <div class="call gap"><span class="lbl">Not implemented</span>
+    <p>Each card can carry its own &ldquo;Check ID Card Status&rdquo; spreadsheet link, overriding the system-wide default, but <strong>no screen exposes this setting</strong>. Every card therefore uses the single system-wide link configured by the administrator. Setting a per-card link requires a direct API call.</p>
+  </div>
+</section>
+
+<!-- ═══ 13 ═══ -->
+<section class="chap" id="s13">
+  <div class="chap-head"><span class="chap-num">Section 13</span><h2>Vendor Renewals</h2></div>
+
+  <p><strong>Address</strong> <code>/renewals</code> &middot; <strong>Page title</strong> Vendor ID Renewal &middot; <strong>Menu entry</strong> shown to roles with Vendor Management view</p>
+  <p>This module records the renewal of a vendor's Police Verification Report or medical fitness certificate, and pushes the new expiry date onto the vendor record when approved.</p>
+
+  <div class="call gap"><span class="lbl">Known gap</span>
+    <p><strong>This module performs no permission checks.</strong> Any signed-in user who reaches the address &mdash; including Inspector, Dealing Section, and Complaint Cell &mdash; can create, approve, and reject renewals. The screen's Approve and Reject buttons are shown to everyone. Until this is corrected, apply the restriction by procedure rather than relying on the system to enforce it.</p>
+  </div>
+
+  <h3>13.1 The listing</h3>
+  <p>Columns: Vendor, Renewal Type, Renewal Period, New Expiry, Reference, Status, Actions.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip">draft</span></td><td>Saved but not submitted</td></tr>
+      <tr><td><span class="chip warn">pending_approval</span></td><td>Awaiting a decision. Approve and Reject appear only on these rows.</td></tr>
+      <tr><td><span class="chip ok">approved</span></td><td>Accepted; the vendor record has been updated</td></tr>
+      <tr><td><span class="chip bad">rejected</span></td><td>Refused; the vendor record is unchanged</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>13.2 Raising a renewal</h3>
+  <ol class="steps">
+    <li>Press <strong>+ New Renewal</strong>.</li>
+    <li>Select the <strong>Vendor</strong>.</li>
+    <li>Select the <strong>Renewal Type</strong>: Police Verification Report (PVR), Medical Certificate, or Both.</li>
+    <li>Enter the <strong>Renewal Period</strong> and the <strong>New Projected Expiry</strong>.</li>
+    <li>For a PVR renewal, supply the <strong>PVR Number</strong>, <strong>PVR Issue Date</strong>, and <strong>PVR Document</strong>.</li>
+    <li>For a medical renewal, supply the <strong>Medical Certificate No.</strong>, <strong>Issue Date</strong>, and <strong>Document</strong>.</li>
+    <li>Submit. The renewal is created as Pending Approval.</li>
+  </ol>
+  <p>Choosing <em>Both</em> shows both sets of fields.</p>
+
+  <h3>13.3 Deciding a renewal</h3>
+  <p>On any Pending Approval row press <strong>Approve</strong> or <strong>Reject</strong>. There is no confirmation prompt and no remarks field &mdash; the decision is applied immediately.</p>
+  <div class="call"><span class="lbl">What approval does</span>
+    <p>Approving copies the <strong>New Projected Expiry</strong> onto the vendor's validity end date and sets the vendor's status to <strong>Active</strong>. This is how an expired vendor is returned to service. Rejecting changes nothing on the vendor record.</p>
+  </div>
+</section>
+
+<!-- ═══ 14 ═══ -->
+<section class="chap" id="s14">
+  <div class="chap-head"><span class="chap-num">Section 14</span><h2>Complaints</h2></div>
+
+  <p><strong>Address</strong> <code>/complaints</code> &middot; <strong>Available to</strong> all roles except Inspector's write actions being limited to registration; not available to Dealing Section for creation</p>
+
+  <h3>14.1 The complaint lifecycle</h3>
+  <div class="flow">
+    <div><span class="s">1</span><span class="t">Pending</span><span class="w">Registered or imported</span></div>
+    <div><span class="s">2</span><span class="t">Assigned</span><span class="w">Given to a unit</span></div>
+    <div><span class="s">3</span><span class="t">Action Taken</span><span class="w">ATR submitted</span></div>
+    <div><span class="s">4</span><span class="t">Under Review</span><span class="w">Sub Admin forwarded it</span></div>
+    <div><span class="s">5</span><span class="t">Approved / Rejected</span><span class="w">Admin decision</span></div>
+    <div><span class="s">6</span><span class="t">Closed</span><span class="w">Case finished</span></div>
+  </div>
+  <p>An Admin may also send an ATR back, which returns the complaint to <strong>Assigned</strong> for a fresh report.</p>
+
+  <h3>14.2 The listing</h3>
+  <p>Columns: Complaint, Source, Date, Division, Type / Sub-Type, Concerned Unit, Priority, Status, Actions.</p>
+  <p>Above the table, four breakdown charts: <strong>Division Wise</strong>, <strong>Complaint Type Wise</strong>, <strong>Status Wise</strong>, and <strong>Monthly Trend</strong>.</p>
+
+  <h4>Filters</h4>
+  <div class="tw"><table>
+    <thead><tr><th>Filter</th><th>Options</th></tr></thead>
+    <tbody>
+      <tr><td>Global Search</td><td>Complaint code, description, complainant</td></tr>
+      <tr><td>Reference No.</td><td>External reference number</td></tr>
+      <tr><td>Source</td><td>All &middot; RailMadad &middot; CPGRAMS &middot; Manual</td></tr>
+      <tr><td>Status</td><td>All, or any of the seven statuses</td></tr>
+      <tr><td>Priority</td><td>All &middot; Low &middot; Medium &middot; High</td></tr>
+      <tr><td>Division</td><td>All Divisions, or one division</td></tr>
+      <tr><td colspan="2"><em>More Filters reveals:</em> Station &middot; Train &middot; Concerned Unit &middot; Complaint Type &middot; Complaint Sub-Type &middot; Date Range</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Clear Filters</strong> resets everything; <strong>Refresh</strong> re-reads the list from the server.</p>
+
+  <h4>Export</h4>
+  <p>Two server-generated exports, both applying your current filters: <strong>Export CSV</strong> and <strong>Export Excel</strong> (a genuine <code>.xlsx</code> workbook). Requires Export on Complaint Management &mdash; held by Super Admin HQ, HQ Admin, and Divisional Admin only.</p>
+
+  <h3>14.3 Registering a complaint</h3>
+  <p>Requires Add. <strong>+ Register Complaint</strong> opens a sectioned form at <code>/complaints/new</code>. Codes are generated as <code>CMP-1234</code>.</p>
+
+  <h4>Source and reference</h4>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Required</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Complaint Source</td><td>Yes</td><td>RailMadad &middot; CPGRAMS &middot; Manual</td></tr>
+      <tr><td>Portal Registration Number</td><td>Yes for CPGRAMS</td><td>&ldquo;Portal Registration Number is required for CPGRAMS complaints&rdquo;</td></tr>
+      <tr><td>RailMadad Reference Number</td><td>Yes for RailMadad</td><td>&ldquo;RailMadad Reference Number is required&rdquo;</td></tr>
+      <tr><td>Manual Dak Reference Number</td><td>No</td><td>Shown for Manual source</td></tr>
+      <tr><td>E-Office Computer Number</td><td>No</td><td>Shown for Manual source</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Location</h4>
+  <p><strong>Division</strong>, plus <strong>Train (if applicable)</strong> and <strong>Station (if applicable)</strong>, both filtered by the chosen division and both optional.</p>
+
+  <h4>Classification</h4>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Required</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Complaint Type</td><td>Yes</td><td>From the managed type master</td></tr>
+      <tr><td>Complaint Sub-Type</td><td>Yes</td><td>Locked until a Type is chosen: &ldquo;Select Type first&rdquo;</td></tr>
+      <tr><td>Concerned Unit</td><td>Yes</td><td>The unit the complaint is about</td></tr>
+      <tr><td>Detailed Description</td><td>Yes</td><td>Free text</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Complainant and incident</h4>
+  <p><strong>Complainant Name</strong>, <strong>Mobile Number</strong>, and <strong>Email</strong> (validated as an address), then <strong>Occurrence Date</strong> and <strong>Occurrence Time</strong>. All optional.</p>
+
+  <h4>Evidence</h4>
+  <p>Multiple images or PDFs may be attached. Images are previewed before submission.</p>
+
+  <h3>14.4 Editing a complaint</h3>
+  <p>Requires Edit. The pencil icon opens a compact form &mdash; the editable fields are limited, and <strong>Priority</strong> (Low / Medium / High) is the principal one. To change unit ownership use <strong>Assign</strong> or <strong>Transfer</strong> rather than editing.</p>
+
+  <h3>14.5 Complaint detail</h3>
+  <p>The eye icon opens the detail view, headed with the complaint code and its source. It shows Reference No., Status, Division, Station / Train, Concerned Unit, Priority, Complaint Type, Complaint Sub-Type, Complainant, Mobile, Registered On, Registered By, and the full description, followed by attached documents, the assignment history, the ATR chain, and the status history.</p>
+
+  <h3>14.6 Assignment</h3>
+  <p>Requires Edit. Three actions, each recorded with remarks in the assignment history:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Action</th><th>When available</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>Assign</td><td>No unit assigned yet</td><td>Sets the unit; a Pending complaint becomes Assigned</td></tr>
+      <tr><td>Reassign</td><td>A unit is already assigned</td><td>Moves it to a different unit</td></tr>
+      <tr><td>Transfer</td><td>A unit is already assigned</td><td>Moves it, recorded as a transfer rather than a reassignment</td></tr>
+    </tbody>
+  </table></div>
+  <p>Assignment also re-derives the complaint's division from the receiving unit, so a complaint moved to another division's unit follows it there.</p>
+  <div class="call gap"><span class="lbl">Partially implemented</span>
+    <p>The assignment dialog offers a <strong>Unit</strong> and remarks only. Assignment to a named individual is supported by the system but has no control on the form, so complaints can only be assigned to units, never to people.</p>
+  </div>
+
+  <h3>14.7 Action Taken Reports</h3>
+  <div class="flow">
+    <div><span class="s">1</span><span class="t">Submit</span><span class="w">Dealing Section writes the ATR</span></div>
+    <div><span class="s">2</span><span class="t">Review</span><span class="w">Sub Admin forwards it</span></div>
+    <div><span class="s">3</span><span class="t">Decide</span><span class="w">Admin accepts, rejects, or sends back</span></div>
+    <div><span class="s">4</span><span class="t">Close</span><span class="w">Admin closes the case</span></div>
+  </div>
+
+  <h4>Submitting</h4>
+  <p>Requires Edit. Available only while the complaint is Assigned, Under Review, or Action Taken. Enter remarks and attach supporting documents. Submitting moves the complaint to <strong>Action Taken</strong> and marks the report <em>pending review</em>.</p>
+  <p>An ATR may be edited only while it is still pending review, and only by the person who submitted it &mdash; otherwise: &ldquo;Only the submitter can edit this Action Taken Report.&rdquo;</p>
+
+  <h4>Reviewing</h4>
+  <p>A Sub Admin reviews a pending report and forwards it, optionally with review remarks. The report becomes <em>sub admin reviewed</em> and the complaint moves to <strong>Under Review</strong>.</p>
+
+  <h4>Deciding</h4>
+  <p>Requires Approve/Reject, and only after Sub Admin review &mdash; attempting earlier gives &ldquo;Cannot decide an Action Taken Report before Sub-admin review.&rdquo;</p>
+  <div class="tw"><table>
+    <thead><tr><th>Decision</th><th>Complaint becomes</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>Accept</td><td><span class="chip ok">Approved</span></td><td>The action taken is accepted; the complaint can now be closed</td></tr>
+      <tr><td>Reject</td><td><span class="chip bad">Rejected</span></td><td>The action is refused; the complaint can be closed</td></tr>
+      <tr><td>Send Back</td><td><span class="chip warn">Assigned</span></td><td>Returns to the Dealing Section for a fresh report. Remarks are prefixed &ldquo;Sent back to Dealing Section:&rdquo;</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Closing</h4>
+  <p>Requires Approve/Reject, and only from Approved or Rejected. Closing stamps who closed it and when. This is the terminal state.</p>
+
+  <h3>14.8 Complaint Type master</h3>
+  <p>Reached from <strong>Manage Types</strong>. Two levels: Complaint Types, each holding Sub-Types. Each entry has a value, a label, and a sort order, and can be created, edited, deactivated, and reactivated.</p>
+  <div class="call gap"><span class="lbl">Inconsistency</span>
+    <p>The <strong>Manage Types</strong> button is shown only to roles holding Admin Module add or Complaint Management approve &mdash; effectively Super Admin HQ, HQ Admin, and Divisional Admin. The underlying capability is granted to <strong>HQ Sub Admin and Divisional Sub Admin as well</strong>. Sub Admins are entitled to manage complaint types but cannot see the button that would let them.</p>
+  </div>
+</section>
+
+<!-- ═══ 15 ═══ -->
+<section class="chap" id="s15">
+  <div class="chap-head"><span class="chap-num">Section 15</span><h2>Inspections</h2></div>
+
+  <p><strong>Address</strong> <code>/inspections</code> &middot; <strong>Not available to</strong> Complaint Cell</p>
+
+  <h3>15.1 The inspection lifecycle</h3>
+  <div class="flow">
+    <div><span class="s">1</span><span class="t">Draft</span><span class="w">Being written by the Inspector</span></div>
+    <div><span class="s">2</span><span class="t">Submitted</span><span class="w">Sent for review</span></div>
+    <div><span class="s">3</span><span class="t">Assigned</span><span class="w">Delegated to a unit</span></div>
+    <div><span class="s">4</span><span class="t">ATR Submitted</span><span class="w">Action Taken Report filed</span></div>
+    <div><span class="s">5</span><span class="t">Under Review</span><span class="w">Forwarded by Sub Admin</span></div>
+    <div><span class="s">6</span><span class="t">Approved / Rejected</span><span class="w">Admin decision</span></div>
+    <div><span class="s">7</span><span class="t">Closed</span><span class="w">Case finished</span></div>
+  </div>
+  <p><strong>Returned</strong> is an additional state: a Sub Admin may send a submitted inspection back to its Inspector for correction before it is ever assigned.</p>
+
+  <h3>15.2 Who sees what</h3>
+  <ul>
+    <li><strong>Inspector</strong> &mdash; only inspections they filed themselves. No divisional or org-wide view.</li>
+    <li><strong>Dealing Section</strong> &mdash; only inspections currently delegated to them.</li>
+    <li><strong>Divisional roles</strong> &mdash; their own division.</li>
+    <li><strong>HQ roles</strong> &mdash; everything.</li>
+  </ul>
+
+  <h3>15.3 The listing</h3>
+  <p>Columns: Inspection No., Date, Division, Unit, Category / Type, Inspector, Priority, Status, Actions. Six breakdown charts sit above: Division Wise, Unit Wise, Category Wise, Status Wise, Inspector Wise, and Monthly Trend.</p>
+  <p>Filters: Global Search, Inspection No., Status, Priority, Division; and under More Filters &mdash; Station, Train, Unit, Inspection Category, Inspection Type, Date Range. Exports are offered as CSV and Excel and follow the current filters.</p>
+
+  <h3>15.4 Filing an inspection</h3>
+  <p>Requires Add. Inspection numbers are generated as <code>INSP-2026-000001</code>.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Required</th><th>Input</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Date of Inspection</td><td>Yes</td><td>Date</td><td>&ldquo;Date of Inspection is required&rdquo;</td></tr>
+      <tr><td>Unit of Inspection</td><td>Yes</td><td>Dropdown</td><td>&ldquo;Unit of Inspection is required&rdquo;</td></tr>
+      <tr><td>Inspecting Official Name</td><td>No</td><td>Text</td><td>&mdash;</td></tr>
+      <tr><td>Designation</td><td>No</td><td>Text</td><td>&mdash;</td></tr>
+      <tr><td>Place of Posting</td><td>No</td><td>Text</td><td>&mdash;</td></tr>
+      <tr><td>Division</td><td>No</td><td>Dropdown</td><td>Filters Station and Train</td></tr>
+      <tr><td>Station</td><td>No</td><td>Dropdown</td><td>&mdash;</td></tr>
+      <tr><td>Train</td><td>No</td><td>Dropdown</td><td>&mdash;</td></tr>
+      <tr><td>Inspection Category</td><td>Yes</td><td>Dropdown</td><td>From the category master</td></tr>
+      <tr><td>Inspection Type</td><td>Yes</td><td>Dropdown</td><td>Locked until a Category is chosen</td></tr>
+      <tr><td>Observations</td><td>No</td><td>Textarea</td><td>&mdash;</td></tr>
+      <tr><td>Deficiencies</td><td>No</td><td>Textarea</td><td>&mdash;</td></tr>
+      <tr><td>Recommendations</td><td>No</td><td>Textarea</td><td>&mdash;</td></tr>
+      <tr><td>Remarks</td><td>No</td><td>Textarea</td><td>&mdash;</td></tr>
+      <tr><td>Priority</td><td>No</td><td>Dropdown</td><td>Low &middot; Medium &middot; High</td></tr>
+      <tr><td>Attachments</td><td>No</td><td>Files</td><td>PDF, DOC, DOCX, JPG, PNG &mdash; multiple files</td></tr>
+    </tbody>
+  </table></div>
+  <p>Inspection attachments accept Word documents in addition to the PDF and image types allowed elsewhere in the system.</p>
+
+  <h3>15.5 Submitting and returning</h3>
+  <p><strong>Submit</strong> is available on Draft and Returned inspections, and <strong>only to the Inspector who created it</strong> &mdash; otherwise: &ldquo;Only the inspector who created this inspection can submit it.&rdquo;</p>
+  <p><strong>Return to Inspector</strong> is available only on a Submitted inspection and sends it back with remarks, setting it to Returned. The Inspector corrects it and submits again.</p>
+
+  <h3>15.6 Assignment</h3>
+  <p>Assign, Reassign, and Transfer work exactly as for complaints (<a href="#s14">Section 14.6</a>) &mdash; a target unit and remarks, recorded in the assignment history. As with complaints, assignment to a named individual is supported by the system but has no control on the form.</p>
+
+  <h3>15.7 Action Taken Reports</h3>
+  <p>The inspection ATR is drafted before submission, unlike the complaint ATR.</p>
+  <ol class="steps">
+    <li><strong>Draft</strong> &mdash; create an ATR with <strong>Action Description</strong> (required), <strong>Action Date</strong>, <strong>Completion Status</strong> (In Progress / Partially Completed / Completed), <strong>Remarks</strong>, and attachments. An ATR can be edited freely while in draft.</li>
+    <li><strong>Submit</strong> &mdash; sends the ATR for review and moves the inspection to <strong>ATR Submitted</strong>. It can no longer be edited.</li>
+    <li><strong>Review</strong> &mdash; a Sub Admin either <em>forwards</em> it to Admin or <em>sends it back</em> for correction.</li>
+    <li><strong>Decide</strong> &mdash; requires Approve/Reject. Accept, Reject, or Send Back, exactly as for complaints.</li>
+    <li><strong>Close</strong> &mdash; requires Approve/Reject. Available from Approved or Rejected.</li>
+  </ol>
+
+  <h3>15.8 Deleting an inspection</h3>
+  <p>A delete action appears on rows for roles holding Delete on Inspection Management &mdash; Super Admin HQ only. Documents attached to an inspection can be removed individually from the detail view by anyone with Edit.</p>
+
+  <h3>15.9 Inspection Category and Type master</h3>
+  <p>Reached from <strong>Manage Types</strong>. Two levels: Inspection Categories, each holding Types. Entries can be created, edited, deactivated, and reactivated.</p>
+  <div class="call gap"><span class="lbl">Inconsistency</span>
+    <p>As with complaint types, the button appears only for roles holding Inspection Management approve &mdash; but HQ Sub Admin and Divisional Sub Admin are entitled to manage these masters and cannot see it.</p>
+  </div>
+</section>
+
+<!-- ═══ 16 ═══ -->
+<section class="chap" id="s16">
+  <div class="chap-head"><span class="chap-num">Section 16</span><h2>Penalties and Recovery</h2></div>
+
+  <p><strong>Address</strong> <code>/penalties</code> &middot; <strong>Not available to</strong> Complaint Cell</p>
+  <p>A penalty carries three independent states: an <strong>approval</strong> state, a <strong>recovery</strong> state, and a <strong>recovery verification</strong> state. Money is only tracked once the penalty is approved.</p>
+
+  <h3>16.1 The two-stage lifecycle</h3>
+  <div class="flow">
+    <div><span class="s">Stage 1</span><span class="t">Impose</span><span class="w">Penalty raised &rarr; Pending Approval</span></div>
+    <div><span class="s">Stage 2</span><span class="t">Approve</span><span class="w">Approved, or Rejected</span></div>
+    <div><span class="s">Stage 3</span><span class="t">Recover</span><span class="w">Dealing Section records payment</span></div>
+    <div><span class="s">Stage 4</span><span class="t">Verify</span><span class="w">Recovery documents checked</span></div>
+    <div><span class="s">Stage 5</span><span class="t">Close</span><span class="w">Verified &rarr; Closed</span></div>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>State family</th><th>Values</th></tr></thead>
+    <tbody>
+      <tr><td>Approval</td><td><span class="chip warn">pending_approval</span> <span class="chip ok">approved</span> <span class="chip bad">rejected</span> <span class="chip bad">revoked</span></td></tr>
+      <tr><td>Recovery</td><td><span class="chip warn">pending</span> <span class="chip warn">partially_recovered</span> <span class="chip ok">recovered</span> <span class="chip ok">closed</span></td></tr>
+      <tr><td>Verification</td><td><span class="chip">not_applicable</span> <span class="chip warn">pending</span> <span class="chip ok">verified</span> <span class="chip bad">rejected</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>16.2 The ledger</h3>
+  <p>Columns: Ref No, Contractor / Vendor, Unit, Amount, Due Date, Approval, Recovery, Actions.</p>
+  <p>Filters: <strong>Search</strong>, <strong>Approval Status</strong>, <strong>Recovery Status</strong>, <strong>Division</strong>, <strong>Contractor</strong>, <strong>Vendor</strong>, <strong>Due Date From</strong>, and <strong>Due Date To</strong>.</p>
+  <p><strong>Export Ledger</strong> downloads a CSV of the rows matching your filters, capped at 2,000.</p>
+
+  <h3>16.3 Raising a penalty</h3>
+  <p>Requires Add. Codes are generated as <code>PNL-2026-1234</code>. New penalties begin at Pending Approval with recovery Pending.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Required</th><th>Input</th><th>Validation</th></tr></thead>
+    <tbody>
+      <tr><td>Origin</td><td>No</td><td>None / Complaint / Inspection</td><td>Links the penalty to its source case</td></tr>
+      <tr><td>Complaint</td><td>Yes, if Origin is Complaint</td><td>Dropdown</td><td>&mdash;</td></tr>
+      <tr><td>Inspection</td><td>Yes, if Origin is Inspection</td><td>Dropdown</td><td>&mdash;</td></tr>
+      <tr><td>Contractor</td><td>Yes</td><td>Dropdown</td><td>&ldquo;contractor_id is required&rdquo;</td></tr>
+      <tr><td>Vendor</td><td>No</td><td>Dropdown</td><td>&mdash;</td></tr>
+      <tr><td>Unit ID</td><td>No</td><td>Number</td><td>&mdash;</td></tr>
+      <tr><td>Amount (&#8377;)</td><td>Yes</td><td>Number</td><td>Must be greater than zero</td></tr>
+      <tr><td>Due Date</td><td>No</td><td>Date</td><td>Must be a valid date</td></tr>
+      <tr><td>Reason</td><td>Yes</td><td>Textarea</td><td>&ldquo;Reason for imposing penalty is required&rdquo;</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call"><span class="lbl">Note</span>
+    <p>The <strong>+ Add Penalty</strong> button is disabled while no contractors exist, since a penalty must always name a contractor.</p>
+  </div>
+
+  <h3>16.4 Approving, rejecting, revoking</h3>
+  <p>All three require Approve/Reject on Penalty Management.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Action</th><th>Available on</th><th>Captures</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>Approve</td><td>Pending Approval</td><td>Recovery Due Date, Penalty Order Number, Order Date, Remarks</td><td>Penalty becomes enforceable and recovery tracking opens</td></tr>
+      <tr><td>Reject</td><td>Pending Approval</td><td>Remarks</td><td>Penalty is refused; no recovery follows</td></tr>
+      <tr><td>Revoke</td><td>Approved only</td><td>Revocation Reason (required)</td><td>Cancels an already-approved penalty</td></tr>
+    </tbody>
+  </table></div>
+  <p>Revoking anything not currently approved is refused: &ldquo;Only an approved penalty can be revoked.&rdquo;</p>
+
+  <h3>16.5 Recording recovery</h3>
+  <p><strong>Dealing Section only</strong> (plus Super Admin HQ). Recovery can only be recorded against an approved penalty.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Recovery Status</td><td>Pending &middot; Partially Recovered &middot; Recovered. <em>Closed</em> cannot be set here &mdash; it is reached only through verification.</td></tr>
+      <tr><td>Recovery Amount</td><td>Between zero and the penalty amount</td></tr>
+      <tr><td>Date of Receipt</td><td>Date the money was received</td></tr>
+      <tr><td>Payment Reference Details</td><td>Free text</td></tr>
+      <tr><td>MR Number / MR Date</td><td>Money receipt reference</td></tr>
+      <tr><td>Payment Receipt / Recovery Proof</td><td>Supporting document</td></tr>
+      <tr><td>Remarks</td><td>Free text</td></tr>
+    </tbody>
+  </table></div>
+  <p>Three rules are enforced:</p>
+  <ul>
+    <li>Recovery status may never move backward &mdash; &ldquo;Recovery status cannot move backward from &lsquo;recovered&rsquo; to &lsquo;pending&rsquo;.&rdquo;</li>
+    <li>Marking <em>Partially Recovered</em> requires a recovery amount above zero.</li>
+    <li>Marking <em>Recovered</em> requires the recovery amount to equal the full penalty amount.</li>
+  </ul>
+
+  <h3>16.6 Verifying recovery</h3>
+  <p>Requires Approve/Reject. Available only once recovery is marked <em>Recovered</em>: &ldquo;Only a penalty marked &lsquo;recovered&rsquo; by Dealing Section can be verified.&rdquo;</p>
+  <ol class="steps">
+    <li>Press the <strong>Verify recovery documents</strong> action on the row.</li>
+    <li>Review the recorded amount, reference, and uploaded proof.</li>
+    <li>Choose <strong>Verified</strong> or <strong>Rejected</strong>, optionally with remarks.</li>
+  </ol>
+  <div class="tw"><table>
+    <thead><tr><th>Decision</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>Verified</td><td>Recovery becomes <span class="chip ok">closed</span> and the resolution date is stamped. The case is complete.</td></tr>
+      <tr><td>Rejected</td><td>Recovery stays <em>recovered</em> so the Dealing Section can correct it and resubmit. A <strong>Resubmit recovery</strong> action appears on the row.</td></tr>
+    </tbody>
+  </table></div>
+  <p>A verification decision can only be made once: &ldquo;This recovery entry has already been decided &mdash; no verification is pending.&rdquo;</p>
+
+  <h3>16.7 Penalty documents</h3>
+  <p>Uploadable by HQ Admin, Divisional Admin, Dealing Section, and Super Admin HQ. Four categories: <strong>Penalty Order</strong>, <strong>Approval</strong>, <strong>Recovery Receipt</strong>, and <strong>Other</strong>. Admin tiers typically upload the first two; Dealing Section uploads recovery receipts.</p>
+
+  <h3>16.8 Penalty metrics</h3>
+  <p>Metrics count <strong>approved penalties only</strong> &mdash; pending, rejected, and revoked penalties are excluded from every figure. Available: Total Cases, Total Imposed, Total Recovered, Outstanding Amount, Overdue Amount, Overdue Count, Recovery Rate, and pending ageing buckets of within 7, 14, 30, and over 30 days.</p>
+</section>
+
+<!-- ═══ 17 ═══ -->
+<section class="chap" id="s17">
+  <div class="chap-head"><span class="chap-num">Section 17</span><h2>Reports</h2></div>
+
+  <p><strong>Address</strong> <code>/reports</code> &middot; <strong>Available to</strong> all eight roles (view)</p>
+
+  <h3>17.1 The Reports hub</h3>
+  <p>Four statistic cards &mdash; Total Reports Generated, Total Exports, Modules Reported On, Most Used Report &mdash; followed by four navigation buttons, two activity panels (Recent Exports and Most Used Reports), and module summary blocks for Vendor Management, Contractor Database, Complaints &amp; Grievances, and Penalties &amp; Fines.</p>
+  <div class="call"><span class="lbl">Note</span>
+    <p>The <strong>Export Summary</strong> button on this page downloads <code>servms-report-summary.json</code> &mdash; a raw JSON data file of the four metric blocks, not a formatted report. It is a developer-oriented dump rather than a document for circulation. Use the Report Builder for anything that will be shared.</p>
+  </div>
+
+  <h3>17.2 Report Builder</h3>
+  <p>Requires Add on Reports. Eight modules can be reported on: <strong>Vendors</strong>, <strong>Contractors</strong>, <strong>Units</strong>, <strong>Penalties</strong>, <strong>ID Cards</strong>, <strong>Users</strong>, <strong>Complaints</strong>, and <strong>Inspections</strong>.</p>
+  <ol class="steps">
+    <li><strong>Select Module.</strong> The available fields load for that module.</li>
+    <li><strong>Choose fields.</strong> Tick the columns to include.</li>
+    <li><strong>Add filters.</strong> Press <em>Add filter</em> for each condition. The operators offered depend on the field type &mdash; date and number fields offer ranges and comparisons; text fields offer contains-style matching; enumerated fields offer set membership.</li>
+    <li><strong>Set sorting.</strong> Choose a field and Asc or Desc.</li>
+    <li><strong>Group and aggregate</strong> if you want totals rather than rows.</li>
+    <li><strong>Preview.</strong> Returns the first 20 rows so you can check the shape before exporting.</li>
+    <li><strong>Export</strong> as CSV or Excel, or <strong>Save</strong> as a reusable template.</li>
+  </ol>
+
+  <h3>17.3 Saving templates</h3>
+  <p>Saving captures the module, fields, filters, sort, and grouping under a <strong>Name</strong> and optional <strong>Description</strong>. Mark a template <strong>Shared</strong> to make it available to colleagues; leave it unshared to keep it private.</p>
+
+  <h3>17.4 Saved Reports</h3>
+  <p>Columns: Name, Module, Created By, Shared, Usage, Last Used, Actions. Actions: <strong>Run</strong> (opens the builder pre-loaded), toggle sharing, and delete. Usage counts and last-used dates are maintained automatically.</p>
+
+  <h3>17.5 Export History</h3>
+  <p>A read-only log at <code>/reports/exports</code> with columns Module, Report, Format, Rows, Exported By, and Date. Every builder export is recorded here, giving a complete record of who extracted what data and when.</p>
+  <div class="call"><span class="lbl">Note</span>
+    <p>Only Report Builder exports appear here. The per-module exports &mdash; the Vendor, Penalty, User, Complaint, Inspection, and Audit Log downloads &mdash; are not recorded in Export History.</p>
+  </div>
+</section>
+
+<!-- ═══ 18 ═══ -->
+<section class="chap" id="s18">
+  <div class="chap-head"><span class="chap-num">Section 18</span><h2>Import and Export</h2></div>
+
+  <h3>18.1 What can be imported</h3>
+  <p>SERVMS has exactly three import paths.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Import</th><th>Where</th><th>Format</th><th>Template</th></tr></thead>
+    <tbody>
+      <tr><td>RailMadad complaints</td><td>Complaints &rarr; Import</td><td>RailMadad Excel export</td><td>None &mdash; use RailMadad's own file</td></tr>
+      <tr><td>Stations (master import)</td><td>Reports &rarr; Import Management</td><td>Excel</td><td>Downloadable</td></tr>
+      <tr><td>Stations (bulk import)</td><td>Location Masters &rarr; Stations</td><td>Excel</td><td>Column names published on screen</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call"><span class="lbl">Note</span>
+    <p><strong>Stations is the only importable master.</strong> Vendors, contractors, units, trains, clusters, and users cannot be bulk-loaded and must be entered one at a time.</p>
+  </div>
+
+  <h3>18.2 Importing RailMadad complaints</h3>
+  <p>Requires Add on Complaint Management.</p>
+  <ol class="steps">
+    <li>Open Complaints and press <strong>Import</strong>.</li>
+    <li>Upload the RailMadad Excel export unmodified. SERVMS reads the first worksheet and maps RailMadad's own column names &mdash; complaint reference number, created date, complaint mode, train or station, type and sub-type names, division code, status, description, remarks, and user mobile.</li>
+    <li>The import runs and returns a summary: <strong>Total Records</strong>, <strong>Imported</strong>, <strong>Duplicates</strong>, and <strong>Failed</strong>.</li>
+    <li>Rows that failed are listed with a row number and reason.</li>
+  </ol>
+  <div class="tw"><table>
+    <thead><tr><th>Behaviour</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Duplicates</td><td>Rows whose reference number already exists are skipped, not overwritten. Re-running the same file imports nothing new.</td></tr>
+      <tr><td>Unknown types</td><td>A complaint type or sub-type RailMadad uses that SERVMS does not recognise is <strong>added to the type master automatically</strong> rather than discarded.</td></tr>
+      <tr><td>Status mapping</td><td>closed &rarr; Closed; open and pending &rarr; Pending; in progress &rarr; Action Taken.</td></tr>
+      <tr><td>Dates</td><td>RailMadad's <code>DD-MM-YY HH:mm</code> format is converted automatically.</td></tr>
+      <tr><td>Long numbers</td><td>Reference and mobile numbers are read as text so no digits are lost.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Every import is recorded in <strong>Import History</strong> on the same page, showing the file name, who imported it, when, and the four counts. HQ Admin and Divisional Admin can delete a history entry; deleting the record does not remove the imported complaints.</p>
+
+  <h3>18.3 Importing stations</h3>
+  <h4>From Import Management</h4>
+  <ol class="steps">
+    <li>Open Reports &rarr; <strong>Import Management</strong>.</li>
+    <li>Select <strong>Stations</strong> as the Master Data Type.</li>
+    <li>Press <strong>Download Template</strong> &mdash; the button also names the required columns: Division, Station Name, Station Code, No of Platforms.</li>
+    <li>Fill the template. Division must match an existing division name.</li>
+    <li>Upload the completed <code>.xlsx</code> or <code>.xls</code>.</li>
+    <li>Review the summary: Total Records, Imported, Duplicates, Failed &mdash; with a row-by-row Error Report for failures.</li>
+  </ol>
+  <h4>From Location Masters</h4>
+  <p>The Stations tab offers the same import. The required column titles are stated on screen. Duplicates are skipped automatically.</p>
+
+  <h3>18.4 What can be exported</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Export</th><th>Where</th><th>Format</th><th>Scope</th></tr></thead>
+    <tbody>
+      <tr><td>Users</td><td>User Management &rarr; Export CSV</td><td>CSV</td><td>Current filters, all matching rows</td></tr>
+      <tr><td>Vendors</td><td>Vendor Management &rarr; Export to Excel</td><td>CSV <em>(despite the label)</em></td><td>Current filters, first 2,000 rows</td></tr>
+      <tr><td>Penalties</td><td>Penalties &rarr; Export Ledger</td><td>CSV</td><td>Current filters, first 2,000 rows</td></tr>
+      <tr><td>Complaints</td><td>Complaints &rarr; Export CSV / Export Excel</td><td>CSV and true XLSX</td><td>Current filters, server-generated</td></tr>
+      <tr><td>Inspections</td><td>Inspections &rarr; Export CSV / Export Excel</td><td>CSV and true XLSX</td><td>Current filters, server-generated</td></tr>
+      <tr><td>Audit logs</td><td>Audit Logs &rarr; Export Excel / Export PDF</td><td>CSV and PDF</td><td>Current filters, server-generated</td></tr>
+      <tr><td>Custom reports</td><td>Report Builder &rarr; Export</td><td>CSV and true XLSX</td><td>Your chosen fields and filters</td></tr>
+      <tr><td>Report summary</td><td>Reports &rarr; Export Summary</td><td>JSON</td><td>Four metric blocks</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call caution"><span class="lbl">Caution</span>
+    <p>Two buttons labelled &ldquo;Excel&rdquo; produce CSV files: <strong>Vendor Management &rarr; Export to Excel</strong> and <strong>Audit Logs &rarr; Export Excel</strong>. Both open correctly in Excel. Only Complaints, Inspections, and the Report Builder produce genuine <code>.xlsx</code> workbooks.</p>
+    <p>The Vendor and Penalty exports are capped at 2,000 rows with no warning when the cap is reached. For larger extracts, use the Report Builder.</p>
+  </div>
+</section>
+
+<!-- ═══ 19 ═══ -->
+<section class="chap" id="s19">
+  <div class="chap-head"><span class="chap-num">Section 19</span><h2>Notification Centre</h2></div>
+
+  <p><strong>Address</strong> <code>/notifications</code> &middot; <strong>Available to</strong> every signed-in user, regardless of role</p>
+  <p>Notifications are derived live from current data rather than stored as messages. There is no inbox &mdash; the list is recomputed each time you open it, so an item disappears once the underlying condition is resolved.</p>
+
+  <h3>19.1 Filters</h3>
+  <p>Filter by module: <span class="chip">All</span> <span class="chip">Vendor Master</span> <span class="chip">Complaints</span> <span class="chip">Penalties</span> <span class="chip">User Management</span> <span class="chip">Inspections</span>. Six items are shown initially with an option to load more.</p>
+
+  <h3>19.2 What generates a notification</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Module</th><th>Trigger</th><th>Severity</th></tr></thead>
+    <tbody>
+      <tr><td>Vendor Master</td><td>Contractor licence expiring within 30 days or already expired</td><td>Critical within 7 days, otherwise Warning</td></tr>
+      <tr><td>Vendor Master</td><td>Vendor renewal awaiting approval</td><td>Warning</td></tr>
+      <tr><td>Complaints</td><td>Complaint pending, assigned, under review, or action taken</td><td>By priority</td></tr>
+      <tr><td>Complaints</td><td>Complaint assigned, reassigned, or transferred</td><td>Info</td></tr>
+      <tr><td>Complaints</td><td>ATR submitted, reviewed, or decided</td><td>Info</td></tr>
+      <tr><td>Complaints</td><td>Complaint closed</td><td>Info</td></tr>
+      <tr><td>Penalties</td><td>Recovery due</td><td>Warning</td></tr>
+      <tr><td>Penalties</td><td>Recovery overdue</td><td>Critical</td></tr>
+      <tr><td>Penalties</td><td>Amount recovered</td><td>Info</td></tr>
+      <tr><td>Inspections</td><td>Inspection in an open state</td><td>By priority</td></tr>
+      <tr><td>Inspections</td><td>Inspection assigned or transferred</td><td>Info</td></tr>
+      <tr><td>Inspections</td><td>Inspection ATR reviewed or decided</td><td>Info</td></tr>
+    </tbody>
+  </table></div>
+  <p>The feed is scoped like everything else: divisional roles see only their division; Inspector sees only their own inspections; Dealing Section sees only inspections delegated to them.</p>
+
+  <h3>19.3 Read state</h3>
+  <p>Marking an item read stores that fact <strong>in your own browser</strong>, not on the server. Read state does not follow you to another computer or another browser, and is lost if browser data is cleared. The bell badge counts items you have not marked read in this browser.</p>
+
+  <h3>19.4 Notification preferences</h3>
+  <p>The lower half of the page offers channel preferences &mdash; Email Alerts, SMS Alerts, Push Notifications; per-category channel choices for Vendor Compliance, Staff &amp; Roles, and Financial Audits; and a digest frequency of Instant, Daily, or Weekly. <strong>Save Changes</strong> and <strong>Restore Defaults</strong> act on them.</p>
+  <div class="call gap"><span class="lbl">Not connected</span>
+    <p>These preferences are saved to your browser only and <strong>have no effect on anything</strong>. SERVMS sends no emails, SMS, or push notifications for any of these events &mdash; the only email the system ever sends is the password-reset request notice to the HQ admin mailbox, which these settings do not control. Treat this panel as a placeholder. Notifications exist only inside the application.</p>
+  </div>
+</section>
+
+<!-- ═══ 20 ═══ -->
+<section class="chap" id="s20">
+  <div class="chap-head"><span class="chap-num">Section 20</span><h2>Audit Logs</h2></div>
+
+  <p><strong>Address</strong> <code>/audit-logs</code> &middot; <strong>Available to</strong> Super Admin HQ, HQ Admin, Divisional Admin</p>
+
+  <h3>20.1 What is recorded</h3>
+  <p>Every log entry captures: the user, their role, the action, the module, the record identifier, the data before the change, the data after the change, free-text details, the IP address, the browser user-agent, and the timestamp. Passwords are stripped before anything is written.</p>
+  <p>Actions are recorded across User Management, Roles, Vendors, Contractors, Units, Trains, Clusters, ID Cards, Complaints, Complaint Types, Inspections, Inspection Types, Penalties, Renewals, Reports, Dropdowns, Imports, Exports, Assignments, and ATR decisions.</p>
+
+  <h3>20.2 Filters</h3>
+  <p><strong>Module</strong> and <strong>Action</strong> are always visible. <strong>Advanced Filters</strong> adds <strong>Record ID</strong>, <strong>User ID</strong>, and a <strong>From</strong> / <strong>To</strong> date range. Twenty entries per page.</p>
+
+  <h3>20.3 Reading an entry</h3>
+  <p>Each row summarises one action. Expanding a row reveals the before and after data, so you can see exactly which values changed.</p>
+
+  <h3>20.4 Exporting</h3>
+  <p>Requires Export on Audit Logs. <strong>Export Excel</strong> produces a CSV file; <strong>Export PDF</strong> produces a formatted PDF. Both apply your current filters.</p>
+
+  <div class="call gap"><span class="lbl">Known gap</span>
+    <p>The Action filter offers <strong>Login</strong>, <strong>Logout</strong>, <strong>Download</strong>, <strong>Print</strong>, <strong>Password Reset</strong>, <strong>Recover</strong>, <strong>Renew</strong>, and <strong>Issue</strong>, but <strong>no part of the system writes entries with these actions</strong>. In particular, <strong>sign-in and sign-out are not audited at all</strong>. Filtering by Login always returns an empty result. The only record of a sign-in anywhere in SERVMS is the &ldquo;Last Login&rdquo; column in User Management, which holds the most recent time only.</p>
+    <p>If a sign-in audit trail is a compliance requirement for your division, it is not currently satisfied.</p>
+  </div>
+</section>
+
+<!-- ═══ 21 ═══ -->
+<section class="chap" id="s21">
+  <div class="chap-head"><span class="chap-num">Section 21</span><h2>Document Uploads</h2></div>
+
+  <h3>21.1 Accepted types and sizes</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Upload</th><th>Accepted</th><th>Maximum size</th></tr></thead>
+    <tbody>
+      <tr><td>Vendor documents &mdash; Aadhaar, Medical, Police Verification</td><td>PDF, JPG, PNG</td><td>5&nbsp;MB (checked in the browser)</td></tr>
+      <tr><td>Vendor verification attachment</td><td>PDF, JPG, PNG</td><td>5&nbsp;MB</td></tr>
+      <tr><td>Vendor renewal documents</td><td>PDF, JPG, PNG</td><td>20&nbsp;MB</td></tr>
+      <tr><td>Inspection and inspection-ATR attachments</td><td>PDF, <strong>DOC, DOCX</strong>, JPG, PNG</td><td>20&nbsp;MB</td></tr>
+      <tr><td>Complaint evidence and complaint-ATR attachments</td><td>Images and PDF</td><td>20&nbsp;MB</td></tr>
+      <tr><td>Penalty documents</td><td>Any type</td><td>20&nbsp;MB</td></tr>
+      <tr><td>User signature</td><td>JPG, PNG only</td><td><strong>2&nbsp;MB</strong></td></tr>
+      <tr><td>Vendor photograph and signature</td><td>Images</td><td>20&nbsp;MB</td></tr>
+      <tr><td>Contractor logo</td><td>Images</td><td>20&nbsp;MB</td></tr>
+      <tr><td>Unit sketch or plan</td><td>Any type</td><td>20&nbsp;MB</td></tr>
+      <tr><td>Excel imports</td><td><code>.xlsx</code>, <code>.xls</code></td><td>20&nbsp;MB</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>21.2 Which documents are required</h3>
+  <p>No document upload is mandatory anywhere in SERVMS. Vendors can be onboarded, complaints registered, inspections filed, and penalties raised with no attachment. Certificate <em>numbers</em> are mandatory for vendor verification; the certificate <em>files</em> are not.</p>
+
+  <h3>21.3 Uploading, viewing, replacing</h3>
+  <ol class="steps">
+    <li>Press <strong>Upload</strong> &mdash; or <strong>Replace</strong> where a document already exists &mdash; and choose a file.</li>
+    <li>The upload begins immediately. The button reads &ldquo;Uploading&hellip;&rdquo;.</li>
+    <li>Use <strong>View</strong> to preview: PDFs open in an inline frame, images render directly, other types offer &ldquo;Open in new tab&rdquo;.</li>
+    <li>Use <strong>Download</strong> to save the original file.</li>
+  </ol>
+  <p>Replacing is the only way to change a vendor document &mdash; there is no delete. Inspection attachments <em>can</em> be deleted individually by anyone with Edit on Inspection Management.</p>
+
+  <h3>21.4 Upload errors</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Message</th><th>Cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>Only PDF, JPG, and PNG files are allowed</td><td>Wrong file type for an identity document</td><td>Convert the file, or scan to PDF</td></tr>
+      <tr><td>Only PDF, DOC, DOCX, JPG, and PNG files are allowed</td><td>Wrong type for an inspection attachment</td><td>Convert the file</td></tr>
+      <tr><td>Only JPG and PNG files are allowed for a signature</td><td>A PDF or other type was chosen for a signature</td><td>Export the signature as PNG</td></tr>
+      <tr><td>File is too large. Maximum size is 5MB.</td><td>Vendor document above the browser limit</td><td>Compress or re-scan at lower resolution</td></tr>
+      <tr><td>File is too large for field &ldquo;&hellip;&rdquo;</td><td>Above the 20&nbsp;MB server limit</td><td>Compress the file</td></tr>
+      <tr><td>Unexpected file field &ldquo;&hellip;&rdquo;</td><td>Form and server disagree on the field name &mdash; a defect, not a user error</td><td>Report it with the exact message</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call caution"><span class="lbl">Caution</span>
+    <p>Uploaded files are served from a public path. Anyone holding a document's address can open it <strong>without signing in</strong>. Addresses are not guessable, but they are also not protected &mdash; do not forward a document link to anyone who should not see the document itself.</p>
+  </div>
+</section>
+
+<!-- ═══ 22 ═══ -->
+<section class="chap" id="s22">
+  <div class="chap-head"><span class="chap-num">Section 22</span><h2>Error Messages and Troubleshooting</h2></div>
+
+  <h3>22.1 Sign-in and session</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Message or symptom</th><th>Cause</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>User not found!</td><td>The username does not exist</td><td>Check spelling. Remember the field takes your <em>username</em>, not your Employee Number.</td></tr>
+      <tr><td>Invalid username or password</td><td>Wrong password</td><td>Retry. There is no lockout. If forgotten, ask an administrator for an assisted reset.</td></tr>
+      <tr><td>Session expired, please log in again</td><td>The 12-hour session ended</td><td>Sign in again. Unsaved form data is lost.</td></tr>
+      <tr><td>Invalid token</td><td>Corrupted or tampered session</td><td>Sign in again. If it recurs, clear browser data for the site.</td></tr>
+      <tr><td>Returned to the Dashboard when opening a page</td><td>Your role has no view permission for that module</td><td>Expected behaviour. Ask an administrator if you need access.</td></tr>
+      <tr><td>Signed out on every page load</td><td><code>localStorage</code> blocked or private browsing</td><td>Use a normal window and allow site data.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>22.2 Permission</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Message</th><th>Cause</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>You do not have permission to <em>&lt;action&gt;</em> <em>&lt;module&gt;</em></td><td>Your role lacks that action</td><td>Ask a role administrator, or route the task to someone who holds it</td></tr>
+      <tr><td>You do not have permission to perform this action</td><td>An action restricted to named roles</td><td>See the override table in <a href="#s6">Section 6.4</a></td></tr>
+      <tr><td>Only Super Admin HQ can create or manage Admin-tier accounts</td><td>Creating or editing a Super Admin HQ, HQ Admin, or Divisional Admin account</td><td>Refer the request to Super Admin HQ</td></tr>
+      <tr><td>Record not found</td><td>The record does not exist, or is outside your division</td><td>Deliberately ambiguous. Confirm the division with a colleague who has wider scope.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>22.3 Vendors and ID cards</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Message</th><th>Cause</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Police verification number is required</td><td>Blank at onboarding or update</td><td>Obtain the number before creating the vendor</td></tr>
+      <tr><td>Medical fitness certificate number is required</td><td>Blank at onboarding or update</td><td>Obtain the number before creating the vendor</td></tr>
+      <tr><td>Aadhaar number must be exactly 12 digits</td><td>Wrong length</td><td>Enter 12 digits with no spaces</td></tr>
+      <tr><td>Station selection is required for this division</td><td>The division has stations configured</td><td>Choose a station</td></tr>
+      <tr><td>Platform unit stall selection is required for this division</td><td>Units exist for that station or division</td><td>Choose a unit, or create one first</td></tr>
+      <tr><td>Valid till date cannot be before the issue date</td><td>Dates reversed</td><td>Correct the order</td></tr>
+      <tr><td>Cannot use medical expiry &mdash; no valid-till date on file</td><td>Requesting a card against a verification with no expiry date</td><td>Complete the verification dates, or choose the other expiry driver</td></tr>
+      <tr><td>Only a designated Card Signing Authority can approve ID cards</td><td>Approving without the credential</td><td>Route to a signing authority</td></tr>
+      <tr><td>You can only approve ID cards for vendors in your own division</td><td>Divisional signing authority acting outside their division</td><td>Route to that division's signing authority</td></tr>
+      <tr><td>Cannot approve a card in &ldquo;approved&rdquo; state</td><td>The card is already issued</td><td>Use <strong>Re-issue</strong> to start a fresh request</td></tr>
+      <tr><td>No ID card request found for this vendor</td><td>Approving before a card was requested</td><td>Request the card first</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>22.4 Complaints and inspections</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Message</th><th>Cause</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Complaint Type and Sub-Type are required</td><td>Classification incomplete</td><td>Choose a Type, then a Sub-Type</td></tr>
+      <tr><td>Portal Registration Number is required for CPGRAMS complaints</td><td>Source is CPGRAMS</td><td>Enter the portal number</td></tr>
+      <tr><td>RailMadad Reference Number is required</td><td>Source is RailMadad</td><td>Enter the reference number</td></tr>
+      <tr><td>Cannot submit an Action Taken Report while the complaint is &ldquo;pending&rdquo;</td><td>The complaint has not been assigned</td><td>Assign it to a unit first</td></tr>
+      <tr><td>Only the submitter can edit this Action Taken Report</td><td>Editing someone else's ATR</td><td>Ask the author, or send it back for a fresh report</td></tr>
+      <tr><td>Cannot edit an Action Taken Report once it is &ldquo;sub_admin_reviewed&rdquo;</td><td>The ATR has moved on</td><td>Ask the Admin to send it back</td></tr>
+      <tr><td>Cannot decide an Action Taken Report before Sub-admin review</td><td>Skipping the review step</td><td>Have a Sub Admin review it first</td></tr>
+      <tr><td>Cannot close a complaint that is &ldquo;assigned&rdquo;</td><td>Closing before a decision</td><td>Complete the ATR chain to Approved or Rejected</td></tr>
+      <tr><td>Only the inspector who created this inspection can submit it</td><td>Submitting someone else's inspection</td><td>Ask the author to submit</td></tr>
+      <tr><td>Cannot return an inspection that is &ldquo;draft&rdquo;</td><td>Returning before submission</td><td>Only Submitted inspections can be returned</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>22.5 Penalties</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Message</th><th>Cause</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Reason for imposing penalty is required</td><td>Reason blank</td><td>Record the grounds</td></tr>
+      <tr><td>Amount must be a positive number</td><td>Zero or negative</td><td>Enter an amount above zero</td></tr>
+      <tr><td>Cannot approve a penalty in &ldquo;approved&rdquo; state</td><td>Already decided</td><td>No action needed</td></tr>
+      <tr><td>Only an approved penalty can be revoked</td><td>Revoking a pending or rejected penalty</td><td>Reject it instead if it is still pending</td></tr>
+      <tr><td>Recovery can only be tracked on an approved penalty</td><td>Recording recovery too early</td><td>Have the penalty approved first</td></tr>
+      <tr><td>Recovery status cannot move backward</td><td>Reducing the recovery state</td><td>Recovery only advances. Contact an administrator if a correction is genuinely needed.</td></tr>
+      <tr><td>Recovery amount must equal the full penalty amount to mark it as recovered</td><td>Marking Recovered on a part payment</td><td>Use <em>Partially Recovered</em> until the balance is received</td></tr>
+      <tr><td>Recovery amount is required when marking a penalty as partially recovered</td><td>Amount left at zero</td><td>Enter the amount received</td></tr>
+      <tr><td>Only a penalty marked &ldquo;recovered&rdquo; can be verified</td><td>Verifying too early</td><td>Wait for the Dealing Section to mark it fully recovered</td></tr>
+      <tr><td>This recovery entry has already been decided</td><td>Verifying twice</td><td>No action needed</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>22.6 Users and roles</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Message</th><th>Cause</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Password must be at least 6 characters</td><td>Too short</td><td>Use a longer passphrase</td></tr>
+      <tr><td>Username must be 3&ndash;50 chars</td><td>Outside the range</td><td>Adjust the username</td></tr>
+      <tr><td>Only HQ/Divisional Admin or Sub Admin roles can be granted Card Signing Authority</td><td>Wrong role</td><td>Only those four roles qualify</td></tr>
+      <tr><td>Card Signing Authority requires a JS or SS designation grade</td><td>Wrong grade</td><td>Set the grade to JS or SS, if correct for that person</td></tr>
+      <tr><td>Authority Designation is required for a Card Signing Authority</td><td>Blank designation</td><td>Enter the wording to print on cards</td></tr>
+      <tr><td>Select a new division and/or role to request a transfer</td><td>Both left as &ldquo;No change&rdquo;</td><td>Choose at least one change</td></tr>
+      <tr><td>This request has already been approved</td><td>Deciding a request twice</td><td>No action needed</td></tr>
+      <tr><td>Unable to toggle status</td><td>Server refused, often an Admin-tier restriction</td><td>Refer to Super Admin HQ</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>22.7 Behaviour that looks like a fault but is not</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Symptom</th><th>Explanation</th></tr></thead>
+    <tbody>
+      <tr><td>The top-bar search does nothing</td><td>It is decorative. There is no global search. Use each module's own search.</td></tr>
+      <tr><td>Forgot Password does nothing</td><td>Not implemented. Ask an administrator for an assisted reset.</td></tr>
+      <tr><td>&ldquo;Reset to Default&rdquo; does not restore original permissions</td><td>It discards unsaved changes only.</td></tr>
+      <tr><td>No edit button for a vendor or user</td><td>Correct &mdash; no edit screen exists for either.</td></tr>
+      <tr><td>Deactivated user can still sign in</td><td>Account status is not checked at sign-in. See <a href="#s3">Section 3.7</a>.</td></tr>
+      <tr><td>Notification preferences change nothing</td><td>No email, SMS, or push channel exists. See <a href="#s19">Section 19.4</a>.</td></tr>
+      <tr><td>Filtering audit logs by Login returns nothing</td><td>Sign-ins are not audited. See <a href="#s20">Section 20.4</a>.</td></tr>
+      <tr><td>A licence-fee figure on the Dashboard does not match the list it opens</td><td>The destination has no licence-fee filter. See <a href="#s4">Section 4.4</a>.</td></tr>
+      <tr><td>Export stops at 2,000 rows</td><td>Vendor and Penalty exports are capped. Use the Report Builder.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ═══ 23 ═══ -->
+<section class="chap" id="s23">
+  <div class="chap-head"><span class="chap-num">Section 23</span><h2>Security Guidelines</h2></div>
+
+  <h3>23.1 Your password</h3>
+  <ul>
+    <li>Choose a long passphrase. The six-character minimum is a floor, not a target &mdash; there is no complexity rule and no lockout to fall back on.</li>
+    <li>Never reuse your SERVMS password on another system.</li>
+    <li>Never share it. There is no legitimate reason for anyone, including an administrator, to ask for it &mdash; an administrator who needs to help you can reset it instead.</li>
+    <li>Change it if you suspect it is known. Because there is no self-service change, this means asking for an assisted reset.</li>
+    <li>Administrators: relay temporary passwords in person or by phone, never by email or chat.</li>
+  </ul>
+
+  <h3>23.2 Sessions</h3>
+  <ul>
+    <li>Press <strong>Logout</strong> when you leave your desk. The session lasts 12 hours and does not time out on idle.</li>
+    <li>Lock your workstation as well &mdash; the session lives in the browser and survives closing the tab.</li>
+    <li>Never sign in on a shared or public machine. If you must, use a private window and sign out explicitly.</li>
+  </ul>
+
+  <h3>23.3 Accounts and access</h3>
+  <ul>
+    <li>Never work under someone else's account. Every action is attributed to the signed-in user, so borrowing an account falsifies the audit trail.</li>
+    <li>Grant the least permission the job needs. Approve/Reject and Export are the two most consequential.</li>
+    <li>Review the user list periodically for accounts whose Last Login is &ldquo;Never&rdquo; or long past.</li>
+    <li><strong>To remove access from a departing member of staff, have their password reset to a value they do not know.</strong> Deactivating alone does not block sign-in.</li>
+  </ul>
+
+  <h3>23.4 Documents</h3>
+  <ul>
+    <li>Upload only documents that belong on the record you are attaching them to.</li>
+    <li>Treat every document address as public. Anyone with the link can open the file without signing in &mdash; never forward a link to someone who should not see the document.</li>
+    <li>Download identity documents only when there is an operational need, and delete local copies afterwards.</li>
+  </ul>
+
+  <h3>23.5 ID cards and QR codes</h3>
+  <ul>
+    <li>The QR on a printed card contains the vendor's <strong>full Aadhaar number and home address in plain text</strong>. Anyone who scans it obtains both.</li>
+    <li>Card PDFs are the same &mdash; treat a downloaded card as an identity document.</li>
+    <li>Never approve a card for a vendor whose verifications you have not checked. Your name and designation are printed on it and encoded in the QR.</li>
+    <li>Card Signing Authority is a personal credential. Never let a colleague approve cards from your session.</li>
+  </ul>
+
+  <h3>23.6 Reporting a concern</h3>
+  <p>Report a suspected compromise, an unexpected permission, or a record you should not be able to see to your division administrator immediately, and to the CRIS support desk. Include the exact wording of any message, the screen, and the time &mdash; the audit trail can then be matched against your report.</p>
+</section>
+
+<!-- ═══ 24 ═══ -->
+<section class="chap" id="s24">
+  <div class="chap-head"><span class="chap-num">Section 24</span><h2>Frequently Asked Questions</h2></div>
+
+  <h4>I have forgotten my password. How do I reset it myself?</h4>
+  <p>You cannot. The Forgot Password link on the login screen is not connected to anything. Contact an administrator, who raises a reset request for a second administrator to approve; you are then given a temporary password (<a href="#s7">Section 7.4</a>).</p>
+
+  <h4>Why does my colleague see more menu items than I do?</h4>
+  <p>The sidebar shows only modules your role can view. Different roles see different menus.</p>
+
+  <h4>I typed my Employee Number and could not sign in.</h4>
+  <p>The field is labelled &ldquo;Employee ID / Username&rdquo; but only the username works. Ask an administrator for your username &mdash; it is shown next to your Employee ID in User Management.</p>
+
+  <h4>How do I correct a spelling mistake in a vendor's name?</h4>
+  <p>You cannot through the interface &mdash; there is no edit-vendor screen. Only status, the two verifications, and unit or contractor transfers can be changed after onboarding. A name correction requires a database change through the CRIS support desk. Check Step 1 of the wizard carefully before submitting.</p>
+
+  <h4>How do I change a user's name, email, or mobile number?</h4>
+  <p>You cannot. There is no edit-user screen. Role and division can be changed through a Transfer request; nothing else can be changed on screen.</p>
+
+  <h4>Why can I not delete anything?</h4>
+  <p>Only Super Admin HQ holds Delete on any module. This is deliberate &mdash; records referenced by complaints, inspections, penalties, and the audit trail should be deactivated rather than erased. Use status changes and deactivation instead.</p>
+
+  <h4>I set a user to Inactive but they can still sign in.</h4>
+  <p>Correct &mdash; account status is not checked at sign-in. To reliably remove access, have their password reset to a value they do not know.</p>
+
+  <h4>Why can I not approve an ID card even though I am an Admin?</h4>
+  <p>Card approval needs the <em>Card Signing Authority</em> credential, which is separate from your role. It requires an HQ or Divisional Admin or Sub Admin role <em>and</em> a JS or SS designation grade, and it must be granted on the user record.</p>
+
+  <h4>The vendor has no ID card option and I cannot request one.</h4>
+  <p>Requesting requires Add on ID Card Management. If the request is refused with &ldquo;no valid-till date on file&rdquo;, complete the vendor's police or medical verification dates first &mdash; the card's expiry is copied from one of them.</p>
+
+  <h4>What happens to an existing card if I re-issue?</h4>
+  <p>It returns to Pending Approval and the previous approval is cleared. The vendor has no valid card until a signing authority approves again. Do not re-issue unless a fresh card is genuinely needed.</p>
+
+  <h4>Someone scanned a card and the page said NOT ISSUED.</h4>
+  <p>The card exists but is not in the Approved state &mdash; it is pending, was rejected, or has been re-issued and is awaiting approval. Check the card in ID Card / QR Management.</p>
+
+  <h4>Can vendors or contractors log in?</h4>
+  <p>No. SERVMS is staff-only. The only page a non-staff member can reach is the public ID card verification page.</p>
+
+  <h4>Why does the Dashboard show a figure the list does not reproduce?</h4>
+  <p>The three licence-fee sub-groups link to a screen with no licence-fee filter, so the list is division-scoped only. Trust the Dashboard figure.</p>
+
+  <h4>Why is my Excel export actually a CSV file?</h4>
+  <p>Two buttons labelled Excel produce CSV: Vendor Management and Audit Logs. Both open correctly in Excel. Complaints, Inspections, and the Report Builder produce genuine <code>.xlsx</code> workbooks.</p>
+
+  <h4>My export seems to be missing rows.</h4>
+  <p>Vendor and Penalty exports are capped at 2,000 rows with no warning. Use the Report Builder for larger extracts.</p>
+
+  <h4>Can I bulk-upload vendors or contractors?</h4>
+  <p>No. Stations are the only master that can be imported, plus RailMadad complaints. Everything else is entered individually.</p>
+
+  <h4>Will SERVMS email or text me when something needs attention?</h4>
+  <p>No. Despite the preference switches in the Notification Centre, no email, SMS, or push notification is ever sent. Check the Notification Centre inside the application.</p>
+
+  <h4>Why did my notification badge reset on a different computer?</h4>
+  <p>Read state is stored in your browser, not on the server, so it does not follow you between machines or browsers.</p>
+
+  <h4>Where are the Settings and Help pages?</h4>
+  <p>Neither exists. Placeholder files are present in the codebase but are not reachable from anywhere in the application.</p>
+
+  <h4>Can I see who viewed a record?</h4>
+  <p>No. The audit trail records changes &mdash; create, update, delete, approve, reject, transfer &mdash; not reads. Sign-ins are not recorded either.</p>
+
+  <h4>Why does &ldquo;Record not found&rdquo; appear for a record I know exists?</h4>
+  <p>It is outside your division. The message is deliberately identical for &ldquo;does not exist&rdquo; and &ldquo;exists but is not yours&rdquo;, so scope cannot be probed. Ask a colleague with wider scope.</p>
+
+  <h4>I changed a role's permissions but the affected user still sees the old menu.</h4>
+  <p>Module permissions refresh as the application is used, so the change should appear within moments. Role and division changes from a Transfer, however, require the user to sign out and in again.</p>
+</section>
+
+</main>
+
+<footer>
+  <span>SERVMS User Manual &middot; Edition 1.0</span>
+  <span>Documented from the current implementation &mdash; branch <code>servms-updates</code></span>
+</footer>
+
+</div>

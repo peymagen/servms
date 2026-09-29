@@ -298,9 +298,13 @@ export const recordTemplateUsage = async (templateId: number) => {
 };
 
 // ─── EXPORT HISTORY (paginated) ─────────────────────────────────────────────────
-export const getExportHistory = async (filters: { module_key?: string; limit?: number; offset?: number }) => {
+export const getExportHistory = async (filters: { module_key?: string; limit?: number; offset?: number; division_id?: number }) => {
   const clauses: string[] = [];
   const params: any[] = [];
+  if (filters.division_id !== undefined) {
+    clauses.push("u.division_id = ?");
+    params.push(filters.division_id);
+  }
   if (filters.module_key) {
     clauses.push("re.module_key = ?");
     params.push(filters.module_key);
@@ -309,7 +313,10 @@ export const getExportHistory = async (filters: { module_key?: string; limit?: n
   const limit = Number.isInteger(filters.limit) ? (filters.limit as number) : 20;
   const offset = Number.isInteger(filters.offset) ? (filters.offset as number) : 0;
 
-  const [countRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM report_exports re ${whereSql}`, params);
+  const [countRows] = await pool.execute<RowDataPacket[]>(
+    `SELECT COUNT(*) as total FROM report_exports re LEFT JOIN users u ON u.id = re.exported_by ${whereSql}`,
+    params
+  );
   const [rows] = await pool.execute<RowDataPacket[]>(
     `SELECT re.*, u.full_name as exported_by_name, rt.name as template_name
      FROM report_exports re
@@ -324,18 +331,26 @@ export const getExportHistory = async (filters: { module_key?: string; limit?: n
 };
 
 // ─── DASHBOARD METRICS ──────────────────────────────────────────────────────────
-export const getReportDashboardMetrics = async () => {
+// divisionId narrows export counts/history to exports run by that division's users.
+export const getReportDashboardMetrics = async (divisionId?: number) => {
+  const exportWhere = divisionId !== undefined ? "WHERE u.division_id = ?" : "";
+  const exportParams = divisionId !== undefined ? [divisionId] : [];
   const [totalRows] = await pool.execute<RowDataPacket[]>("SELECT COUNT(*) as total FROM report_templates WHERE status = 1");
   const [moduleWise] = await pool.execute<RowDataPacket[]>(
     "SELECT module_key, COUNT(*) as count FROM report_templates WHERE status = 1 GROUP BY module_key"
   );
-  const [totalExportsRows] = await pool.execute<RowDataPacket[]>("SELECT COUNT(*) as total FROM report_exports");
+  const [totalExportsRows] = await pool.execute<RowDataPacket[]>(
+    `SELECT COUNT(*) as total FROM report_exports re LEFT JOIN users u ON u.id = re.exported_by ${exportWhere}`,
+    exportParams
+  );
   const [recentExports] = await pool.execute<RowDataPacket[]>(
     `SELECT re.*, u.full_name as exported_by_name, rt.name as template_name
      FROM report_exports re
      LEFT JOIN users u ON u.id = re.exported_by
      LEFT JOIN report_templates rt ON rt.id = re.report_template_id
-     ORDER BY re.created_at DESC LIMIT 10`
+     ${exportWhere}
+     ORDER BY re.created_at DESC LIMIT 10`,
+    exportParams
   );
   const [mostUsed] = await pool.execute<RowDataPacket[]>(
     `SELECT id, name, module_key, usage_count, last_used_at FROM report_templates

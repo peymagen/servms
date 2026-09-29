@@ -287,7 +287,7 @@ function TrashIcon() {
 
 // Matches the server's requireAnyRole([ROLE.HQ_ADMIN, ROLE.DIVISIONAL_ADMIN])
 // gate on PATCH /:id/permissions.
-const CAN_EDIT_PERMISSION_MATRIX_ROLES = ["hq_admin", "divisional_admin", "super_admin_hq"];
+const CAN_EDIT_PERMISSION_MATRIX_ROLES = ["hq_admin", "divisional_admin", "dealing_section", "super_admin_hq"];
 
 function PermissionMatrix({ roleId, roleName }: { roleId: number; roleName: string }) {
   const { user } = useAuth();

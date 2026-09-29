@@ -37,6 +37,7 @@ const validate = (req: Request, res: Response, next: NextFunction) => {
 const canManageInspectionTypes = requireAnyRole([
   ROLE.HQ_ADMIN,
   ROLE.DIVISIONAL_ADMIN,
+  ROLE.DEALING_SECTION,
   ROLE.HQ_SUB_ADMIN,
   ROLE.DIVISIONAL_SUB_ADMIN,
 ]);

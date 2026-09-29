@@ -169,9 +169,9 @@ const REGISTRY: ReportModuleDef[] = [
       LEFT JOIN vendors v ON v.id = p.vendor_id
       LEFT JOIN units u ON u.id = p.unit_id
       LEFT JOIN stations st ON st.id = u.station_id
-      LEFT JOIN divisions d ON d.id = st.division_id`,
+      LEFT JOIN divisions d ON d.id = COALESCE(c.division_id, v.division_id, st.division_id)`,
     statusColumn: "p.status = 1",
-    divisionColumn: "st.division_id",
+    divisionColumn: "COALESCE(c.division_id, v.division_id, st.division_id)",
     fields: [
       f("id", "ID", "p.id", "number", { groupable: false }),
       f("penalty_code", "Penalty Code", "p.penalty_code", "string"),

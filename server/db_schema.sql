@@ -736,19 +736,19 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `module_name`, `can_view`, `can
 (82, 7, 'reports', 1, 0, 0, 0, 0, 0, 1),
 (83, 7, 'dashboard', 1, 0, 0, 0, 0, 0, 1),
 (84, 7, 'admin_module', 0, 0, 0, 0, 0, 0, 1),
--- Dealing Section — ATR, recovery, reports
-(85, 8, 'user_management', 0, 0, 0, 0, 0, 0, 1),
-(86, 8, 'role_management', 0, 0, 0, 0, 0, 0, 1),
-(87, 8, 'vendor_management', 1, 0, 0, 0, 0, 0, 1),
-(88, 8, 'contractor_management', 1, 0, 0, 0, 0, 0, 1),
-(89, 8, 'unit_management', 1, 0, 0, 0, 0, 0, 1),
-(90, 8, 'location_management', 1, 0, 0, 0, 0, 0, 1),
-(91, 8, 'id_card_management', 1, 0, 0, 0, 0, 0, 1),
-(92, 8, 'penalty_management', 1, 0, 0, 0, 0, 0, 1),
-(93, 8, 'complaint_management', 1, 0, 1, 0, 0, 0, 1),
-(94, 8, 'inspection_management', 1, 0, 1, 0, 0, 0, 1),
-(95, 8, 'audit_logs', 0, 0, 0, 0, 0, 0, 1),
-(96, 8, 'reports', 1, 0, 0, 0, 0, 1, 1),
+-- Dealing Section — same powers as Divisional Admin, within own division
+(85, 8, 'user_management', 1, 1, 1, 1, 1, 1, 1),
+(86, 8, 'role_management', 1, 1, 1, 1, 1, 1, 1),
+(87, 8, 'vendor_management', 1, 1, 1, 0, 1, 1, 1),
+(88, 8, 'contractor_management', 1, 1, 1, 0, 1, 1, 1),
+(89, 8, 'unit_management', 1, 1, 1, 0, 1, 1, 1),
+(90, 8, 'location_management', 1, 1, 1, 0, 1, 1, 1),
+(91, 8, 'id_card_management', 1, 1, 1, 0, 1, 1, 1),
+(92, 8, 'penalty_management', 1, 1, 1, 0, 1, 1, 1),
+(93, 8, 'complaint_management', 1, 1, 1, 0, 1, 1, 1),
+(94, 8, 'inspection_management', 1, 1, 1, 0, 1, 1, 1),
+(95, 8, 'audit_logs', 1, 0, 0, 0, 0, 1, 1),
+(96, 8, 'reports', 1, 1, 1, 0, 1, 1, 1),
 (97, 8, 'dashboard', 1, 0, 0, 0, 0, 0, 1),
 (98, 8, 'admin_module', 0, 0, 0, 0, 0, 0, 1),
 -- Complaint Cell — complaint module only
@@ -1058,7 +1058,11 @@ INSERT INTO `users` (`id`, `employee_id`, `hrms_id`, `username`, `full_name`, `d
 (7, 'EMP-ADMIN_KGP', NULL, 'admin_kgp', 'R. Prasad', 'Divisional Administrator', 'JS', 1, 'Divisional Administrator, Kharagpur Division', 'kgp_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 1, NULL, 1, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
 (8, 'EMP-ADMIN_ADRA', NULL, 'admin_adra', 'B. K. Sharma', 'Divisional Administrator', 'JS', 1, 'Divisional Administrator, Adra Division', 'adra_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 2, NULL, 3, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
 (9, 'EMP-ADMIN_CKP', NULL, 'admin_ckp', 'S. K. Roy', 'Divisional Administrator', 'JS', 1, 'Divisional Administrator, Chakradharpur Division', 'ckp_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 3, NULL, 4, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
-(10, 'EMP-ADMIN_RNC', NULL, 'admin_rnc', 'A. K. Mehta', 'Divisional Administrator', 'JS', 1, 'Divisional Administrator, Ranchi Division', 'rnc_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 4, NULL, 5, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1);
+(10, 'EMP-ADMIN_RNC', NULL, 'admin_rnc', 'A. K. Mehta', 'Divisional Administrator', 'JS', 1, 'Divisional Administrator, Ranchi Division', 'rnc_admin@cris.org.in', '9876543210', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 2, 4, NULL, 5, NULL, NULL, 'active', NULL, '2026-07-11 13:05:26', '2026-07-11 13:05:26', 1),
+(11, 'EMP-DEALING_KGP', NULL, 'dealing_kgp', 'Kharagpur Dealing', 'Dealing Section', NULL, 0, NULL, 'kgp_dealing@cris.org.in', '9876543211', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 8, 1, NULL, NULL, NULL, NULL, 'active', NULL, '2026-09-29 00:00:00', '2026-09-29 00:00:00', 1),
+(12, 'EMP-DEALING_ADRA', NULL, 'dealing_adra', 'Adra Dealing', 'Dealing Section', NULL, 0, NULL, 'adra_dealing@cris.org.in', '9876543211', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 8, 2, NULL, NULL, NULL, NULL, 'active', NULL, '2026-09-29 00:00:00', '2026-09-29 00:00:00', 1),
+(13, 'EMP-DEALING_CKP', NULL, 'dealing_ckp', 'Chakradharpur Dealing', 'Dealing Section', NULL, 0, NULL, 'ckp_dealing@cris.org.in', '9876543211', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 8, 3, NULL, NULL, NULL, NULL, 'active', NULL, '2026-09-29 00:00:00', '2026-09-29 00:00:00', 1),
+(14, 'EMP-DEALING_RNC', NULL, 'dealing_rnc', 'Ranchi Dealing', 'Dealing Section', NULL, 0, NULL, 'rnc_dealing@cris.org.in', '9876543211', '$2b$12$/7BeKIQB9wF7MxBFyJTtdu73HGuXAGb8AnSPz8TWC0AlNzWbIoy.S', 0, 8, 4, NULL, NULL, NULL, NULL, 'active', NULL, '2026-09-29 00:00:00', '2026-09-29 00:00:00', 1);
 
 -- --------------------------------------------------------
 
@@ -1192,6 +1196,7 @@ CREATE TABLE `vendor_id_cards` (
   `expiry_date` date DEFAULT NULL,
   `signature_applied` tinyint(1) NOT NULL DEFAULT 0,
   `pdf_path` varchar(255) DEFAULT NULL,
+  `excel_status_link` varchar(500) DEFAULT NULL,
   `last_checked_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -1745,7 +1750,7 @@ ALTER TABLE `units`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `vendors`

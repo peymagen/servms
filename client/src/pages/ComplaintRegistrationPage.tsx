@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useDivisionLock } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useCreateComplaintMutation, useGetComplaintSubtypesQuery, useGetComplaintTypesQuery } from "../api/complaintApi";
 import { useGetUnitsLiteQuery, useGetDivisionsQuery, useGetStationsQuery } from "../api/mastersApi";
@@ -26,7 +27,12 @@ export default function ComplaintRegistrationPage() {
   const [eofficeNo, setEofficeNo] = useState("");
   const [railMadadRefNo, setRailMadadRefNo] = useState("");
 
-  const [divisionId, setDivisionId] = useState<number | "">("");
+  const { locked: divisionLocked, ownDivisionId } = useDivisionLock();
+  const [divisionId, setDivisionId] = useState<number | "">(ownDivisionId);
+
+  useEffect(() => {
+    if (divisionLocked && ownDivisionId) setDivisionId(ownDivisionId);
+  }, [divisionLocked, ownDivisionId]);
   const { data: stations = [] } = useGetStationsQuery(divisionId || undefined);
   const { data: trainsResult } = useGetTrainsQuery({ division_id: divisionId || undefined, limit: 500 });
   const trains = trainsResult?.rows ?? [];
@@ -191,6 +197,7 @@ export default function ComplaintRegistrationPage() {
               <div className={styles.inputWithIcon}>
                 <select
                   value={divisionId}
+                  disabled={divisionLocked}
                   onChange={(e) => {
                     setDivisionId(e.target.value ? Number(e.target.value) : "");
                     setTrainId("");

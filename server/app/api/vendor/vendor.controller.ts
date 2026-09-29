@@ -3,8 +3,30 @@ import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
 import { type VendorDocumentType } from "./vendor.dto";
-import { isDivisionScoped, assertRecordAccessible } from "../../common/constants/roles";
+import { isDivisionScoped, assertRecordAccessible, pinToOwnDivision, assertInOwnDivision } from "../../common/constants/roles";
+import * as unitService from "../unit/unit.service";
+import * as contractorService from "../contractor/contractor.service";
 import { logAudit } from "../../common/services/auditLog.service";
+import createHttpError from "http-errors";
+import { assertRefsInOwnDivision } from "../../common/services/divisionScope.service";
+
+// Loads the vendor named by :id and applies the caller's division scope, so a
+// divisional user can't read or change another division's vendor by its id.
+const loadAccessibleVendor = async (req: Request) => {
+  const vendor = await vendorService.getVendorById(req.params.id as string);
+  if (!vendor) throw createHttpError(404, "Vendor not found");
+  assertRecordAccessible(req.user as any, vendor);
+  return vendor;
+};
+
+// The unit, contractor and station a vendor is attached to must all be in the
+// caller's own division (division_id itself is already pinned).
+const assertVendorRefsInOwnDivision = (req: Request) =>
+  assertRefsInOwnDivision(req.user as any, {
+    unit: req.body.unit_id,
+    contractor: req.body.contractor_id,
+    station: req.body.station_id,
+  });
 
 // ─── CREATE VENDOR ─────────────────────────────────────────────────────────────
 export const createVendor = asyncHandler(async (req: Request, res: Response) => {
@@ -34,6 +56,8 @@ export const createVendor = asyncHandler(async (req: Request, res: Response) => 
     req.body.police_verification_document_name = files.police_verification_document[0].originalname;
   }
 
+  pinToOwnDivision(req.user as any, req.body);
+  await assertVendorRefsInOwnDivision(req);
   const result = await vendorService.createVendor(req.body, userId);
   await logAudit({ req, module: "vendor", recordId: result.id, action: "CREATE", newData: req.body });
   res.send(createResponse(result, "Vendor onboarded successfully"));
@@ -89,14 +113,39 @@ export const editVendor = asyncHandler(async (req: Request, res: Response) => {
     req.body.signature_path = `/uploads/${files.signature[0].filename}`;
   }
 
-  const oldData = await vendorService.getVendorById(req.params.id as string);
+  const oldData = await loadAccessibleVendor(req);
+  pinToOwnDivision(req.user as any, req.body);
+  await assertVendorRefsInOwnDivision(req);
   const result = await vendorService.editVendor(req.params.id as string, req.body);
+
+  // Documents re-uploaded from the edit form replace the vendor's current document
+  // of that type — same replace semantics as the standalone Documents upload.
+  const userId = (req.user as any)?.id ?? 1;
+  const documentFields: Array<[string, VendorDocumentType]> = [
+    ["aadhaar_document", "AADHAAR"],
+    ["medical_verification_document", "MEDICAL"],
+    ["police_verification_document", "POLICE_VERIFICATION"],
+  ];
+  for (const [field, documentType] of documentFields) {
+    const file = files?.[field]?.[0];
+    if (file) {
+      await vendorService.uploadVendorDocument(
+        req.params.id as string,
+        documentType,
+        `/uploads/${file.filename}`,
+        userId,
+        file.originalname
+      );
+    }
+  }
+
   await logAudit({ req, module: "vendor", recordId: req.params.id, action: "UPDATE", oldData, newData: req.body });
   res.send(createResponse(result, "Vendor updated successfully"));
 });
 
 // ─── STATUS CHANGE (dedicated, gated action) ─────────────────────────────────────
 export const changeVendorStatus = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleVendor(req);
   const result = await vendorService.changeVendorStatus(req.params.id as string, req.body.vendor_status);
   await logAudit({
     req,
@@ -112,6 +161,7 @@ export const changeVendorStatus = asyncHandler(async (req: Request, res: Respons
 
 // ─── DELETE VENDOR ───────────────────────────────────────────────────────────────
 export const deleteVendor = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleVendor(req);
   const result = await vendorService.deleteVendor(req.params.id as string);
   await logAudit({ req, module: "vendor", recordId: req.params.id, action: "DELETE" });
   res.send(createResponse(result, "Vendor deleted successfully"));
@@ -119,6 +169,9 @@ export const deleteVendor = asyncHandler(async (req: Request, res: Response) => 
 
 // ─── TRANSFERS ─────────────────────────────────────────────────────────────────────
 export const transferUnit = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleVendor(req);
+  const targetUnit = await unitService.getUnitById(String(req.body.unit_id));
+  assertInOwnDivision(req.user as any, targetUnit?.division_id, "The target unit");
   const result = await vendorService.transferUnit(req.params.id as string, Number(req.body.unit_id));
   await logAudit({
     req,
@@ -133,6 +186,9 @@ export const transferUnit = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const transferContractor = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleVendor(req);
+  const targetContractor = await contractorService.getContractorById(String(req.body.contractor_id));
+  assertInOwnDivision(req.user as any, targetContractor?.division_id, "The target contractor");
   const result = await vendorService.transferContractor(req.params.id as string, Number(req.body.contractor_id));
   await logAudit({
     req,
@@ -161,6 +217,7 @@ export const getVendorMetrics = asyncHandler(async (req: Request, res: Response)
 
 // ─── GET VENDOR VERIFICATION DETAILS ─────────────────────────────────────────────
 export const getVendorVerification = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleVendor(req);
   const result = await vendorService.getVendorVerification(req.params.id as string);
   if (!result) {
     res.status(404).send(createResponse(null, "Vendor not found"));
@@ -171,6 +228,7 @@ export const getVendorVerification = asyncHandler(async (req: Request, res: Resp
 
 // ─── UPDATE POLICE VERIFICATION ──────────────────────────────────────────────────
 export const updatePoliceVerification = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleVendor(req);
   const documentPath = req.file ? `/uploads/${req.file.filename}` : undefined;
   const result = await vendorService.updatePoliceVerification(req.params.id as string, req.body, documentPath);
   await logAudit({
@@ -186,6 +244,7 @@ export const updatePoliceVerification = asyncHandler(async (req: Request, res: R
 
 // ─── UPDATE MEDICAL VERIFICATION ─────────────────────────────────────────────────
 export const updateMedicalVerification = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleVendor(req);
   const documentPath = req.file ? `/uploads/${req.file.filename}` : undefined;
   const result = await vendorService.updateMedicalVerification(req.params.id as string, req.body, documentPath);
   await logAudit({
@@ -201,11 +260,13 @@ export const updateMedicalVerification = asyncHandler(async (req: Request, res: 
 
 // ─── VENDOR DOCUMENTS ─────────────────────────────────────────────────────────────
 export const getVendorDocuments = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleVendor(req);
   const result = await vendorService.getVendorDocuments(req.params.id as string);
   res.send(createResponse(result));
 });
 
 export const uploadVendorDocument = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleVendor(req);
   const userId = (req.user as any)?.id ?? 1;
 
   if (!req.file) {
@@ -234,6 +295,7 @@ export const uploadVendorDocument = asyncHandler(async (req: Request, res: Respo
 });
 
 export const deleteVendorDocument = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleVendor(req);
   const result = await vendorService.deleteVendorDocument(req.params.id as string, req.params.docId as string);
   await logAudit({ req, module: "vendor", recordId: req.params.id, action: "DELETE", details: "Document removed" });
   res.send(createResponse(result, "Document removed successfully"));

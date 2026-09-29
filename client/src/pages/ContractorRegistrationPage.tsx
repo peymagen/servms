@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useCreateContractorMutation } from "../api/contractorApi";
 import { useGetDivisionsQuery } from "../api/mastersApi";
 import { useAuth } from "../context/AuthContext";
+import { isDivisionScopedRole } from "../types/labels";
 import styles from "./ContractorRegistrationPage.module.css";
 
 export default function ContractorRegistrationPage() {
@@ -28,10 +29,11 @@ export default function ContractorRegistrationPage() {
   const [createContractor, { isLoading: isSubmitting }] = useCreateContractorMutation();
   const [error, setError] = useState<string | null>(null);
 
-  const divisionId = useMemo(() => {
-    if (user?.role_name === "admin" && user.division_id) return user.division_id;
-    return divisions[0]?.id;
-  }, [user, divisions]);
+  // Divisional users onboard into their own division only; HQ-level users pick one.
+  const isScoped = isDivisionScopedRole(user?.role_name);
+  const [selectedDivisionId, setSelectedDivisionId] = useState<number | "">("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const divisionId = isScoped ? user?.division_id ?? undefined : selectedDivisionId || undefined;
 
   const applicationScore = useMemo(() => {
     const fields = [
@@ -69,8 +71,9 @@ export default function ContractorRegistrationPage() {
     e.preventDefault();
     setError(null);
 
-    if (!divisionId) {
-      setError("No division available to assign this contractor to.");
+    // Division users don't pick one — the server pins their own division.
+    if (!isScoped && !divisionId) {
+      setError("Please select the division this contractor belongs to.");
       return;
     }
 
@@ -83,6 +86,7 @@ export default function ContractorRegistrationPage() {
         registered_address: registeredAddress || undefined,
         pan_number: panNumber || undefined,
         gstin: gstin || undefined,
+        license_number: licenseNumber || undefined,
         license_validity_date: licenseValidityDate || undefined,
         annual_registration_fee: annualFee ? Number(annualFee) : undefined,
         award_date: awardDate || undefined,
@@ -123,6 +127,30 @@ export default function ContractorRegistrationPage() {
                   value={primaryContactName}
                   onChange={(e) => setPrimaryContactName(e.target.value)}
                   placeholder="Name of Authorized Signatory"
+                />
+              </Field>
+            </div>
+            <div className={styles.fieldRow}>
+              <Field label="Division">
+                <select
+                  value={isScoped ? user?.division_id ?? "" : selectedDivisionId}
+                  onChange={(e) => setSelectedDivisionId(e.target.value ? Number(e.target.value) : "")}
+                  disabled={isScoped}
+                  required
+                >
+                  <option value="">Select division…</option>
+                  {divisions.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.division_name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="License Number">
+                <input
+                  value={licenseNumber}
+                  onChange={(e) => setLicenseNumber(e.target.value)}
+                  placeholder="Railway license / agreement number"
                 />
               </Field>
             </div>

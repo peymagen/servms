@@ -3,6 +3,7 @@ import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
 import { logAudit } from "../../common/services/auditLog.service";
+import { isDivisionScoped } from "../../common/constants/roles";
 
 export const getImportableMasters = asyncHandler(async (req: Request, res: Response) => {
   res.send(createResponse(importService.listImportableMasters()));
@@ -20,8 +21,16 @@ export const importMasterData = asyncHandler(async (req: Request, res: Response)
     res.status(400).send(createResponse(null, "An Excel file is required"));
     return;
   }
-  const userId = (req.user as any)?.id;
-  const summary = await importService.importMasterData(req.params.masterKey as string, req.file.path, req.file.originalname, userId);
+  const user = req.user as any;
+  const userId = user?.id;
+  const restrictDivisionId = isDivisionScoped(user?.role_name) ? user.division_id : null;
+  const summary = await importService.importMasterData(
+    req.params.masterKey as string,
+    req.file.path,
+    req.file.originalname,
+    userId,
+    restrictDivisionId
+  );
 
   await logAudit({
     req,
@@ -42,6 +51,8 @@ export const importMasterData = asyncHandler(async (req: Request, res: Response)
 export const getImportHistory = asyncHandler(async (req: Request, res: Response) => {
   const masterKey = req.query.master_key ? String(req.query.master_key) : undefined;
   const limit = req.query.limit ? Number(req.query.limit) : 50;
-  const result = await importService.getImportHistory(masterKey, limit);
+  const user = req.user as any;
+  const divisionId = isDivisionScoped(user?.role_name) ? Number(user.division_id) : undefined;
+  const result = await importService.getImportHistory(masterKey, limit, divisionId);
   res.send(createResponse(result));
 });

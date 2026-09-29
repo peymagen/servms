@@ -4,6 +4,7 @@ import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
 import { isDivisionScoped } from "../../common/constants/roles";
 import { logAudit } from "../../common/services/auditLog.service";
+import { assertRecordInOwnDivision } from "../../common/services/divisionScope.service";
 import { type CardExpirySource, type CardTemplate } from "./idcard.dto";
 
 // ─── GET ID CARDS ───────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ export const getIdCards = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── ISSUE REQUEST ───────────────────────────────────────────────────────────────
 export const requestIdCard = asyncHandler(async (req: Request, res: Response) => {
+  await assertRecordInOwnDivision(req.user as any, "vendor", req.params.vendorId);
   const userId = (req.user as any)?.id;
   const result = await idcardService.requestIdCard(
     req.params.vendorId as string,
@@ -53,8 +55,18 @@ export const rejectIdCard = asyncHandler(async (req: Request, res: Response) => 
   res.send(createResponse(result, "ID card request rejected"));
 });
 
+// ─── SET/CLEAR "CHECK ID CARD STATUS" EXCEL LINK ────────────────────────────────
+export const updateIdCardStatusLink = asyncHandler(async (req: Request, res: Response) => {
+  await assertRecordInOwnDivision(req.user as any, "vendor", req.params.vendorId);
+  const link = typeof req.body.excel_status_link === "string" ? req.body.excel_status_link.trim() || null : null;
+  const result = await idcardService.updateIdCardStatusLink(req.params.vendorId as string, link);
+  await logAudit({ req, module: "idcard", recordId: req.params.vendorId, action: "UPDATE", details: "Status link updated" });
+  res.send(createResponse(result, "ID card status link updated"));
+});
+
 // ─── DOWNLOAD PDF ────────────────────────────────────────────────────────────────
 export const downloadIdCardPdf = asyncHandler(async (req: Request, res: Response) => {
+  await assertRecordInOwnDivision(req.user as any, "vendor", req.params.vendorId);
   const templateParam = req.query.template;
   if (templateParam !== undefined && templateParam !== "template_a" && templateParam !== "template_b") {
     res.status(400).send(createResponse(null, "Invalid template"));

@@ -13,7 +13,7 @@ export const getRoleName = async (roleId: number): Promise<string | null> => {
 // Only JS/SS-graded Admin-tier or Sub Admin-tier users (HQ or Divisional) may be
 // granted Card Signing Authority — Divisional/HQ Admin included, since a division's
 // signing authority is commonly its own Divisional Admin, not just its Sub Admin.
-const SIGNING_ELIGIBLE_ROLES = ["hq_admin", "hq_sub_admin", "divisional_admin", "divisional_sub_admin"];
+const SIGNING_ELIGIBLE_ROLES = ["hq_admin", "hq_sub_admin", "divisional_admin", "divisional_sub_admin", "dealing_section"];
 
 const assertCardSigningEligibility = async (
   roleId: number | undefined,

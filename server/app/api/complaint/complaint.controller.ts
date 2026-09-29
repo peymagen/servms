@@ -3,8 +3,17 @@ import * as atrService from "./complaint.atr.service";
 import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
-import { isDivisionScoped, assertRecordAccessible } from "../../common/constants/roles";
+import { isDivisionScoped, assertRecordAccessible, pinToOwnDivision } from "../../common/constants/roles";
 import { logAudit } from "../../common/services/auditLog.service";
+import { assertRefsInOwnDivision } from "../../common/services/divisionScope.service";
+
+// The unit/station/train a complaint is filed against must be in the caller's division.
+const assertComplaintRefsInOwnDivision = (req: Request) =>
+  assertRefsInOwnDivision(req.user as any, {
+    unit: req.body.unit_id,
+    station: req.body.station_id,
+    train: req.body.train_id,
+  });
 
 const str = (v: unknown) => (v !== undefined && v !== "" ? String(v) : undefined);
 const num = (v: unknown) => (v !== undefined && v !== "" ? Number(v) : undefined);
@@ -12,6 +21,8 @@ const num = (v: unknown) => (v !== undefined && v !== "" ? Number(v) : undefined
 // ─── REGISTER COMPLAINT (Manual / CPGRAMS) ─────────────────────────────────────
 export const createComplaint = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id;
+  pinToOwnDivision(req.user as any, req.body);
+  await assertComplaintRefsInOwnDivision(req);
   const result = await complaintService.createComplaint(req.body, userId);
 
   const files = req.files as Express.Multer.File[] | undefined;
@@ -68,6 +79,13 @@ export const getComplaintById = asyncHandler(async (req: Request, res: Response)
 // ─── UPDATE COMPLAINT (PATCH — core fields, not workflow status) ───────────────
 export const editComplaint = asyncHandler(async (req: Request, res: Response) => {
   const oldData = await complaintService.getComplaintById(req.params.id as string);
+  if (!oldData) {
+    res.status(404).send(createResponse(null, "Complaint not found"));
+    return;
+  }
+  assertRecordAccessible(req.user as any, oldData);
+  pinToOwnDivision(req.user as any, req.body);
+  await assertComplaintRefsInOwnDivision(req);
   const result = await complaintService.editComplaint(req.params.id as string, req.body);
   await logAudit({ req, module: "complaint", recordId: req.params.id, action: "UPDATE", oldData, newData: req.body });
   res.send(createResponse(result, "Complaint updated successfully"));
@@ -88,6 +106,7 @@ export const getComplaintMetrics = asyncHandler(async (req: Request, res: Respon
 export const closeComplaint = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id;
   const oldData = await complaintService.getComplaintById(req.params.id as string);
+  assertRecordAccessible(req.user as any, oldData);
   const result = await atrService.closeComplaint(req.params.id as string, userId, req.body?.remarks);
   await logAudit({ req, module: "complaint", recordId: req.params.id, action: "STATUS_CHANGE", oldData, newData: result });
   res.send(createResponse(result, "Complaint closed"));

@@ -31,4 +31,5 @@ export interface IQrPayload {
   contract_valid_from: string | null;
   contract_valid_to: string | null;
   date_of_issue: string | null;
+  excel_status_link: string | null;
 }

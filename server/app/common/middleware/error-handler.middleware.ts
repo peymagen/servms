@@ -21,7 +21,9 @@ const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   const response: ErrorResponse = {
     success: false,
     error_code: (err?.status ?? (isMulterError ? 400 : 500)) as number,
-    message: (isMulterError ? describeMulterError(err) : err?.message ?? "Something went wrong!") as string,
+    // mysql2 connection failures (e.g. MySQL not running) surface as an AggregateError
+    // with an empty message — fall back to its code (ECONNREFUSED) so the cause is visible.
+    message: (isMulterError ? describeMulterError(err) : err?.message || err?.code || "Something went wrong!") as string,
     data: err?.data ?? {},
   };
 

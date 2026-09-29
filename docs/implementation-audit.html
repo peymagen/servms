@@ -1,0 +1,814 @@
+<title>SERVMS Implementation Audit</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+:root{
+  --paper:#F1F3F1; --surface:#FFFFFF; --surface-2:#E8ECEA;
+  --ink:#16232B; --ink-2:#33454F; --grey:#67757E; --hair:#C9D2D2;
+  --rail:#16495C; --rail-soft:#E3EDF0;
+  --green:#1C6B48; --green-soft:#E0EFE7;
+  --amber:#9C6412; --amber-soft:#F5EBDA;
+  --red:#A32E28; --red-soft:#F6E4E2;
+  --shadow:0 1px 2px rgba(22,35,43,.06),0 8px 24px -16px rgba(22,35,43,.28);
+  --f-display:"Bitter",Georgia,"Times New Roman",serif;
+  --f-body:"Public Sans","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#101A20; --surface:#17242B; --surface-2:#1E2E36;
+    --ink:#E4EAE9; --ink-2:#B4C2C4; --grey:#8B9BA2; --hair:#2B3E47;
+    --rail:#6FB6CE; --rail-soft:#17323D;
+    --green:#63C193; --green-soft:#152E24;
+    --amber:#DCA75A; --amber-soft:#332612;
+    --red:#E8867E; --red-soft:#37201E;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#101A20; --surface:#17242B; --surface-2:#1E2E36;
+  --ink:#E4EAE9; --ink-2:#B4C2C4; --grey:#8B9BA2; --hair:#2B3E47;
+  --rail:#6FB6CE; --rail-soft:#17323D;
+  --green:#63C193; --green-soft:#152E24;
+  --amber:#DCA75A; --amber-soft:#332612;
+  --red:#E8867E; --red-soft:#37201E;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--f-body); font-size:16px; line-height:1.62;
+  -webkit-font-smoothing:antialiased; margin:0;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px 96px;
+  display:grid;grid-template-columns:250px minmax(0,1fr);gap:56px;align-items:start}
+@media(max-width:940px){.wrap{grid-template-columns:1fr;gap:0}}
+
+.mast{grid-column:1/-1;border-bottom:2px solid var(--ink);padding:44px 0 22px;margin-bottom:44px}
+.mast-kicker{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--rail);display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.mast h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.1rem,5.4vw,3.5rem);
+  line-height:1.04;letter-spacing:-.022em;margin:0 0 12px;text-wrap:balance}
+.mast p{margin:0;max-width:64ch;color:var(--ink-2);font-size:1.02rem}
+.mast-meta{margin-top:22px;display:flex;gap:8px;flex-wrap:wrap;
+  font-family:var(--f-mono);font-size:11.5px;color:var(--grey)}
+.mast-meta b{color:var(--ink);font-weight:600}
+.sep{color:var(--hair)}
+
+nav.toc{position:sticky;top:24px;font-size:13.4px;line-height:1.45;max-height:calc(100vh - 48px);overflow-y:auto}
+@media(max-width:940px){nav.toc{position:static;max-height:none;margin-bottom:44px;
+  border:1px solid var(--hair);border-radius:3px;padding:18px 20px;background:var(--surface)}}
+nav.toc h2{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--grey);margin:0 0 14px;font-weight:600}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+nav.toc a{display:grid;grid-template-columns:26px 1fr;gap:8px;padding:5px 8px 5px 8px;
+  color:var(--ink-2);text-decoration:none;border-radius:2px;border-left:2px solid transparent}
+nav.toc a:hover{color:var(--rail);background:var(--rail-soft);border-left-color:var(--rail)}
+nav.toc a:focus-visible{outline:2px solid var(--rail);outline-offset:2px}
+nav.toc .n{font-family:var(--f-mono);font-size:11px;color:var(--grey);padding-top:2px}
+
+main{min-width:0}
+section.chap{scroll-margin-top:20px;margin-bottom:64px}
+.chap-head{border-top:2px solid var(--ink);padding-top:14px;margin-bottom:26px}
+.chap-num{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;color:var(--rail);
+  text-transform:uppercase;display:block;margin-bottom:8px}
+.chap-head h2{font-family:var(--f-display);font-weight:700;font-size:clamp(1.5rem,3.1vw,2.05rem);
+  line-height:1.14;letter-spacing:-.016em;margin:0;text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:600;font-size:1.16rem;line-height:1.28;
+  letter-spacing:-.008em;margin:38px 0 12px;text-wrap:balance}
+h4{font-family:var(--f-body);font-weight:700;font-size:.94rem;letter-spacing:.01em;margin:26px 0 8px}
+p,li{max-width:74ch}
+p{margin:0 0 14px}
+main ul,main ol{margin:0 0 16px;padding-left:22px;display:flex;flex-direction:column;gap:7px}
+main ol{padding-left:24px}
+li::marker{color:var(--grey)}
+code{font-family:var(--f-mono);font-size:.855em;background:var(--surface-2);
+  padding:.1em .38em;border-radius:2px;color:var(--ink)}
+a{color:var(--rail)}
+hr{border:0;border-top:1px solid var(--hair);margin:34px 0}
+
+.tw{overflow-x:auto;margin:0 0 22px;border:1px solid var(--hair);border-radius:3px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.4px;line-height:1.45}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--hair);vertical-align:top}
+thead th{background:var(--surface-2);font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap;
+  position:sticky;top:0;border-bottom:1.5px solid var(--hair)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600}
+.mx td:not(:first-child),.mx th:not(:first-child){text-align:center}
+.mx td:not(:first-child){font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+.y{color:var(--green);font-weight:700}
+.no{color:var(--grey)}
+caption{caption-side:top;text-align:left;font-family:var(--f-mono);font-size:10.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--grey);padding:10px 13px 8px}
+
+.chip{font-family:var(--f-mono);font-size:11px;padding:1.5px 7px;border-radius:2px;
+  border:1px solid var(--hair);background:var(--surface-2);color:var(--ink-2);
+  white-space:nowrap;display:inline-block;line-height:1.55}
+.chip.ok{background:var(--green-soft);border-color:transparent;color:var(--green)}
+.chip.warn{background:var(--amber-soft);border-color:transparent;color:var(--amber)}
+.chip.bad{background:var(--red-soft);border-color:transparent;color:var(--red)}
+.chip.info{background:var(--rail-soft);border-color:transparent;color:var(--rail)}
+
+.call{border-left:3px solid var(--rail);background:var(--surface);padding:14px 18px;
+  margin:0 0 22px;border-radius:0 3px 3px 0;box-shadow:var(--shadow);max-width:80ch}
+.call p:last-child{margin-bottom:0}
+.call ul{margin-bottom:0}
+.call .lbl{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--rail);font-weight:600;display:block;margin-bottom:6px}
+.call.caution{border-left-color:var(--amber)}
+.call.caution .lbl{color:var(--amber)}
+.call.gap{border-left-color:var(--red)}
+.call.gap .lbl{color:var(--red)}
+.call.tip{border-left-color:var(--green)}
+.call.tip .lbl{color:var(--green)}
+
+.flow{display:flex;flex-wrap:wrap;gap:0;margin:0 0 24px;border:1px solid var(--hair);
+  border-radius:3px;overflow:hidden;background:var(--surface)}
+.flow div{flex:1 1 120px;padding:12px 14px;border-right:1px solid var(--hair);min-width:0}
+.flow div:last-child{border-right:0}
+.flow .s{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;color:var(--grey);
+  text-transform:uppercase;display:block;margin-bottom:5px}
+.flow .t{font-weight:700;font-size:13px;line-height:1.3;display:block}
+.flow .w{font-size:11.5px;color:var(--grey);line-height:1.35;display:block;margin-top:3px}
+
+ol.steps{counter-reset:st;list-style:none;padding-left:0;gap:0}
+ol.steps>li{counter-increment:st;position:relative;padding:0 0 12px 40px;max-width:76ch}
+ol.steps>li::before{content:counter(st,decimal-leading-zero);position:absolute;left:0;top:1px;
+  font-family:var(--f-mono);font-size:11px;color:var(--rail);border:1px solid var(--hair);
+  border-radius:2px;padding:1px 5px;background:var(--surface)}
+
+footer{grid-column:1/-1;border-top:2px solid var(--ink);margin-top:32px;padding-top:20px;
+  font-family:var(--f-mono);font-size:11.5px;color:var(--grey);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.scorecard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:0 0 30px}
+.sc{border:1px solid var(--hair);border-radius:3px;background:var(--surface);padding:14px 16px;
+  box-shadow:var(--shadow);border-top:3px solid var(--rail)}
+.sc.ok{border-top-color:var(--green)}
+.sc.warn{border-top-color:var(--amber)}
+.sc.bad{border-top-color:var(--red)}
+.sc .v{font-family:var(--f-display);font-weight:700;font-size:2.05rem;line-height:1;
+  font-variant-numeric:tabular-nums;display:block;margin-bottom:6px}
+.sc .l{font-family:var(--f-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--grey);display:block;line-height:1.4}
+.sc.ok .v{color:var(--green)}.sc.warn .v{color:var(--amber)}.sc.bad .v{color:var(--red)}
+td .chip{margin:0 2px 2px 0}
+.sev{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:600;white-space:nowrap}
+.sev.h{color:var(--red)}.sev.m{color:var(--amber)}.sev.l{color:var(--grey)}
+.finding{border:1px solid var(--hair);border-left:3px solid var(--hair);border-radius:0 3px 3px 0;
+  background:var(--surface);margin:0 0 18px;box-shadow:var(--shadow);overflow:hidden}
+.finding.h{border-left-color:var(--red)}
+.finding.m{border-left-color:var(--amber)}
+.finding.l{border-left-color:var(--grey)}
+.f-head{padding:11px 16px;border-bottom:1px solid var(--hair);background:var(--surface-2);
+  display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.f-id{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.13em;font-weight:600;color:var(--rail)}
+.f-t{font-weight:700;font-size:14px;flex:1 1 220px;min-width:0}
+.f-body{padding:14px 16px 4px}
+.f-body dl{margin:0;display:grid;grid-template-columns:112px minmax(0,1fr);gap:6px 16px;font-size:13.6px}
+@media(max-width:620px){.f-body dl{grid-template-columns:1fr;gap:2px 0}
+  .f-body dt{margin-top:9px}}
+.f-body dt{font-family:var(--f-mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--grey);font-weight:600;padding-top:3px}
+.f-body dd{margin:0 0 4px;max-width:74ch}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="mast-kicker">
+    <span>South Eastern Railway</span><span class="sep">/</span>
+    <span>CRIS</span><span class="sep">/</span>
+    <span>Part C &mdash; Documentation Audit</span>
+  </div>
+  <h1>SERVMS Implementation Audit</h1>
+  <p>What is built, what is half-built, and what is missing &mdash; traced through the interface, the API, and the database, then reconciled against each other. The evidence base behind the SERVMS User Manual and Training Manual.</p>
+  <div class="mast-meta">
+    <span><b>Method</b> UI &rarr; API &rarr; controller &rarr; service &rarr; database</span><span class="sep">&middot;</span>
+    <span><b>Scope</b> branch <code>servms-updates</code></span><span class="sep">&middot;</span>
+    <span><b>Findings</b> 31</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#c1"><span class="n">1</span><span>Method &amp; Scorecard</span></a></li>
+    <li><a href="#c2"><span class="n">2</span><span>Compliance Matrix</span></a></li>
+    <li><a href="#c3"><span class="n">3</span><span>Fully Implemented</span></a></li>
+    <li><a href="#c4"><span class="n">4</span><span>Partially Implemented</span></a></li>
+    <li><a href="#c5"><span class="n">5</span><span>Backend Without UI</span></a></li>
+    <li><a href="#c6"><span class="n">6</span><span>UI Not Connected</span></a></li>
+    <li><a href="#c7"><span class="n">7</span><span>Not Implemented</span></a></li>
+    <li><a href="#c8"><span class="n">8</span><span>Inconsistencies</span></a></li>
+    <li><a href="#c9"><span class="n">9</span><span>Dormant Data</span></a></li>
+    <li><a href="#c10"><span class="n">10</span><span>Priority Findings</span></a></li>
+    <li><a href="#c11"><span class="n">11</span><span>Documentation Coverage</span></a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ═══ 1 ═══ -->
+<section class="chap" id="c1">
+  <div class="chap-head"><span class="chap-num">Section 1</span><h2>Method and Scorecard</h2></div>
+
+  <h3>1.1 What was examined</h3>
+  <p>Every module was traced along the full path &mdash; <strong>screen &rarr; client API call &rarr; route &rarr; permission guard &rarr; controller &rarr; service &rarr; SQL</strong> &mdash; in both directions. Forward, to confirm each screen control reaches a working endpoint. Backward, to find endpoints and database columns that no screen ever reaches.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Surface</th><th>Extent</th></tr></thead>
+    <tbody>
+      <tr><td>Screens</td><td>31 page components, 12 modal and shared components</td></tr>
+      <tr><td>Client API definitions</td><td>19 modules</td></tr>
+      <tr><td>Server routers</td><td>18 routers, 127 TypeScript files</td></tr>
+      <tr><td>Database</td><td>38 tables</td></tr>
+      <tr><td>Permission model</td><td>8 roles &times; 14 modules &times; 6 actions, plus 7 role-named overrides</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>1.2 Classification</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Verdict</th><th>Criterion</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip ok">Implemented</span></td><td>A user can reach it, use it, and it writes correctly to the database.</td></tr>
+      <tr><td><span class="chip warn">Partial</span></td><td>Reachable and usable, but a documented aspect is absent, inconsistent, or unreliable.</td></tr>
+      <tr><td><span class="chip info">Backend only</span></td><td>The endpoint works but no screen calls it.</td></tr>
+      <tr><td><span class="chip bad">Missing</span></td><td>No working path exists, or a visible control does nothing.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>1.3 Scorecard</h3>
+  <div class="scorecard">
+    <div class="sc ok"><span class="v">14</span><span class="l">Areas fully<br>implemented</span></div>
+    <div class="sc warn"><span class="v">6</span><span class="l">Areas partially<br>implemented</span></div>
+    <div class="sc bad"><span class="v">4</span><span class="l">Areas materially<br>missing</span></div>
+    <div class="sc bad"><span class="v">3</span><span class="l">High-severity<br>findings</span></div>
+    <div class="sc warn"><span class="v">13</span><span class="l">Medium-severity<br>findings</span></div>
+    <div class="sc"><span class="v">15</span><span class="l">Low-severity<br>findings</span></div>
+  </div>
+
+  <div class="call"><span class="lbl">Headline assessment</span>
+    <p>SERVMS is a substantially complete system. Its core &mdash; the permission model, division scoping, the ID card issue-and-sign workflow, both Action Taken Report chains, and the penalty money trail &mdash; is implemented thoroughly and defended consistently at both the browser and the server. The audit trail captures before-and-after values across every write path.</p>
+    <p>The gaps cluster in three places rather than spreading evenly: <strong>record maintenance after creation</strong> (no edit screen for vendors or users), <strong>outbound communication</strong> (no channel exists behind the notification preferences), and <strong>account lifecycle</strong> (deactivation does not deactivate). The first two are absences; the third is a correctness defect and the single most consequential finding in this report.</p>
+  </div>
+</section>
+
+<!-- ═══ 2 ═══ -->
+<section class="chap" id="c2">
+  <div class="chap-head"><span class="chap-num">Section 2</span><h2>Compliance Matrix</h2></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>Area</th><th>Implemented</th><th>Partial</th><th>Missing</th><th>Documentation status</th></tr></thead>
+    <tbody>
+      <tr><td>Authentication</td><td class="y">&#10003;</td><td>Status not checked at sign-in; no forgot-password</td><td>Self-service reset; MFA; lockout</td><td>Documented &sect;3 with both gaps flagged</td></tr>
+      <tr><td>Session management</td><td class="y">&#10003;</td><td>&mdash;</td><td>Idle timeout; server-side revocation</td><td>Documented &sect;3.5</td></tr>
+      <tr><td>Roles &amp; permissions</td><td class="y">&#10003;</td><td>&mdash;</td><td>&mdash;</td><td>Full matrix documented &sect;6.3</td></tr>
+      <tr><td>Division scoping</td><td class="y">&#10003;</td><td>&mdash;</td><td>&mdash;</td><td>Documented &sect;6.2 and per module</td></tr>
+      <tr><td>Dashboard</td><td class="y">&#10003;</td><td>Licence-fee drill-through does not reproduce its figure</td><td>&mdash;</td><td>Documented &sect;4 with the mismatch flagged</td></tr>
+      <tr><td>Location &amp; unit masters</td><td class="y">&#10003;</td><td>Clusters have no edit action</td><td>&mdash;</td><td>Documented &sect;9.4</td></tr>
+      <tr><td>Contractor management</td><td class="y">&#10003;</td><td>Edit form narrower than registration; no delete in UI</td><td>&mdash;</td><td>Documented &sect;10.3, &sect;10.5</td></tr>
+      <tr><td>Vendor management</td><td class="y">&#10003;</td><td><strong>No edit or delete screen</strong></td><td>&mdash;</td><td>Documented &sect;11.4 prominently</td></tr>
+      <tr><td>ID card &amp; QR</td><td class="y">&#10003;</td><td>Per-card status link has no UI</td><td>&mdash;</td><td>Documented &sect;12</td></tr>
+      <tr><td>Public verification</td><td class="y">&#10003;</td><td>&mdash;</td><td>&mdash;</td><td>Documented &sect;12.7 with the privacy exposure flagged</td></tr>
+      <tr><td>Vendor renewals</td><td class="y">&#10003;</td><td><strong>No permission checks at all</strong></td><td>&mdash;</td><td>Documented &sect;13 with a prominent warning</td></tr>
+      <tr><td>Complaints &amp; ATR chain</td><td class="y">&#10003;</td><td>Assignment to a person has no control</td><td>&mdash;</td><td>Documented &sect;14</td></tr>
+      <tr><td>Inspections &amp; ATR chain</td><td class="y">&#10003;</td><td>Assignment to a person has no control</td><td>&mdash;</td><td>Documented &sect;15</td></tr>
+      <tr><td>Penalties &amp; recovery</td><td class="y">&#10003;</td><td>&mdash;</td><td>&mdash;</td><td>Documented &sect;16</td></tr>
+      <tr><td>Approval workflows</td><td class="y">&#10003;</td><td>&mdash;</td><td>&mdash;</td><td>Six workflows documented; Training Manual &sect;6</td></tr>
+      <tr><td>Document upload</td><td class="y">&#10003;</td><td>Uploads publicly readable; no delete for vendor documents</td><td>&mdash;</td><td>Documented &sect;21 with the exposure flagged</td></tr>
+      <tr><td>Search &amp; filter</td><td class="y">&#10003;</td><td>Per-module only</td><td><strong>Global search</strong></td><td>Documented &sect;5.1 as non-functional</td></tr>
+      <tr><td>Sorting</td><td class="no">&mdash;</td><td>Server-side default ordering only</td><td>User-selectable column sort</td><td>Documented &sect;7.1</td></tr>
+      <tr><td>Reports &amp; builder</td><td class="y">&#10003;</td><td>&mdash;</td><td>&mdash;</td><td>Documented &sect;17</td></tr>
+      <tr><td>Excel export</td><td class="y">&#10003;</td><td>Two &ldquo;Excel&rdquo; buttons produce CSV; two exports capped at 2,000</td><td>&mdash;</td><td>Documented &sect;18.4</td></tr>
+      <tr><td>Excel import</td><td class="y">&#10003;</td><td>Only Stations importable as a master</td><td>Vendor, contractor, unit, user import</td><td>Documented &sect;18.1</td></tr>
+      <tr><td>Audit logs</td><td class="y">&#10003;</td><td>Eight filter actions are never written</td><td><strong>Login / logout auditing</strong></td><td>Documented &sect;20.4 prominently</td></tr>
+      <tr><td>Notifications &mdash; in-app</td><td class="y">&#10003;</td><td>Read state is per-browser, not per-user</td><td>&mdash;</td><td>Documented &sect;19.3</td></tr>
+      <tr><td>Notifications &mdash; outbound</td><td class="no">&mdash;</td><td>Preference panel present but inert</td><td><strong>Email, SMS, push</strong></td><td>Documented &sect;19.4 prominently</td></tr>
+      <tr><td>Validation</td><td class="y">&#10003;</td><td>No format checks on mobile, PAN, GSTIN, Aadhaar beyond length</td><td>&mdash;</td><td>Documented per module</td></tr>
+      <tr><td>Error handling</td><td class="y">&#10003;</td><td>&mdash;</td><td>&mdash;</td><td>~60 messages catalogued &sect;22</td></tr>
+      <tr><td>Configuration / settings</td><td class="no">&mdash;</td><td>&mdash;</td><td><strong>No settings screen exists</strong></td><td>Documented &sect;5.3</td></tr>
+      <tr><td>Help / support</td><td class="no">&mdash;</td><td>&mdash;</td><td><strong>No help screen exists</strong></td><td>Documented &sect;5.3</td></tr>
+      <tr><td>Admin module (dropdowns)</td><td class="no">&mdash;</td><td>Permission and API exist</td><td><strong>No management screen</strong></td><td>Documented &sect;5.2, Training &sect;7.4</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ═══ 3 ═══ -->
+<section class="chap" id="c3">
+  <div class="chap-head"><span class="chap-num">Section 3</span><h2>Fully Implemented</h2></div>
+
+  <p>Verified end to end: a screen control reaches a guarded endpoint, the service performs the operation, the database is written, and the audit trail records it.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Capability</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td>JWT authentication</td><td>bcrypt cost 12; 12-hour token; expiry distinguished from tampering; 401 clears the session and redirects</td></tr>
+      <tr><td>Two-layer permission enforcement</td><td>Route guard on the browser plus an independent server guard on every endpoint; Super Admin HQ bypass implemented identically on both sides</td></tr>
+      <tr><td>Division / self / assignee scoping</td><td>Applied to list queries and to single-record reads; out-of-scope reads return 404 rather than 403, so scope cannot be probed</td></tr>
+      <tr><td>Admin-tier delegation</td><td>Only Super Admin HQ may create, edit, or disable Super Admin HQ, HQ Admin, or Divisional Admin accounts; checked against both current and requested role</td></tr>
+      <tr><td>Role &amp; permission matrix administration</td><td>14 &times; 6 grid, editable and persisted; changes take effect without re-login</td></tr>
+      <tr><td>Dashboard aggregation</td><td>Five group cards, seven alert panels, HQ division toggle, five filters, three chart types, drill-through with interaction tracking, automatic refresh</td></tr>
+      <tr><td>Vendor onboarding</td><td>Five-step wizard; conditional station and unit requirements derived from live data; both certificate numbers enforced; date-order validation</td></tr>
+      <tr><td>ID card issue &rarr; sign &rarr; QR &rarr; PDF</td><td>One approval applies the signature image, builds the QR text, renders the PDF, stamps the issue date, and activates the card; two formats; division-scoped signing</td></tr>
+      <tr><td>Public QR verification</td><td>Unauthenticated endpoint; renders status, vendor data, validity, and verification steps; stamps a last-checked time on every scan</td></tr>
+      <tr><td>Complaint ATR chain</td><td>Submit &rarr; review &rarr; decide &rarr; close, with send-back; stage-skipping refused; submitter-only editing; full status history</td></tr>
+      <tr><td>Inspection ATR chain</td><td>Draft &rarr; submit &rarr; review &rarr; decide &rarr; close, plus return-to-inspector; author-only submission enforced</td></tr>
+      <tr><td>Penalty money trail</td><td>Three independent state families; forward-only recovery; part-payment and full-payment rules; separate recovery verification with resubmission</td></tr>
+      <tr><td>Report builder</td><td>Eight modules; type-aware operators; grouping and aggregation; preview; CSV and true XLSX export; templates with sharing and usage tracking; export history</td></tr>
+      <tr><td>Audit trail</td><td>28 controllers write entries carrying user, role, division, action, module, record, before, after, details, IP, and user agent; passwords stripped; a failed audit write never blocks the operation</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ═══ 4 ═══ -->
+<section class="chap" id="c4">
+  <div class="chap-head"><span class="chap-num">Section 4</span><h2>Partially Implemented</h2></div>
+
+  <div class="finding h">
+    <div class="f-head"><span class="f-id">F&ndash;01</span><span class="f-t">Vendor Renewals is not permission-checked</span><span class="sev h">High</span></div>
+    <div class="f-body"><dl>
+      <dt>What exists</dt><dd>The full renewal workflow &mdash; create, list, approve, reject &mdash; works, and approval correctly pushes the new expiry onto the vendor record and reactivates them.</dd>
+      <dt>What is absent</dt><dd>The renewal router applies authentication only. No endpoint carries a permission guard, so <strong>any authenticated user</strong> &mdash; Inspector, Dealing Section, Complaint Cell &mdash; can create, approve, and reject renewals. The screen's own Approve and Reject buttons are not permission-gated either. Every other module in SERVMS guards both layers.</dd>
+      <dt>Consequence</dt><dd>An expired vendor can be returned to Active service by any signed-in user. This is the widest privilege gap in the system.</dd>
+      <dt>Remedy</dt><dd>Add <code>requirePermission("vendor_management", &hellip;)</code> to each renewal route &mdash; view on the reads, create on the POST, approve/reject on the PATCH &mdash; and gate the screen's buttons to match.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;6.4 and &sect;13, both as prominent warnings.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;02</span><span class="f-t">No edit or delete screen for vendors</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>What exists</dt><dd>Working update and delete endpoints, correctly guarded, with matching client API definitions already written.</dd>
+      <dt>What is absent</dt><dd>No screen invokes either. The client hooks <code>useEditVendorMutation</code> and <code>useDeleteVendorMutation</code> are defined and never referenced. Only status, the two verifications, and unit or contractor transfers can be changed after onboarding.</dd>
+      <dt>Consequence</dt><dd>Twelve captured fields &mdash; name, father's name, date of birth, Aadhaar, mobile, address, blood group, vendor type, photograph, signature, and both validity dates &mdash; are permanent from the moment the wizard is submitted. A misspelled name needs a database change.</dd>
+      <dt>Remedy</dt><dd>Add an edit view reusing the wizard's field definitions. The endpoint and its validation already exist, so this is UI work only.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;11.4; Training Manual &sect;7.1 as the &ldquo;golden rule&rdquo;.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;03</span><span class="f-t">No edit, delete, or approval screen for users</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>What exists</dt><dd>Working endpoints for full update, partial update, delete, approve, and reject &mdash; all correctly guarded, including the Admin-tier check.</dd>
+      <dt>What is absent</dt><dd>User Management offers only Toggle, Reset Password, and Transfer. No client API definition exists for edit, delete, approve, or reject, so no screen could call them. The <code>pending_approval</code> user status has no interface at all.</dd>
+      <dt>Consequence</dt><dd>Once created, a user's name, Employee Number, username, HRMS ID, designation, grade, email, mobile, station, signing authority, and signature are permanent. Card Signing Authority in particular can never be revoked through the interface.</dd>
+      <dt>Remedy</dt><dd>Add an edit dialog mirroring Add New User, plus an approval queue for pending accounts. Endpoints and validation already exist.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;7.3.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;04</span><span class="f-t">Assignment to a named individual has no control</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>What exists</dt><dd>Both the complaint and inspection assignment endpoints accept an assignee, validate it, store it, and join it back for display. The assignment history and the detail views are ready to show an assignee name.</dd>
+      <dt>What is absent</dt><dd>Both assignment dialogs offer a target unit and remarks only. No control sets the assignee, so it is always empty.</dd>
+      <dt>Consequence</dt><dd>Work can be routed to units but never to people. The Dealing Section's assignee-scoped visibility therefore rests on unit assignment alone, and personal accountability for an assigned case is not recorded.</dd>
+      <dt>Remedy</dt><dd>Add an optional assignee picker to both dialogs, populated from users in the target unit's division.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;14.6 and &sect;15.6.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;05</span><span class="f-t">Contractor edit form is narrower than registration</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>What exists</dt><dd>Nine fields are editable: contact, mobile, email, licence number and validity, registration fee, award date, tenure, and contract value.</dd>
+      <dt>What is absent</dt><dd>Company name, PAN, GSTIN, registered address, and division are captured at registration and appear on no edit form &mdash; even though the update endpoint accepts and validates all five.</dd>
+      <dt>Consequence</dt><dd>A statutory identifier entered incorrectly at registration cannot be corrected. Division in particular cannot be changed, so a contractor registered against the wrong division stays there.</dd>
+      <dt>Remedy</dt><dd>Extend the edit form to the fields the endpoint already accepts.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;10.3.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;06</span><span class="f-t">Clusters cannot be edited</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>What exists</dt><dd>A working cluster update endpoint and a defined <code>useEditClusterMutation</code> hook.</dd>
+      <dt>What is absent</dt><dd>The Clusters tab renders a Remove action only. The hook is never referenced. Units, Stations, and Trains all have edit actions.</dd>
+      <dt>Consequence</dt><dd>Changing a cluster's name, type, or membership requires removing and recreating it, breaking any unit that references it.</dd>
+      <dt>Remedy</dt><dd>Add an edit action to the Clusters tab. The endpoint and hook already exist.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;9.4.</dd>
+    </dl></div>
+  </div>
+</section>
+
+<!-- ═══ 5 ═══ -->
+<section class="chap" id="c5">
+  <div class="chap-head"><span class="chap-num">Section 5</span><h2>Present in the Backend, Absent from the UI</h2></div>
+
+  <p>Working, guarded endpoints that no screen reaches. Each is dead weight unless a screen is added or the endpoint is retired.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Endpoint</th><th>Capability</th><th>Client hook</th><th>Severity</th></tr></thead>
+    <tbody>
+      <tr><td><code>PUT /users/:id</code><br><code>PATCH /users/:id</code></td><td>Edit a user</td><td>None defined</td><td class="sev m">Medium</td></tr>
+      <tr><td><code>DELETE /users/:id</code></td><td>Delete a user</td><td>None defined</td><td class="sev l">Low</td></tr>
+      <tr><td><code>POST /users/:id/approve</code><br><code>POST /users/:id/reject</code></td><td>Approve or reject a pending account</td><td>None defined</td><td class="sev m">Medium</td></tr>
+      <tr><td><code>PATCH /users/:id/change-password</code></td><td>Self-service password change</td><td>None defined</td><td class="sev h">High &mdash; see F&ndash;08</td></tr>
+      <tr><td><code>PATCH /vendors/:id</code></td><td>Edit a vendor</td><td>Defined, unused</td><td class="sev m">Medium</td></tr>
+      <tr><td><code>DELETE /vendors/:id</code></td><td>Delete a vendor</td><td>Defined, unused</td><td class="sev l">Low</td></tr>
+      <tr><td><code>DELETE /vendors/:id/documents/:docId</code></td><td>Delete a vendor document</td><td>Defined, unused</td><td class="sev l">Low</td></tr>
+      <tr><td><code>GET /vendors/:id/verification</code></td><td>Dedicated verification read</td><td>Defined, unused</td><td class="sev l">Low</td></tr>
+      <tr><td><code>DELETE /contractors/:id</code></td><td>Delete a contractor</td><td>Defined, unused</td><td class="sev l">Low</td></tr>
+      <tr><td><code>PATCH /idcards/:vendorId/status-link</code></td><td>Per-card status spreadsheet link</td><td>Defined, unused</td><td class="sev l">Low</td></tr>
+      <tr><td><code>PATCH /clusters/:id</code></td><td>Edit a cluster</td><td>Defined, unused</td><td class="sev l">Low</td></tr>
+      <tr><td><code>GET /penalties/notifications</code></td><td>Penalty-specific notification feed</td><td>Defined, unused</td><td class="sev l">Low</td></tr>
+      <tr><td><code>POST /dropdowns</code><br><code>PATCH /dropdowns/:id</code><br><code>DELETE /dropdowns/:id</code><br><code>POST /dropdowns/:id/activate</code></td><td>Managed dropdown administration &mdash; the entire <code>admin_module</code> permission</td><td>Defined, unused</td><td class="sev m">Medium &mdash; see F&ndash;07</td></tr>
+      <tr><td><code>GET /penalties/:id</code>, <code>/units/:id</code>, <code>/clusters/:id</code>, <code>/renewals/:id</code></td><td>Single-record reads</td><td>Some defined, none used &mdash; screens read from the list payload</td><td class="sev l">Low</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;07</span><span class="f-t">The Admin Module permission governs nothing reachable</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>What exists</dt><dd><code>admin_module</code> is one of the 14 modules in the permission matrix, is granted to Super Admin HQ and HQ Admin, and guards four working dropdown-administration endpoints.</dd>
+      <dt>What is absent</dt><dd>No screen calls any of them. The client's dropdown API is read-only in practice &mdash; the only category read anywhere is <code>contract_category</code>, on the unit form. Complaint and inspection type masters have their own screens, guarded by role name rather than by this permission.</dd>
+      <dt>Consequence</dt><dd>A row in the permission matrix that changes nothing, and a managed-dropdown facility that can only be administered by direct API call. Contract categories in particular cannot be maintained by any user.</dd>
+      <dt>Remedy</dt><dd>Either add a dropdown administration screen behind this permission, or remove <code>admin_module</code> from the matrix so it does not imply a capability that is unreachable.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;5.2; Training Manual &sect;7.4.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding h">
+    <div class="f-head"><span class="f-id">F&ndash;08</span><span class="f-t">Temporary passwords can never be replaced by their owner</span><span class="sev h">High</span></div>
+    <div class="f-body"><dl>
+      <dt>What exists</dt><dd>An approved reset generates a temporary password, stores its hash, and flags the account. The change-password endpoint exists, validates a current and new password, and clears the flag on success.</dd>
+      <dt>What is absent</dt><dd>No screen calls it and no client hook is defined. The temporary-password flag is set and never read: nothing prompts the user, and nothing blocks normal use.</dd>
+      <dt>Consequence</dt><dd>A system-generated temporary password, transcribed by hand from a banner and relayed verbally, becomes the account's permanent credential. Changing it again requires a fresh two-person reset. Over time, a growing share of accounts are secured by short machine-generated strings that have been spoken aloud.</dd>
+      <dt>Remedy</dt><dd>Add a change-password screen, and force it on next sign-in whenever the temporary flag is set. The endpoint and validation already exist.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;7.4 and &sect;3.4; Training Manual EX&ndash;07 makes trainees discover it deliberately.</dd>
+    </dl></div>
+  </div>
+</section>
+
+<!-- ═══ 6 ═══ -->
+<section class="chap" id="c6">
+  <div class="chap-head"><span class="chap-num">Section 6</span><h2>Present in the UI, Not Properly Connected</h2></div>
+
+  <p>Visible controls that do not do what a user would reasonably expect.</p>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;09</span><span class="f-t">The global search field is decorative</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>Where</dt><dd>Application top bar, on every signed-in screen.</dd>
+      <dt>Behaviour</dt><dd>Rendered with a placeholder reading &ldquo;Search across SERVMS&hellip;&rdquo; and no value binding, no change handler, and no submit handler. It accepts typing and does nothing with it.</dd>
+      <dt>Consequence</dt><dd>The most prominent control in the frame is inert. Users type into it and conclude the system is broken or slow. No cross-module search exists anywhere.</dd>
+      <dt>Remedy</dt><dd>Implement it, or remove it. Leaving a visibly inert search field in the frame of every screen actively misleads.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;5.1 and &sect;22.7; Training Manual EX&ndash;24 step 1.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;10</span><span class="f-t">&ldquo;Forgot Password?&rdquo; is a dead anchor</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>Where</dt><dd>Login screen, beside the password field.</dd>
+      <dt>Behaviour</dt><dd>An anchor targeting <code>#forgot</code>. No such element or route exists. It changes the address fragment and nothing else.</dd>
+      <dt>Consequence</dt><dd>A locked-out user presses the one control that appears to help them and gets no feedback at all. Support load falls on administrators with no prompt telling the user to contact one.</dd>
+      <dt>Remedy</dt><dd>Replace with guidance text naming the assisted-reset procedure, or build the flow. The email service and templates already exist.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;3.4; Training Manual EX&ndash;24 step 2.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;11</span><span class="f-t">Notification preferences are saved but have no channel</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>Where</dt><dd>Notification Centre, lower half.</dd>
+      <dt>Behaviour</dt><dd>Email Alerts, SMS Alerts, Push Notifications, three per-category channel matrices, and a digest frequency are all persisted &mdash; to browser storage. Nothing on the server reads them, and no email, SMS, or push channel exists for any of these events. The only outbound message SERVMS ever sends is the password-reset notice to a fixed HQ mailbox, which these settings do not control.</dd>
+      <dt>Consequence</dt><dd>The panel represents a complete alerting subsystem that does not exist. Its presence is worse than its absence: a user who enables Email Alerts for Financial Audits reasonably stops checking the Dashboard.</dd>
+      <dt>Remedy</dt><dd>Hide the panel until a channel exists, or label it clearly as forthcoming. Then implement server-side delivery driven by the same rules the in-app feed already computes.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;19.4; Training Manual EX&ndash;24 step 6 and the non-negotiable assessment items.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;12</span><span class="f-t">&ldquo;Reset to Default&rdquo; does not reset to a default</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>Where</dt><dd>Role Management, above the permission matrix.</dd>
+      <dt>Behaviour</dt><dd>Re-reads the currently saved permissions from the server, discarding unsaved changes on screen. No default matrix is stored anywhere, so none can be restored.</dd>
+      <dt>Consequence</dt><dd>An administrator who has just saved a damaging change presses this button expecting recovery and gets confirmation of the damage instead. There is no undo for a permission save.</dd>
+      <dt>Remedy</dt><dd>Rename to &ldquo;Discard Changes&rdquo;. Separately, consider seeding a stored default matrix so a genuine reset becomes possible.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;8.5; Training Manual EX&ndash;08 and &sect;11.1.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;13</span><span class="f-t">Two unreachable placeholder screens</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>Where</dt><dd><code>SettingsPage.tsx</code> and <code>HelpCenterPage.tsx</code>.</dd>
+      <dt>Behaviour</dt><dd>Both are complete components with a heading and one line of placeholder text. Neither is registered as a route and neither has a menu entry, so neither can be opened by any means. Both addresses fall through to the Dashboard.</dd>
+      <dt>Consequence</dt><dd>Dead code implying a settings and help capability that does not exist. SERVMS has no settings screen; the only user-adjustable preferences anywhere are the inert notification ones from F&ndash;11.</dd>
+      <dt>Remedy</dt><dd>Delete both, or complete and route them.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;5.3; Training Manual EX&ndash;24 step 9.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;14</span><span class="f-t">&ldquo;Export Summary&rdquo; downloads raw JSON</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>Where</dt><dd>Reports hub, top right.</dd>
+      <dt>Behaviour</dt><dd>Serialises the four on-screen metric objects and downloads them as <code>servms-report-summary.json</code>.</dd>
+      <dt>Consequence</dt><dd>Beside a Report Builder producing CSV and XLSX, a button labelled &ldquo;Export Summary&rdquo; that yields a developer-oriented data file is misleading. It cannot be opened by its likely audience.</dd>
+      <dt>Remedy</dt><dd>Produce a formatted summary in CSV or XLSX, or remove the button.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;17.1.</dd>
+    </dl></div>
+  </div>
+</section>
+
+<!-- ═══ 7 ═══ -->
+<section class="chap" id="c7">
+  <div class="chap-head"><span class="chap-num">Section 7</span><h2>Not Implemented</h2></div>
+
+  <p>Capabilities with no working path in either layer.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Capability</th><th>Status</th><th>Severity</th></tr></thead>
+    <tbody>
+      <tr><td>Self-service password reset</td><td>Absent. The login control is inert (F&ndash;10); the assisted two-person flow is the only route.</td><td class="sev m">Medium</td></tr>
+      <tr><td>Self-service password change</td><td>Endpoint exists, no screen (F&ndash;08).</td><td class="sev h">High</td></tr>
+      <tr><td>Global cross-module search</td><td>Absent. The top-bar field is inert (F&ndash;09).</td><td class="sev m">Medium</td></tr>
+      <tr><td>Outbound email, SMS, push notification</td><td>Absent for every business event. Only the password-reset request notice is sent, to a fixed address (F&ndash;11).</td><td class="sev m">Medium</td></tr>
+      <tr><td>Login / logout audit entries</td><td>Absent. The filter offers them; no controller writes them (F&ndash;16).</td><td class="sev h">High</td></tr>
+      <tr><td>Multi-factor authentication</td><td>Absent. Username and password only.</td><td class="sev m">Medium</td></tr>
+      <tr><td>Account lockout after failed attempts</td><td>Absent. Sign-in attempts are unlimited and unrecorded.</td><td class="sev m">Medium</td></tr>
+      <tr><td>Password complexity, expiry, reuse prevention</td><td>Absent. Six-character minimum is the only rule.</td><td class="sev m">Medium</td></tr>
+      <tr><td>Idle session timeout; server-side revocation</td><td>Absent. Tokens are valid for 12 hours regardless of activity and cannot be revoked.</td><td class="sev l">Low</td></tr>
+      <tr><td>Settings screen</td><td>Absent and unreachable (F&ndash;13).</td><td class="sev l">Low</td></tr>
+      <tr><td>Help / support screen</td><td>Absent and unreachable (F&ndash;13).</td><td class="sev l">Low</td></tr>
+      <tr><td>Dropdown / master-data administration screen</td><td>Absent; endpoints and permission exist (F&ndash;07).</td><td class="sev m">Medium</td></tr>
+      <tr><td>User-selectable column sorting</td><td>Absent on every listing. Order is fixed server-side.</td><td class="sev l">Low</td></tr>
+      <tr><td>Bulk import for vendors, contractors, units, trains, clusters, users</td><td>Absent. Stations is the only importable master.</td><td class="sev m">Medium</td></tr>
+      <tr><td>Read-access auditing</td><td>Absent. The trail records changes, not views.</td><td class="sev l">Low</td></tr>
+      <tr><td>Vendor or contractor self-service portal</td><td>Absent by design. Staff-only, plus the public verification page.</td><td class="sev l">By design</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ═══ 8 ═══ -->
+<section class="chap" id="c8">
+  <div class="chap-head"><span class="chap-num">Section 8</span><h2>Inconsistencies Between Layers</h2></div>
+
+  <div class="finding h">
+    <div class="f-head"><span class="f-id">F&ndash;15</span><span class="f-t">Account status is not checked at sign-in</span><span class="sev h">High</span></div>
+    <div class="f-body"><dl>
+      <dt>Layers</dt><dd>Database defines four statuses &mdash; active, inactive, suspended, pending_approval. The UI exposes a Toggle action and renders the status prominently. The authentication path reads none of it.</dd>
+      <dt>Behaviour</dt><dd>The login lookup selects the user by username and verifies the password. It does not filter or test <code>users_status</code> at any point. A user set to Inactive, Suspended, or Pending Approval signs in normally and operates with full role permissions.</dd>
+      <dt>Consequence</dt><dd>Deactivation is presentational. The one control an administrator would use to remove a departing member of staff's access does not remove it, while displaying a badge that says it has. This is the most consequential defect in the system: it is silent, it looks like it worked, and the failure only becomes visible if someone tests it.</dd>
+      <dt>Remedy</dt><dd>Reject sign-in for any status other than <code>active</code>, with a distinct message. Consider also rejecting requests whose token belongs to a since-deactivated account.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;3.7, &sect;7.3, &sect;22.7, &sect;23.3, and the FAQ; Training Manual EX&ndash;24 step 5 and a non-negotiable assessment item.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding h">
+    <div class="f-head"><span class="f-id">F&ndash;16</span><span class="f-t">Audit filter offers eight actions that are never written</span><span class="sev h">High</span></div>
+    <div class="f-body"><dl>
+      <dt>Layers</dt><dd>The audit service defines 22 action types. The Audit Logs screen offers 17 of them as filters. Only 14 are ever written by a controller.</dd>
+      <dt>Behaviour</dt><dd><code>LOGIN</code>, <code>LOGOUT</code>, <code>DOWNLOAD</code>, <code>PRINT</code>, <code>PASSWORD_RESET</code>, <code>RECOVER</code>, <code>RENEW</code>, and <code>ISSUE</code> appear in the filter and are written nowhere. Most seriously, the login controller updates the last-login timestamp and issues a token without writing any audit entry.</dd>
+      <dt>Consequence</dt><dd><strong>Sign-ins and sign-outs are not recorded anywhere.</strong> The only trace of a sign-in is the &ldquo;Last Login&rdquo; column, which holds one timestamp and is overwritten each time. There is no way to establish who accessed the system, when, or from where &mdash; and no way to detect use of a compromised account. An auditor filtering for Login receives an empty result that reads as &ldquo;no sign-ins occurred&rdquo;.</dd>
+      <dt>Remedy</dt><dd>Write a <code>LOGIN</code> entry on success (and on failure, which would also give the missing basis for lockout), a <code>LOGOUT</code> entry on sign-out, and <code>PASSWORD_RESET</code> on reset approval. Remove filter options for actions that remain unwritten.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;20.4 as a prominent gap; Training Manual EX&ndash;23 step 12 makes trainees observe it.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;17</span><span class="f-t">Sub Admins are entitled to manage type masters but cannot see the buttons</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>Layers</dt><dd>Server: complaint and inspection type management is gated on an explicit role list &mdash; HQ Admin, Divisional Admin, <strong>HQ Sub Admin, Divisional Sub Admin</strong>. UI: the Complaints screen gates its button on <code>admin_module: create</code> or <code>complaint_management: approve_reject</code>; the Inspections screen on <code>inspection_management: approve_reject</code>.</dd>
+      <dt>Behaviour</dt><dd>Neither Sub Admin role holds any of those permissions, so neither sees either button &mdash; despite being explicitly permitted by the server.</dd>
+      <dt>Consequence</dt><dd>A documented entitlement is unreachable for two of the eight roles. Type-master maintenance falls entirely to the Admin tier, contrary to the intended delegation. This also matters operationally: RailMadad imports create complaint types automatically, and curating them is exactly the kind of task a Sub Admin should own.</dd>
+      <dt>Remedy</dt><dd>Gate both buttons on the same role list the server uses.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;14.8 and &sect;15.9; Training Manual &sect;4.3, &sect;4.5, and EX&ndash;24 step 10.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;18</span><span class="f-t">Client API base address does not match the server port</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>Layers</dt><dd><code>client/.env</code> sets the API base to port 5000. <code>server/.env.example</code> and the README both specify port 4000, and the README explicitly notes that 4000 was chosen to avoid a conflict on macOS. The compiled default in the client source points at a production host.</dd>
+      <dt>Consequence</dt><dd>A developer following the README gets a client that cannot reach its API, with network errors and no explanatory message. Three sources disagree about a single value.</dd>
+      <dt>Remedy</dt><dd>Align <code>client/.env</code> with the documented port and remove the production host as a compiled-in fallback.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;19</span><span class="f-t">README describes a setup that does not exist</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>Layers</dt><dd>The README instructs the reader to run <code>server/database/setup.sql</code>, describes a 16-table schema, and lists <code>superadmin</code> as the Super Admin username. The repository actually contains <code>server/db_schema.sql</code> with 38 tables and a <code>seed.ts</code> script, and the seeded Super Admin username is <code>superadminhq</code>.</dd>
+      <dt>Consequence</dt><dd>The published setup path fails at the first command. The documented sign-in credential is wrong. A new starter cannot get the system running from the README alone.</dd>
+      <dt>Remedy</dt><dd>Rewrite the database setup section against the current schema file and seed script, and correct the credential table.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;20</span><span class="f-t">Uploaded documents are publicly readable</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>Layers</dt><dd>Every upload &mdash; Aadhaar scans, medical certificates, police verification reports, penalty recovery receipts, generated ID card PDFs &mdash; is written to a directory served as unauthenticated static content.</dd>
+      <dt>Behaviour</dt><dd>Anyone holding a document address can open it without signing in. Names include a timestamp so they are not trivially guessable, but they are also not protected, and the addresses appear in the browser and in shareable links.</dd>
+      <dt>Consequence</dt><dd>The permission matrix and division scoping govern who can find a document, not who can read one. A link forwarded outside the intended audience discloses the file. Vendor identity documents and generated ID cards are the most sensitive material in the system.</dd>
+      <dt>Remedy</dt><dd>Serve uploads through an authenticated route that checks the requester's permission and division scope against the owning record.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;21.4 and &sect;23.4.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding m">
+    <div class="f-head"><span class="f-id">F&ndash;21</span><span class="f-t">QR payload carries full Aadhaar and address in plain text</span><span class="sev m">Medium</span></div>
+    <div class="f-body"><dl>
+      <dt>Layers</dt><dd>The QR text encodes the vendor's name and address, full Aadhaar number, both verification validity dates, unit, vendor type, contractor, card validity, issuing authority, a verification link, and a status-sheet link. The public verification page independently displays the full Aadhaar and address to anyone who opens it.</dd>
+      <dt>Behaviour</dt><dd>Scanning a printed card with any QR reader yields the full payload without contacting SERVMS at all. Format 1 masks the Aadhaar in its printed body &mdash; but the QR beside it does not.</dd>
+      <dt>Consequence</dt><dd>A printed vendor ID card is a self-contained disclosure of that vendor's Aadhaar number and home address. The masking on Format 1 gives a false impression of protection.</dd>
+      <dt>Remedy</dt><dd>Reduce the QR payload to the card number and the verification link, and let the authenticated-or-limited verification page decide what to reveal. Mask the Aadhaar on the public page.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;12.6, &sect;12.7, &sect;23.5; Training Manual EX&ndash;18 and a non-negotiable assessment item.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;22</span><span class="f-t">Two &ldquo;Excel&rdquo; buttons produce CSV</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>Behaviour</dt><dd>Vendor Management's <em>Export to Excel</em> and Audit Logs' <em>Export Excel</em> both build CSV. Complaints, Inspections, and the Report Builder produce genuine <code>.xlsx</code> workbooks.</dd>
+      <dt>Consequence</dt><dd>Both open correctly in Excel, so the impact is cosmetic &mdash; but inconsistent labelling across a single application undermines confidence in the rest of it.</dd>
+      <dt>Remedy</dt><dd>Relabel, or produce XLSX using the workbook writer already present.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;18.4.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;23</span><span class="f-t">Vendor and Penalty exports truncate silently at 2,000 rows</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>Behaviour</dt><dd>Both exports request a fixed limit of 2,000 rows. If the filtered set is larger, the file simply stops. No warning, no indication in the file, no row count shown.</dd>
+      <dt>Consequence</dt><dd>An incomplete extract that looks complete. A division with more than 2,000 vendors would produce a truncated compliance report with nothing to signal it.</dd>
+      <dt>Remedy</dt><dd>Paginate through the full set, or warn when the total exceeds the cap.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;18.4 and the FAQ; Training Manual &sect;8.3.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;24</span><span class="f-t">Notification read state is per-browser, not per-user</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>Behaviour</dt><dd>Read notification identifiers are kept in browser storage. Nothing is sent to the server.</dd>
+      <dt>Consequence</dt><dd>The unread badge differs between a user's own machines and resets when browser data is cleared. Two people sharing a workstation share each other's read state.</dd>
+      <dt>Remedy</dt><dd>Persist read state per user on the server, or accept and document the limitation as a deliberate simplification.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;19.3.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;25</span><span class="f-t">Dashboard licence-fee figures link to a screen that cannot reproduce them</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>Behaviour</dt><dd>Three Pending Action sub-groups &mdash; licence fee due within 7 days, within 14 days, and overdue &mdash; navigate to Location &amp; Unit Management with a division filter only. That screen has no licence-fee filter.</dd>
+      <dt>Consequence</dt><dd>The figure clicked and the list arrived at do not correspond, with nothing on screen to explain why. The user cannot act on the number they were shown.</dd>
+      <dt>Remedy</dt><dd>Add a licence-fee-due filter to the Units tab and thread it through the link.</dd>
+      <dt>Documented</dt><dd>User Manual &sect;4.4; Training Manual EX&ndash;03.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;26</span><span class="f-t">Contractor status enum is inconsistent between create and change-status</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>Behaviour</dt><dd>Create and update validation accept active, pending_approval, suspended, and expired. The change-status action additionally accepts blacklisted, and the client type declares all five. Blacklisting is therefore reachable only through the dedicated status action &mdash; which is deliberate, and mirrors the vendor module.</dd>
+      <dt>Consequence</dt><dd>Correct behaviour, but not evident from the type definitions alone. Worth an explicit note in the schema.</dd>
+      <dt>Remedy</dt><dd>Document the intent in the validation file, as the vendor module already does.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;27</span><span class="f-t">Identity fields validated on length only</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>Behaviour</dt><dd>Aadhaar is checked for exactly 12 characters &mdash; not that they are digits. PAN is checked for exactly 10 characters, GSTIN for exactly 15, neither against its known format. Mobile numbers are trimmed and otherwise unchecked, on both users and vendors, despite being mandatory on both forms.</dd>
+      <dt>Consequence</dt><dd>Transcription errors pass validation and reach the database. Since vendors have no edit screen (F&ndash;02), a mistyped Aadhaar is permanent &mdash; and it is printed on the ID card and encoded in the QR.</dd>
+      <dt>Remedy</dt><dd>Apply format patterns to Aadhaar, PAN, GSTIN, and mobile. Low effort, and it compounds with F&ndash;02.</dd>
+    </dl></div>
+  </div>
+
+  <div class="finding l">
+    <div class="f-head"><span class="f-id">F&ndash;28</span><span class="f-t">Record codes generated from a random number rather than a sequence</span><span class="sev l">Low</span></div>
+    <div class="f-body"><dl>
+      <dt>Behaviour</dt><dd>Vendor codes are <code>V-2026-</code> plus a random four-digit number; complaint codes and penalty codes follow the same pattern. Contractor codes and inspection numbers, by contrast, use proper counters &mdash; <code>CON-001</code> and <code>INSP-2026-000001</code>.</dd>
+      <dt>Consequence</dt><dd>Only 9,000 distinct vendor codes exist per year. Collisions become likely well before that &mdash; at around 100 vendors the chance of a duplicate is roughly one in two. A collision surfaces as an opaque database error at the end of the wizard, and the vendor year prefix is hard-coded to 2026.</dd>
+      <dt>Remedy</dt><dd>Use the same counter approach as inspection numbers for vendors, complaints, and penalties, and derive the year from the current date.</dd>
+    </dl></div>
+  </div>
+</section>
+
+<!-- ═══ 9 ═══ -->
+<section class="chap" id="c9">
+  <div class="chap-head"><span class="chap-num">Section 9</span><h2>Dormant Database Fields</h2></div>
+
+  <p>Columns that are stored but never written by a form and never read by a screen. Each is a small maintenance liability and a source of confusion when reading the schema.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Table</th><th>Column</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>contractors</td><td><code>compliance_rate</code></td><td>Declared in the client type; on no form, no detail view, no listing, no report</td></tr>
+      <tr><td>contractors</td><td><code>penalty_index</code></td><td>Same &mdash; no write path, no read path</td></tr>
+      <tr><td>contractors</td><td><code>irctc_licensed</code></td><td>Same</td></tr>
+      <tr><td>contractors</td><td><code>joined_date</code></td><td>Same. <code>award_date</code> serves the equivalent purpose and is used</td></tr>
+      <tr><td>units</td><td><code>duration_type</code></td><td>Explicitly marked legacy in the source, superseded by <code>contract_type</code>. Not on any form or screen</td></tr>
+      <tr><td>vendors</td><td><code>father_name</code>, <code>date_of_birth</code></td><td>Captured by the onboarding wizard, then displayed nowhere in the application</td></tr>
+      <tr><td>penalties</td><td><code>penalties_status</code></td><td>Legacy three-state column, kept synchronised server-side but superseded by the approval and recovery pair. Documented as legacy in the source</td></tr>
+      <tr><td>users</td><td><code>is_temp_password</code></td><td>Written on reset approval, then never read &mdash; see F&ndash;08</td></tr>
+      <tr><td>users</td><td><code>users_status</code></td><td>Written and displayed, but never read by the authentication path &mdash; see F&ndash;15</td></tr>
+      <tr><td>vendor_id_cards</td><td><code>excel_status_link</code></td><td>Read when present, but no screen can set it &mdash; see F&ndash;07 group</td></tr>
+      <tr><td>complaints, inspections</td><td><code>assigned_to_user_id</code></td><td>Accepted, validated, stored, and joined for display &mdash; but no form control ever sets it. See F&ndash;04</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call"><span class="lbl">Note</span>
+    <p>Three entries in this table are dormant for a reason that matters: <code>is_temp_password</code>, <code>users_status</code>, and <code>assigned_to_user_id</code> are not unused fields but <em>unfinished features</em>. Each has a working write path and a missing read path, which is why they appear here and in Sections 4 to 8 both.</p>
+  </div>
+</section>
+
+<!-- ═══ 10 ═══ -->
+<section class="chap" id="c10">
+  <div class="chap-head"><span class="chap-num">Section 10</span><h2>Priority Findings</h2></div>
+
+  <p>Ordered by consequence, not by effort. The first three change what the system is trusted to do; the remainder change how well it does it.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Finding</th><th>Why it comes first</th><th>Effort</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>F&ndash;15</strong> Sign-in ignores account status</td><td>The control administrators use to remove access does not remove it, while showing a badge that says it has. Silent, and only detectable by testing.</td><td>Very low &mdash; one condition in the login path</td></tr>
+      <tr><td>2</td><td><strong>F&ndash;16</strong> Sign-ins are not audited</td><td>No record of who accessed the system or when. Compounds F&ndash;15: a deactivated account's continued use leaves no trace either.</td><td>Low &mdash; three audit calls</td></tr>
+      <tr><td>3</td><td><strong>F&ndash;01</strong> Vendor Renewals is unguarded</td><td>Any authenticated user can return an expired vendor to Active service. The widest privilege gap in the system.</td><td>Very low &mdash; four middleware additions</td></tr>
+      <tr><td>4</td><td><strong>F&ndash;08</strong> No self-service password change</td><td>Machine-generated temporary passwords, relayed verbally, become permanent credentials.</td><td>Low &mdash; endpoint exists, needs a screen</td></tr>
+      <tr><td>5</td><td><strong>F&ndash;20</strong> Uploads publicly readable</td><td>Identity documents and ID card PDFs sit outside the access model entirely.</td><td>Medium &mdash; authenticated file route</td></tr>
+      <tr><td>6</td><td><strong>F&ndash;21</strong> Aadhaar and address in the QR</td><td>A printed card discloses both to any scanner. Format 1&rsquo;s masking implies protection that is not there.</td><td>Low &mdash; reduce the payload</td></tr>
+      <tr><td>7</td><td><strong>F&ndash;02</strong>, <strong>F&ndash;03</strong> No edit screens for vendors or users</td><td>Twelve vendor fields and eleven user fields are permanent on entry. Compounds F&ndash;27.</td><td>Medium &mdash; UI only, endpoints exist</td></tr>
+      <tr><td>8</td><td><strong>F&ndash;11</strong> Inert notification preferences</td><td>A user who enables alerts reasonably stops checking the Dashboard. The absence is safer than the illusion.</td><td>Very low to hide; high to implement</td></tr>
+      <tr><td>9</td><td><strong>F&ndash;09</strong>, <strong>F&ndash;10</strong> Inert search and Forgot Password</td><td>The two most prominent controls a new user reaches for both do nothing.</td><td>Very low to remove; medium to build</td></tr>
+      <tr><td>10</td><td><strong>F&ndash;28</strong> Random record codes</td><td>Vendor code collisions become likely at around 100 vendors per year, surfacing as an opaque error at the end of the wizard.</td><td>Low &mdash; reuse the existing counter pattern</td></tr>
+      <tr><td>11</td><td><strong>F&ndash;17</strong> Sub Admin type-master buttons hidden</td><td>A documented entitlement is unreachable for two roles, and the curation task is exactly theirs.</td><td>Very low &mdash; align two conditions</td></tr>
+      <tr><td>12</td><td><strong>F&ndash;18</strong>, <strong>F&ndash;19</strong> Setup documentation wrong</td><td>The published setup path fails at the first command and the documented credential is wrong.</td><td>Very low &mdash; documentation only</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call caution"><span class="lbl">Quick wins</span>
+    <p>Findings 1, 2, 3, 11, and 12 are all very low effort and together close the two highest-severity security gaps, the widest privilege gap, a role entitlement, and the broken setup path. None requires new UI. They would be a well-shaped first change-set.</p>
+  </div>
+</section>
+
+<!-- ═══ 11 ═══ -->
+<section class="chap" id="c11">
+  <div class="chap-head"><span class="chap-num">Section 11</span><h2>Documentation Coverage</h2></div>
+
+  <h3>11.1 What the manuals cover</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Deliverable</th><th>Covers</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Part A &mdash; User Manual</strong></td><td>24 sections. Every reachable screen, the complete permission matrix, all seven complaint statuses and nine inspection statuses, all three penalty state families, every form field with its validation, all four card states and both formats, six approval workflows, the full import and export inventory, ~60 catalogued error messages, security guidance, and 22 FAQ entries.</td></tr>
+      <tr><td><strong>Part B &mdash; Training Manual</strong></td><td>Nine sessions across three tracks, eight role curricula, 24 exercises with objective, demonstration, hands-on task, and expected result, 18 troubleshooting scenarios, a role-tiered assessment checklist, and trainer's notes on timing and common misconceptions.</td></tr>
+      <tr><td><strong>Part C &mdash; this report</strong></td><td>31 findings across six categories, a 29-area compliance matrix, dormant-field inventory, and a prioritised remediation order.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>11.2 Traceability</h3>
+  <p>Every gap in this report is reflected in both manuals, so no reader of either can form an inaccurate picture of what the system does.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Finding</th><th>User Manual</th><th>Training Manual</th></tr></thead>
+    <tbody>
+      <tr><td>F&ndash;01 Renewals unguarded</td><td>&sect;6.4, &sect;13</td><td>&sect;4 role curricula</td></tr>
+      <tr><td>F&ndash;02 No vendor edit</td><td>&sect;11.4, FAQ</td><td>&sect;7.1, &sect;7.2, EX&ndash;13, EX&ndash;24</td></tr>
+      <tr><td>F&ndash;03 No user edit</td><td>&sect;7.3, FAQ</td><td>&sect;7.2, EX&ndash;05, EX&ndash;24</td></tr>
+      <tr><td>F&ndash;04 No assignee control</td><td>&sect;14.6, &sect;15.6</td><td>EX&ndash;19</td></tr>
+      <tr><td>F&ndash;05 Contractor edit narrower</td><td>&sect;10.3</td><td>&sect;7.2, EX&ndash;12</td></tr>
+      <tr><td>F&ndash;06 No cluster edit</td><td>&sect;9.4</td><td>&sect;7.2, EX&ndash;09, EX&ndash;24</td></tr>
+      <tr><td>F&ndash;07 Admin Module unreachable</td><td>&sect;5.2</td><td>&sect;7.4</td></tr>
+      <tr><td>F&ndash;08 No password change</td><td>&sect;3.4, &sect;7.4</td><td>EX&ndash;07, EX&ndash;24, &sect;9.1</td></tr>
+      <tr><td>F&ndash;09 Inert global search</td><td>&sect;5.1, &sect;22.7, FAQ</td><td>EX&ndash;24</td></tr>
+      <tr><td>F&ndash;10 Dead Forgot Password</td><td>&sect;3.4, &sect;22.7, FAQ</td><td>EX&ndash;24, &sect;9.1</td></tr>
+      <tr><td>F&ndash;11 Inert notification preferences</td><td>&sect;19.4, &sect;22.7, FAQ</td><td>EX&ndash;24, &sect;9.1, &sect;10.6</td></tr>
+      <tr><td>F&ndash;12 Misleading Reset to Default</td><td>&sect;8.5, &sect;22.7</td><td>EX&ndash;08, &sect;9.1, &sect;11.1</td></tr>
+      <tr><td>F&ndash;13 Unreachable placeholders</td><td>&sect;5.3, FAQ</td><td>EX&ndash;24</td></tr>
+      <tr><td>F&ndash;14 JSON Export Summary</td><td>&sect;17.1</td><td>&sect;8.3</td></tr>
+      <tr><td>F&ndash;15 Status not checked at sign-in</td><td>&sect;3.7, &sect;7.3, &sect;22.7, &sect;23.3, FAQ</td><td>EX&ndash;24, &sect;9.1, &sect;10.6, &sect;11.1, &sect;11.3</td></tr>
+      <tr><td>F&ndash;16 Sign-ins not audited</td><td>&sect;20.4, &sect;22.7, FAQ</td><td>EX&ndash;23, &sect;10.5</td></tr>
+      <tr><td>F&ndash;17 Sub Admin buttons hidden</td><td>&sect;14.8, &sect;15.9</td><td>&sect;4.3, &sect;4.5, &sect;7.4, EX&ndash;24</td></tr>
+      <tr><td>F&ndash;20 Public uploads</td><td>&sect;21.4, &sect;23.4</td><td>&sect;9.1</td></tr>
+      <tr><td>F&ndash;21 Aadhaar in QR</td><td>&sect;12.6, &sect;12.7, &sect;23.5</td><td>EX&ndash;18, &sect;10.6</td></tr>
+      <tr><td>F&ndash;22 Excel buttons produce CSV</td><td>&sect;18.4, FAQ</td><td>EX&ndash;23, &sect;8.3</td></tr>
+      <tr><td>F&ndash;23 Silent 2,000-row cap</td><td>&sect;18.4, FAQ</td><td>&sect;8.3, &sect;9.1, &sect;11.1</td></tr>
+      <tr><td>F&ndash;24 Per-browser read state</td><td>&sect;19.3, FAQ</td><td>&sect;9.1</td></tr>
+      <tr><td>F&ndash;25 Licence-fee drill-through</td><td>&sect;4.4, &sect;22.7, FAQ</td><td>EX&ndash;03, &sect;8.2</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>11.3 Deliberately excluded</h3>
+  <p>No credential, secret, key, connection string, or internal address appears in any of the three documents. Security findings are stated in terms of what a user must do differently, not in terms of how to exploit them. The two authentication findings (F&ndash;15, F&ndash;16) are documented because staff must know that deactivation does not remove access and that sign-ins leave no trail &mdash; withholding either would leave readers relying on a control that does not work.</p>
+
+  <h3>11.4 Documentation review triggers</h3>
+  <p>Any of the following changes invalidates part of the manuals and should trigger a revision:</p>
+  <ul>
+    <li>A change to the seeded permission matrix &mdash; User Manual &sect;6.3 states it exactly.</li>
+    <li>A new role, module, or permission action.</li>
+    <li>Remediation of any finding in Section 10 &mdash; each is documented as a current limitation and several appear in the training assessment.</li>
+    <li>A new screen, or a screen removed from the navigation.</li>
+    <li>A change to any workflow's state machine &mdash; complaint, inspection, penalty, ID card, or renewal.</li>
+    <li>A change to upload types or size limits.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  <span>SERVMS Implementation Audit &middot; Part C</span>
+  <span>Companion to the SERVMS User Manual and Training Manual</span>
+</footer>
+
+</div>

@@ -4,8 +4,32 @@ import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import createHttpError from "http-errors";
 import { type Request, type Response } from "express";
-import { isDivisionScoped, isSelfScoped, isAssigneeScoped, assertRecordAccessible } from "../../common/constants/roles";
+import {
+  isDivisionScoped,
+  isSelfScoped,
+  isAssigneeScoped,
+  assertRecordAccessible,
+  pinToOwnDivision,
+} from "../../common/constants/roles";
 import { logAudit } from "../../common/services/auditLog.service";
+import { assertRefsInOwnDivision, assertRecordInOwnDivision } from "../../common/services/divisionScope.service";
+
+// The unit/station/train an inspection covers must be in the caller's division.
+const assertInspectionRefsInOwnDivision = (req: Request) =>
+  assertRefsInOwnDivision(req.user as any, {
+    unit: req.body.unit_id,
+    station: req.body.station_id,
+    train: req.body.train_id,
+  });
+
+// Loads the inspection named by :id and applies the caller's scope (division,
+// own-inspection for Inspectors, assigned-to-me for Dealing Section).
+const loadAccessibleInspection = async (req: Request) => {
+  const inspection = await inspectionService.getInspectionById(req.params.id as string);
+  if (!inspection) throw createHttpError(404, "Inspection not found");
+  assertRecordAccessible(req.user as any, inspection, { ownerField: "inspector_id", assigneeField: "assigned_to_user_id" });
+  return inspection;
+};
 
 const str = (v: unknown) => (v !== undefined && v !== "" ? String(v) : undefined);
 const num = (v: unknown) => (v !== undefined && v !== "" ? Number(v) : undefined);
@@ -13,6 +37,8 @@ const num = (v: unknown) => (v !== undefined && v !== "" ? Number(v) : undefined
 // ─── CREATE INSPECTION (Inspector only, starts as Draft) ───────────────────────
 export const createInspection = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id;
+  pinToOwnDivision(req.user as any, req.body);
+  await assertInspectionRefsInOwnDivision(req);
   const result = await inspectionService.createInspection(req.body, userId);
 
   const files = req.files as Express.Multer.File[] | undefined;
@@ -87,6 +113,9 @@ export const editInspection = asyncHandler(async (req: Request, res: Response) =
       throw createHttpError(403, `Cannot edit an inspection that is "${(oldData as any).inspection_status}"`);
     }
   }
+  assertRecordAccessible(user, oldData, { ownerField: "inspector_id", assigneeField: "assigned_to_user_id" });
+  pinToOwnDivision(user, req.body);
+  await assertInspectionRefsInOwnDivision(req);
   const result = await inspectionService.editInspection(req.params.id as string, req.body);
 
   const files = req.files as Express.Multer.File[] | undefined;
@@ -99,7 +128,7 @@ export const editInspection = asyncHandler(async (req: Request, res: Response) =
 });
 
 export const deleteInspection = asyncHandler(async (req: Request, res: Response) => {
-  const oldData = await inspectionService.getInspectionById(req.params.id as string);
+  const oldData = await loadAccessibleInspection(req);
   const result = await inspectionService.deleteInspection(req.params.id as string);
   await logAudit({ req, module: "inspection", recordId: req.params.id, action: "DELETE", oldData });
   res.send(createResponse(result, "Inspection deleted"));
@@ -108,7 +137,7 @@ export const deleteInspection = asyncHandler(async (req: Request, res: Response)
 // ─── SUBMIT INSPECTION (Draft/Returned -> Submitted, owner only) ───────────────
 export const submitInspection = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id;
-  const oldData = await inspectionService.getInspectionById(req.params.id as string);
+  const oldData = await loadAccessibleInspection(req);
   const result = await inspectionService.submitInspection(req.params.id as string, userId);
   await logAudit({ req, module: "inspection", recordId: req.params.id, action: "STATUS_CHANGE", oldData, newData: result });
   res.send(createResponse(result, "Inspection submitted for review"));
@@ -117,7 +146,7 @@ export const submitInspection = asyncHandler(async (req: Request, res: Response)
 // ─── SUB-ADMIN: return inspection to Inspector for correction ─────────────────
 export const returnToInspector = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id;
-  const oldData = await inspectionService.getInspectionById(req.params.id as string);
+  const oldData = await loadAccessibleInspection(req);
   const result = await inspectionService.returnToInspector(req.params.id as string, userId, req.body?.remarks);
   await logAudit({ req, module: "inspection", recordId: req.params.id, action: "STATUS_CHANGE", oldData, newData: result, details: "Returned to Inspector" });
   res.send(createResponse(result, "Inspection returned to Inspector"));
@@ -140,7 +169,7 @@ export const getInspectionMetrics = asyncHandler(async (req: Request, res: Respo
 // ─── CLOSE INSPECTION (Admin, once Approved/Rejected) ──────────────────────────
 export const closeInspection = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id;
-  const oldData = await inspectionService.getInspectionById(req.params.id as string);
+  const oldData = await loadAccessibleInspection(req);
   const result = await atrService.closeInspection(req.params.id as string, userId, req.body?.remarks);
   await logAudit({ req, module: "inspection", recordId: req.params.id, action: "STATUS_CHANGE", oldData, newData: result });
   res.send(createResponse(result, "Inspection closed"));
@@ -148,6 +177,7 @@ export const closeInspection = asyncHandler(async (req: Request, res: Response) 
 
 // ─── DELETE DOCUMENT ────────────────────────────────────────────────────────────
 export const deleteDocument = asyncHandler(async (req: Request, res: Response) => {
+  await assertRecordInOwnDivision(req.user as any, "inspection_document", req.params.documentId);
   const result = await inspectionService.deleteDocument(req.params.documentId as string);
   await logAudit({ req, module: "inspection", recordId: req.params.documentId, action: "DELETE", details: "Document deleted" });
   res.send(createResponse(result, "Document deleted"));

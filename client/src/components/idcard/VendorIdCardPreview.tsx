@@ -75,7 +75,7 @@ export default function VendorIdCardPreview({ template, card, qrDataUrl }: Vendo
         </div>
 
         <div className={styles.department}>Commercial Department</div>
-        <div className={styles.mobile}>{card.contractor_mobile ?? "—"}</div>
+        <div className={styles.mobile}>{card.mobile_number ?? "—"}</div>
 
         {tpl.backInfoKind === "contractor" ? (
           <div className={styles.backLines}>

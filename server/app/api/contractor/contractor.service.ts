@@ -1,21 +1,38 @@
 import { pool } from "../../common/services/sql.service";
 import { type RowDataPacket, type ResultSetHeader } from "mysql2";
+import createHttpError from "http-errors";
 
 // ─── GENERATE NEXT CONTRACTOR CODE ─────────────────────────────────────────────
+// Uses the highest numeric suffix ever issued (soft-deleted rows included, so a
+// code is never reused) rather than whichever row happens to be newest.
 const generateContractorCode = async (): Promise<string> => {
   const [rows] = await pool.execute<RowDataPacket[]>(
-    "SELECT contractor_code FROM contractors ORDER BY id DESC LIMIT 1"
+    "SELECT MAX(CAST(SUBSTRING_INDEX(contractor_code, '-', -1) AS UNSIGNED)) AS last_num FROM contractors"
   );
-  const last = rows[0]?.contractor_code as string | undefined;
-  const lastNum = last ? Number(last.split("-")[1] ?? 0) : 0;
-  const nextNum = lastNum + 1;
+  const nextNum = Number(rows[0]?.last_num ?? 0) + 1;
   return `CON-${String(nextNum).padStart(3, "0")}`;
 };
 
-// ─── CREATE CONTRACTOR ──────────────────────────────────────────────────────────
-export const createContractor = async (data: any, userId: number) => {
-  const contractorCode = await generateContractorCode();
+const isContractorCodeCollision = (err: any): boolean =>
+  err?.code === "ER_DUP_ENTRY" && String(err?.message ?? "").includes("contractor_code");
 
+// contract_end_date is derived (award_date + tenure_months) and read by the
+// Dashboard's contract-expiry alerts — recomputed in SQL after every create/edit
+// so it can never drift from the two fields it's based on.
+const syncContractEndDate = async (id: number | string) => {
+  await pool.execute(
+    `UPDATE contractors
+     SET contract_end_date = IF(award_date IS NOT NULL AND tenure_months IS NOT NULL,
+                                DATE_ADD(award_date, INTERVAL tenure_months MONTH), NULL)
+     WHERE id = ?`,
+    [id]
+  );
+};
+
+// ─── CREATE CONTRACTOR ──────────────────────────────────────────────────────────
+// New contractors always start as pending_approval — any other status goes through
+// changeContractorStatus (approve_reject permission), never through create/edit.
+export const createContractor = async (data: any, userId: number) => {
   const query = `
     INSERT INTO contractors (
       contractor_code, company_name, primary_contact_name, primary_contact_mobile, official_email,
@@ -25,33 +42,44 @@ export const createContractor = async (data: any, userId: number) => {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  const values = [
-    contractorCode,
-    data.company_name,
-    data.primary_contact_name ?? null,
-    data.primary_contact_mobile ?? null,
-    data.official_email ?? null,
-    data.registered_address ?? null,
-    data.pan_number ?? null,
-    data.gstin ?? null,
-    data.epf_registration ?? null,
-    data.license_number ?? null,
-    data.license_validity_date ?? null,
-    data.annual_registration_fee ?? 0,
-    data.irctc_licensed ? 1 : 0,
-    data.logo_image ?? null,
-    data.division_id ?? null,
-    data.contractors_status ?? "pending_approval",
-    data.fee_status ?? "paid",
-    new Date().toISOString().split("T")[0],
-    data.award_date ?? null,
-    data.tenure_months ?? null,
-    data.annual_contract_value ?? null,
-    userId,
-  ];
+  // Two simultaneous onboardings can compute the same next code; the unique key
+  // rejects the second insert, so retry it with a freshly computed code.
+  for (let attempt = 1; ; attempt++) {
+    const contractorCode = await generateContractorCode();
+    const values = [
+      contractorCode,
+      data.company_name,
+      data.primary_contact_name ?? null,
+      data.primary_contact_mobile ?? null,
+      data.official_email ?? null,
+      data.registered_address ?? null,
+      data.pan_number ?? null,
+      data.gstin ?? null,
+      data.epf_registration ?? null,
+      data.license_number ?? null,
+      data.license_validity_date ?? null,
+      data.annual_registration_fee ?? 0,
+      data.irctc_licensed === true || data.irctc_licensed === "true" || data.irctc_licensed === "1" ? 1 : 0,
+      data.logo_image ?? null,
+      data.division_id ?? null,
+      "pending_approval",
+      data.fee_status ?? "paid",
+      new Date().toISOString().split("T")[0],
+      data.award_date ?? null,
+      data.tenure_months ?? null,
+      data.annual_contract_value ?? null,
+      userId,
+    ];
 
-  const [result] = await pool.execute<ResultSetHeader>(query, values);
-  return { id: result.insertId, contractor_code: contractorCode };
+    try {
+      const [result] = await pool.execute<ResultSetHeader>(query, values);
+      await syncContractEndDate(result.insertId);
+      return { id: result.insertId, contractor_code: contractorCode };
+    } catch (err) {
+      if (attempt < 5 && isContractorCodeCollision(err)) continue;
+      throw err;
+    }
+  }
 };
 
 // ─── GET CONTRACTORS (WITH SEARCH, FILTERS & PAGINATION) ───────────────────────
@@ -137,7 +165,7 @@ export const editContractor = async (id: string, data: any) => {
     "company_name", "primary_contact_name", "primary_contact_mobile", "official_email",
     "registered_address", "pan_number", "gstin", "epf_registration", "license_number",
     "license_validity_date", "annual_registration_fee", "irctc_licensed", "logo_image",
-    "division_id", "contractors_status", "fee_status", "compliance_rate", "penalty_index",
+    "division_id", "fee_status", "compliance_rate", "penalty_index",
     "award_date", "tenure_months", "annual_contract_value",
   ];
 
@@ -152,17 +180,34 @@ export const editContractor = async (id: string, data: any) => {
   }
 
   if (updates.length === 0) {
-    throw new Error("No updateable fields provided");
+    throw createHttpError(400, "No updateable fields provided");
   }
 
   values.push(id);
   const query = `UPDATE contractors SET ${updates.join(", ")} WHERE id = ?`;
   await pool.execute(query, values);
+  await syncContractEndDate(id);
   return { ...data, id };
 };
 
 // ─── DELETE CONTRACTOR ───────────────────────────────────────────────────────────
+// Blocked while units or vendors still point at this contractor — soft-deleting it
+// would leave them attached to a contractor that no longer appears anywhere.
 export const deleteContractor = async (id: string) => {
+  const [linkRows] = await pool.execute<RowDataPacket[]>(
+    `SELECT
+       (SELECT COUNT(*) FROM units WHERE contractor_id = ?) AS unit_count,
+       (SELECT COUNT(*) FROM vendors WHERE contractor_id = ? AND status = 1) AS vendor_count`,
+    [id, id]
+  );
+  const unitCount = Number(linkRows[0]?.unit_count ?? 0);
+  const vendorCount = Number(linkRows[0]?.vendor_count ?? 0);
+  if (unitCount > 0 || vendorCount > 0) {
+    throw createHttpError(
+      409,
+      `Cannot delete: ${unitCount} unit(s) and ${vendorCount} vendor(s) are still linked to this contractor. Unlink or transfer them first.`
+    );
+  }
   await pool.execute("UPDATE contractors SET status = 0 WHERE id = ?", [id]);
   return { id, deleted: true };
 };
@@ -173,7 +218,7 @@ export const changeContractorStatus = async (id: string, status: string) => {
     "SELECT contractors_status FROM contractors WHERE id = ? AND status = 1",
     [id]
   );
-  if (!rows[0]) throw new Error("Contractor not found");
+  if (!rows[0]) throw createHttpError(404, "Contractor not found");
   const previousStatus = rows[0].contractors_status;
 
   await pool.execute("UPDATE contractors SET contractors_status = ? WHERE id = ?", [status, id]);
@@ -181,11 +226,22 @@ export const changeContractorStatus = async (id: string, status: string) => {
 };
 
 // ─── UNIT LINKING (multiple units per contractor via units.contractor_id) ───────
+// Units can sit on a station, a train, or a cluster — resolve the display name and
+// division from whichever one is set (same COALESCE as unit.service.ts's DIVISION_EXPR).
+const UNIT_LOCATION_JOINS = `
+  LEFT JOIN stations st ON st.id = u.station_id
+  LEFT JOIN trains tr ON tr.id = u.train_id
+  LEFT JOIN location_clusters cl ON cl.id = u.cluster_id
+`;
+
 export const getContractorUnits = async (contractorId: string) => {
   const [rows] = await pool.execute<RowDataPacket[]>(
-    `SELECT u.id, u.unit_code, u.unit_name, u.station_id, st.station_name, u.units_status
+    `SELECT u.id, u.unit_code, u.unit_name, u.location_type, u.station_id, st.station_name,
+            COALESCE(st.station_name, CONCAT(tr.train_number, ' - ', tr.train_name), cl.cluster_name) AS location_name,
+            COALESCE(st.division_id, tr.division_id, cl.division_id) AS division_id,
+            u.units_status
      FROM units u
-     LEFT JOIN stations st ON st.id = u.station_id
+     ${UNIT_LOCATION_JOINS}
      WHERE u.contractor_id = ?
      ORDER BY u.unit_name ASC`,
     [contractorId]
@@ -193,18 +249,30 @@ export const getContractorUnits = async (contractorId: string) => {
   return rows;
 };
 
-export const assignUnit = async (contractorId: string, unitId: number) => {
+export const assignUnit = async (contractorId: string, unitId: number, contractorDivisionId: number | null) => {
   const [unitRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT id, unit_name, contractor_id FROM units WHERE id = ?",
+    `SELECT u.id, u.unit_name, u.contractor_id,
+            COALESCE(st.division_id, tr.division_id, cl.division_id) AS division_id
+     FROM units u
+     ${UNIT_LOCATION_JOINS}
+     WHERE u.id = ?`,
     [unitId]
   );
-  if (!unitRows[0]) throw new Error("Unit not found");
-  if (unitRows[0].contractor_id && Number(unitRows[0].contractor_id) !== Number(contractorId)) {
-    throw new Error("This unit is already linked to a different contractor");
+  const unit = unitRows[0];
+  if (!unit) throw createHttpError(404, "Unit not found");
+  if (unit.contractor_id && Number(unit.contractor_id) !== Number(contractorId)) {
+    throw createHttpError(409, "This unit is already linked to a different contractor");
+  }
+  if (
+    contractorDivisionId != null &&
+    unit.division_id != null &&
+    Number(unit.division_id) !== Number(contractorDivisionId)
+  ) {
+    throw createHttpError(400, "This unit belongs to a different division than the contractor");
   }
 
   await pool.execute("UPDATE units SET contractor_id = ? WHERE id = ?", [contractorId, unitId]);
-  return { unit_id: unitId, contractor_id: Number(contractorId), previous_contractor_id: unitRows[0].contractor_id };
+  return { unit_id: unitId, contractor_id: Number(contractorId), previous_contractor_id: unit.contractor_id };
 };
 
 export const unassignUnit = async (contractorId: string, unitId: number) => {
@@ -212,7 +280,7 @@ export const unassignUnit = async (contractorId: string, unitId: number) => {
     "SELECT id, contractor_id FROM units WHERE id = ? AND contractor_id = ?",
     [unitId, contractorId]
   );
-  if (!unitRows[0]) throw new Error("Unit is not linked to this contractor");
+  if (!unitRows[0]) throw createHttpError(404, "Unit is not linked to this contractor");
 
   await pool.execute("UPDATE units SET contractor_id = NULL WHERE id = ?", [unitId]);
   return { unit_id: unitId, previous_contractor_id: Number(contractorId) };

@@ -111,6 +111,14 @@ export const vendorApi = apiSlice.injectEndpoints({
         { type: "VendorTransfer" as const, id },
       ],
     }),
+    changeVendorStatus: builder.mutation<unknown, { id: number; vendor_status: Vendor["vendor_status"]; reason?: string }>({
+      query: ({ id, ...body }) => ({ url: `/vendors/${id}/status`, method: "POST", body }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "Vendor" as const, id: "LIST" },
+        { type: "Vendor" as const, id },
+        { type: "Vendor" as const, id: "METRICS" },
+      ],
+    }),
     deleteVendor: builder.mutation<unknown, number>({
       query: (id) => ({ url: `/vendors/${id}`, method: "DELETE" }),
       invalidatesTags: [
@@ -169,6 +177,7 @@ export const {
   useGetVendorMetricsQuery,
   useCreateVendorMutation,
   useEditVendorMutation,
+  useChangeVendorStatusMutation,
   useDeleteVendorMutation,
   useTransferVendorUnitMutation,
   useTransferVendorContractorMutation,

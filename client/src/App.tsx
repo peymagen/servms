@@ -30,11 +30,11 @@ import SavedReportsPage from "./pages/SavedReportsPage";
 import ExportHistoryPage from "./pages/ExportHistoryPage";
 import ImportManagementPage from "./pages/ImportManagementPage";
 import NotificationsPage from "./pages/NotificationsPage";
-import type { ModuleName } from "./types";
+import type { ModuleName, PermissionAction } from "./types";
 
-function protectedPage(page: ReactNode, module?: ModuleName) {
+function protectedPage(page: ReactNode, module?: ModuleName, action?: PermissionAction) {
   return (
-    <ProtectedRoute module={module}>
+    <ProtectedRoute module={module} action={action}>
       <AppShell>{page}</AppShell>
     </ProtectedRoute>
   );
@@ -54,6 +54,7 @@ function App() {
           <Route path="/locations" element={protectedPage(<LocationMastersPage />, "location_management")} />
           <Route path="/vendors" element={protectedPage(<VendorManagementPage />, "vendor_management")} />
           <Route path="/vendors/new" element={protectedPage(<VendorRegistrationPage />, "vendor_management")} />
+          <Route path="/vendors/:id/edit" element={protectedPage(<VendorRegistrationPage />, "vendor_management", "edit")} />
           <Route path="/contractors" element={protectedPage(<ContractorManagementPage />, "contractor_management")} />
           <Route path="/contractors/new" element={protectedPage(<ContractorRegistrationPage />, "contractor_management")} />
           <Route path="/id-cards" element={protectedPage(<IdCardQrPage />, "id_card_management")} />

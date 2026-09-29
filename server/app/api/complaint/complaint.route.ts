@@ -38,6 +38,7 @@ const validate = (req: Request, res: Response, next: NextFunction) => {
 const canManageComplaintTypes = requireAnyRole([
   ROLE.HQ_ADMIN,
   ROLE.DIVISIONAL_ADMIN,
+  ROLE.DEALING_SECTION,
   ROLE.HQ_SUB_ADMIN,
   ROLE.DIVISIONAL_SUB_ADMIN,
 ]);
@@ -75,7 +76,7 @@ router.get("/import/history", requirePermission("complaint_management", "view"),
 // generic permission matrix.
 router.delete(
   "/import/history/:id",
-  requireAnyRole([ROLE.HQ_ADMIN, ROLE.DIVISIONAL_ADMIN]),
+  requireAnyRole([ROLE.HQ_ADMIN, ROLE.DIVISIONAL_ADMIN, ROLE.DEALING_SECTION]),
   importController.deleteImportHistory
 );
 

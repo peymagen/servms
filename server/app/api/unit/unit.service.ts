@@ -45,6 +45,25 @@ function resolveLocationFields(data: Partial<IUnitCreate>) {
   };
 }
 
+// Division the requested station/train/cluster belongs to — lets the controller
+// stop a divisional user from placing a unit on another division's location.
+// Returns undefined when the payload doesn't set a location (e.g. a partial edit).
+export const getLocationDivisionId = async (data: Partial<IUnitCreate>): Promise<number | null | undefined> => {
+  const location = resolveLocationFields(data);
+  const lookups: Array<[unknown, string]> = [
+    [location.station_id, "SELECT division_id FROM stations WHERE id = ?"],
+    [location.train_id, "SELECT division_id FROM trains WHERE id = ?"],
+    [location.cluster_id, "SELECT division_id FROM location_clusters WHERE id = ?"],
+  ];
+  for (const [id, sql] of lookups) {
+    if (id) {
+      const [rows] = await pool.execute<RowDataPacket[]>(sql, [id]);
+      return rows[0]?.division_id ?? null;
+    }
+  }
+  return undefined;
+};
+
 // ─── CREATE UNIT ────────────────────────────────────────────────────────────────
 export const createUnit = async (data: IUnitCreate, userId: number) => {
   const location = resolveLocationFields(data);

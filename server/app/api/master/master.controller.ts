@@ -5,7 +5,21 @@ import { type Request, type Response } from "express";
 import { type RowDataPacket, type ResultSetHeader } from "mysql2";
 import * as XLSX from "xlsx";
 import fs from "fs";
-import { isDivisionScoped } from "../../common/constants/roles";
+import { isDivisionScoped, pinToOwnDivision, assertInOwnDivision } from "../../common/constants/roles";
+import createHttpError from "http-errors";
+
+// Division-scoped users may only edit/remove stations in their own division.
+const assertStationAccessible = async (req: Request) => {
+  const [rows] = await pool.execute<RowDataPacket[]>("SELECT division_id FROM stations WHERE id = ? AND status = 1", [
+    req.params.id,
+  ]);
+  if (!rows[0]) throw createHttpError(404, "Station not found");
+  try {
+    assertInOwnDivision(req.user as any, rows[0].division_id, "This station");
+  } catch {
+    throw createHttpError(404, "Station not found");
+  }
+};
 
 // ─── GET DIVISIONS ─────────────────────────────────────────────────────────────
 export const getDivisions = asyncHandler(async (req: Request, res: Response) => {
@@ -15,7 +29,8 @@ export const getDivisions = asyncHandler(async (req: Request, res: Response) => 
 
 // ─── GET STATIONS ──────────────────────────────────────────────────────────────
 export const getStations = asyncHandler(async (req: Request, res: Response) => {
-  const divisionId = req.query.division_id;
+  const user = req.user as any;
+  const divisionId = isDivisionScoped(user?.role_name) ? user.division_id : req.query.division_id;
   let query = `
     SELECT s.*, d.division_name FROM stations s
     LEFT JOIN divisions d ON d.id = s.division_id
@@ -35,6 +50,7 @@ export const getStations = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── CREATE STATION (individual entry) ──────────────────────────────────────────
 export const createStation = asyncHandler(async (req: Request, res: Response) => {
+  pinToOwnDivision(req.user as any, req.body);
   const { division_id, station_name, station_code, platform_count } = req.body;
   if (!division_id || !station_name || !station_code) {
     res.status(400).send(createResponse(null, "Division, Station Name, and Station Code are required"));
@@ -49,6 +65,9 @@ export const createStation = asyncHandler(async (req: Request, res: Response) =>
 
 // ─── EDIT STATION ────────────────────────────────────────────────────────────────
 export const editStation = asyncHandler(async (req: Request, res: Response) => {
+  await assertStationAccessible(req);
+  // Moving a station to another division is an HQ-level change.
+  if (isDivisionScoped((req.user as any)?.role_name)) delete req.body.division_id;
   const { division_id, station_name, station_code, platform_count } = req.body;
   const updates: string[] = [];
   const values: any[] = [];
@@ -67,6 +86,7 @@ export const editStation = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── DELETE STATION ──────────────────────────────────────────────────────────────
 export const deleteStation = asyncHandler(async (req: Request, res: Response) => {
+  await assertStationAccessible(req);
   const [inUse] = await pool.execute<RowDataPacket[]>(
     "SELECT COUNT(*) as cnt FROM units WHERE station_id = ? AND units_status != 'inactive'",
     [req.params.id]
@@ -100,6 +120,9 @@ export const bulkImportStations = asyncHandler(async (req: Request, res: Respons
 
   const inserted: string[] = [];
   const skipped: Array<{ row: number; reason: string }> = [];
+  // Divisional users can only import rows for their own division.
+  const importer = req.user as any;
+  const restrictDivisionId = isDivisionScoped(importer?.role_name) ? importer.division_id : null;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i] as Record<string, unknown>;
@@ -117,6 +140,10 @@ export const bulkImportStations = asyncHandler(async (req: Request, res: Respons
     const divisionId = divisionByName.get(divisionName.toLowerCase());
     if (!divisionId) {
       skipped.push({ row: rowNum, reason: `Unknown division "${divisionName}"` });
+      continue;
+    }
+    if (restrictDivisionId != null && Number(divisionId) !== Number(restrictDivisionId)) {
+      skipped.push({ row: rowNum, reason: `Division "${divisionName}" is not your division` });
       continue;
     }
 
@@ -149,7 +176,7 @@ export const getUnits = asyncHandler(async (req: Request, res: Response) => {
   const params: any[] = [];
 
   let query = `
-    SELECT u.* FROM units u
+    SELECT u.*, COALESCE(st.division_id, tr.division_id, cl.division_id) AS division_id FROM units u
     LEFT JOIN stations st ON st.id = u.station_id
     LEFT JOIN trains tr ON tr.id = u.train_id
     LEFT JOIN location_clusters cl ON cl.id = u.cluster_id

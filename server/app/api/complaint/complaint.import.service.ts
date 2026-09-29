@@ -96,7 +96,10 @@ const resolveOrCreateDropdown = async (
 export const importRailMadadComplaints = async (
   filePath: string,
   fileName: string,
-  userId: number
+  userId: number,
+  // Set for division-scoped importers: only rows for this division are imported,
+  // so each division uploads only its own RailMadad complaints.
+  restrictDivisionId: number | null = null
 ): Promise<ImportSummary> => {
   const workbook = XLSX.readFile(filePath);
   const sheet = workbook.Sheets[workbook.SheetNames[0] as string];
@@ -196,6 +199,10 @@ export const importRailMadadComplaints = async (
     // division from that unit — same convention as assignComplaint's backfill.
     if (!divisionId && unitId) {
       divisionId = await getUnitDivisionId(unitId);
+    }
+    if (restrictDivisionId != null && Number(divisionId) !== Number(restrictDivisionId)) {
+      failed.push({ row: rowNum, reason: `Division "${divCode ?? "—"}" is not your division — row skipped` });
+      continue;
     }
 
     const typeLabel = cleanString(row.compTypeName) ?? "Miscellaneous";
@@ -302,11 +309,14 @@ export const importRailMadadComplaints = async (
   };
 };
 
-export const getImportHistory = async (limit = 50) => {
+export const getImportHistory = async (limit = 50, divisionId?: number) => {
+  const whereSql = divisionId !== undefined ? "WHERE u.division_id = ?" : "";
   const [rows] = await pool.execute<RowDataPacket[]>(
     `SELECT ih.*, u.full_name as imported_by_name FROM complaint_import_history ih
      LEFT JOIN users u ON u.id = ih.imported_by
-     ORDER BY ih.created_at DESC LIMIT ${Number.isInteger(limit) ? limit : 50}`
+     ${whereSql}
+     ORDER BY ih.created_at DESC LIMIT ${Number.isInteger(limit) ? limit : 50}`,
+    divisionId !== undefined ? [divisionId] : []
   );
   return rows;
 };
@@ -315,6 +325,16 @@ export const getImportHistory = async (limit = 50) => {
 // in this app) and complaints don't carry a live FK back to it, so this only
 // removes the log entry itself — complaints already imported are untouched,
 // exactly like clearing an import receipt, not undoing the import.
+// Division of the user who ran the import — import logs carry no division of their own.
+export const getImportHistoryDivisionId = async (id: string): Promise<number | null | undefined> => {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT u.division_id FROM complaint_import_history ih LEFT JOIN users u ON u.id = ih.imported_by WHERE ih.id = ?`,
+    [id]
+  );
+  if (!rows[0]) return undefined;
+  return rows[0].division_id ?? null;
+};
+
 export const deleteImportHistory = async (id: string) => {
   const [result] = await pool.execute<ResultSetHeader>("DELETE FROM complaint_import_history WHERE id = ?", [id]);
   if (result.affectedRows === 0) throw new Error("Import history record not found");

@@ -7,12 +7,14 @@ import {
   useGetContractorUnitsQuery,
   useEditContractorMutation,
   useChangeContractorStatusMutation,
+  useDeleteContractorMutation,
   useAssignUnitMutation,
   useUnassignUnitMutation,
 } from "../api/contractorApi";
 import { useGetDivisionsQuery, useGetUnitsLiteQuery } from "../api/mastersApi";
 import { useGetAuditLogsQuery } from "../api/auditApi";
-import type { Contractor } from "../types";
+import type { Contractor, Division } from "../types";
+import { isDivisionScopedRole } from "../types/labels";
 import StatCard from "../components/ui/StatCard";
 import Pagination from "../components/ui/Pagination";
 import Field from "../components/ui/Field";
@@ -45,9 +47,11 @@ const currency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "
 
 export default function ContractorManagementPage() {
   const navigate = useNavigate();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const canEdit = can("contractor_management", "edit");
   const canChangeStatus = can("contractor_management", "approve_reject");
+  const canDelete = can("contractor_management", "delete");
+  const isScoped = isDivisionScopedRole(user?.role_name);
 
   const [offset, setOffset] = useState(0);
   // Seeds initial filters from the URL once (e.g. the Dashboard's Registered
@@ -81,6 +85,11 @@ export default function ContractorManagementPage() {
 
   const contractors = listData?.rows ?? [];
   const total = listData?.total ?? 0;
+  // The modal reads the refetched list row, not the snapshot taken when it opened,
+  // so edits and status changes show up immediately.
+  const liveDetailContractor = detailContractor
+    ? contractors.find((c) => c.id === detailContractor.id) ?? detailContractor
+    : null;
 
   return (
     <div>
@@ -95,9 +104,11 @@ export default function ContractorManagementPage() {
           <button type="button" className={styles.cancelBtn} onClick={() => setShowAdvanced((s) => !s)}>
             ⚏ {showAdvanced ? "Fewer Filters" : "Advanced Filters"}
           </button>
-          <button className={styles.addBtn} onClick={() => navigate("/contractors/new")}>
-            + Onboard New Contractor
-          </button>
+          {can("contractor_management", "create") && (
+            <button className={styles.addBtn} onClick={() => navigate("/contractors/new")}>
+              + Onboard New Contractor
+            </button>
+          )}
         </div>
       </div>
 
@@ -228,11 +239,14 @@ export default function ContractorManagementPage() {
         <Pagination total={total} limit={LIMIT} offset={offset} onOffsetChange={setOffset} />
       </div>
 
-      {detailContractor && (
+      {liveDetailContractor && (
         <ContractorDetailModal
-          contractor={detailContractor}
+          contractor={liveDetailContractor}
           canEdit={canEdit}
           canChangeStatus={canChangeStatus}
+          canDelete={canDelete}
+          canChangeDivision={!isScoped}
+          divisions={divisions}
           onClose={() => setDetailContractor(null)}
         />
       )}
@@ -255,11 +269,17 @@ function ContractorDetailModal({
   contractor,
   canEdit,
   canChangeStatus,
+  canDelete,
+  canChangeDivision,
+  divisions,
   onClose,
 }: {
   contractor: Contractor;
   canEdit: boolean;
   canChangeStatus: boolean;
+  canDelete: boolean;
+  canChangeDivision: boolean;
+  divisions: Division[];
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -282,7 +302,17 @@ function ContractorDetailModal({
           ))}
         </div>
 
-        {tab === "overview" && <OverviewTab contractor={contractor} canEdit={canEdit} canChangeStatus={canChangeStatus} />}
+        {tab === "overview" && (
+          <OverviewTab
+            contractor={contractor}
+            canEdit={canEdit}
+            canChangeStatus={canChangeStatus}
+            canDelete={canDelete}
+            canChangeDivision={canChangeDivision}
+            divisions={divisions}
+            onDeleted={onClose}
+          />
+        )}
         {tab === "units" && <UnitsTab contractor={contractor} canEdit={canEdit} />}
         {tab === "history" && <HistoryTab contractor={contractor} />}
 
@@ -305,41 +335,96 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function OverviewTab({
-  contractor,
-  canEdit,
-  canChangeStatus,
-}: {
-  contractor: Contractor;
-  canEdit: boolean;
-  canChangeStatus: boolean;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContractor, { isLoading: isSaving }] = useEditContractorMutation();
-  const [changeStatus, { isLoading: isChangingStatus }] = useChangeContractorStatusMutation();
-  const [error, setError] = useState<string | null>(null);
+type ContractorEditForm = {
+  company_name: string;
+  registered_address: string;
+  division_id: number | "";
+  primary_contact_name: string;
+  primary_contact_mobile: string;
+  official_email: string;
+  pan_number: string;
+  gstin: string;
+  epf_registration: string;
+  license_number: string;
+  license_validity_date: string;
+  annual_registration_fee: string;
+  award_date: string;
+  tenure_months: string;
+  annual_contract_value: string;
+};
 
-  const [form, setForm] = useState({
+function toEditForm(contractor: Contractor): ContractorEditForm {
+  return {
+    company_name: contractor.company_name ?? "",
+    registered_address: contractor.registered_address ?? "",
+    division_id: contractor.division_id ?? "",
     primary_contact_name: contractor.primary_contact_name ?? "",
     primary_contact_mobile: contractor.primary_contact_mobile ?? "",
     official_email: contractor.official_email ?? "",
+    pan_number: contractor.pan_number ?? "",
+    gstin: contractor.gstin ?? "",
+    epf_registration: contractor.epf_registration ?? "",
     license_number: contractor.license_number ?? "",
     license_validity_date: contractor.license_validity_date?.slice(0, 10) ?? "",
     annual_registration_fee: String(contractor.annual_registration_fee ?? ""),
     award_date: contractor.award_date?.slice(0, 10) ?? "",
     tenure_months: String(contractor.tenure_months ?? ""),
     annual_contract_value: String(contractor.annual_contract_value ?? ""),
-  });
+  };
+}
+
+function OverviewTab({
+  contractor,
+  canEdit,
+  canChangeStatus,
+  canDelete,
+  canChangeDivision,
+  divisions,
+  onDeleted,
+}: {
+  contractor: Contractor;
+  canEdit: boolean;
+  canChangeStatus: boolean;
+  canDelete: boolean;
+  canChangeDivision: boolean;
+  divisions: Division[];
+  onDeleted: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContractor, { isLoading: isSaving }] = useEditContractorMutation();
+  const [changeStatus, { isLoading: isChangingStatus }] = useChangeContractorStatusMutation();
+  const [deleteContractor, { isLoading: isDeleting }] = useDeleteContractorMutation();
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState<ContractorEditForm>(() => toEditForm(contractor));
+
+  const set = <K extends keyof ContractorEditForm>(key: K, value: ContractorEditForm[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
+
+  function startEditing() {
+    setForm(toEditForm(contractor));
+    setError(null);
+    setIsEditing(true);
+  }
 
   async function handleSave() {
     setError(null);
+    if (!form.company_name.trim()) {
+      setError("Company name cannot be empty");
+      return;
+    }
     try {
       await editContractor({
         id: contractor.id,
         data: {
+          company_name: form.company_name.trim(),
+          registered_address: form.registered_address || undefined,
+          division_id: canChangeDivision && form.division_id ? Number(form.division_id) : undefined,
           primary_contact_name: form.primary_contact_name || undefined,
           primary_contact_mobile: form.primary_contact_mobile || undefined,
           official_email: form.official_email || undefined,
+          pan_number: form.pan_number || undefined,
+          gstin: form.gstin || undefined,
+          epf_registration: form.epf_registration || undefined,
           license_number: form.license_number || undefined,
           license_validity_date: form.license_validity_date || undefined,
           annual_registration_fee: form.annual_registration_fee ? Number(form.annual_registration_fee) : undefined,
@@ -356,63 +441,101 @@ function OverviewTab({
 
   async function handleStatusChange(newStatus: Contractor["contractors_status"]) {
     setError(null);
+    let reason: string | undefined;
+    if (newStatus === "blacklisted") {
+      const entered = window.prompt(
+        `Blacklist ${contractor.company_name}? This should only be done for serious violations.\n\nReason (required):`
+      );
+      if (entered === null) return;
+      if (!entered.trim()) {
+        setError("A reason is required to blacklist a contractor");
+        return;
+      }
+      reason = entered.trim();
+    }
     try {
-      await changeStatus({ id: contractor.id, contractors_status: newStatus }).unwrap();
+      await changeStatus({ id: contractor.id, contractors_status: newStatus, reason }).unwrap();
     } catch (err: any) {
       setError(err?.data?.message ?? err?.message ?? "Unable to change status");
     }
   }
 
+  async function handleDelete() {
+    if (!window.confirm(`Delete ${contractor.company_name}? This removes it from all listings.`)) return;
+    setError(null);
+    try {
+      await deleteContractor(contractor.id).unwrap();
+      onDeleted();
+    } catch (err: any) {
+      setError(err?.data?.message ?? err?.message ?? "Unable to delete contractor");
+    }
+  }
+
   if (!isEditing) {
+    const status = contractor.contractors_status;
     return (
       <div>
         <div className={styles.formGrid}>
+          <DetailItem label="Contractor Code" value={contractor.contractor_code} />
+          <DetailItem label="Division" value={contractor.division_name ?? "—"} />
           <DetailItem label="Primary Contact" value={contractor.primary_contact_name ?? "—"} />
           <DetailItem label="Mobile" value={contractor.primary_contact_mobile ?? "—"} />
           <DetailItem label="Email" value={contractor.official_email ?? "—"} />
+          <DetailItem label="Registered Address" value={contractor.registered_address ?? "—"} />
+          <DetailItem label="PAN" value={contractor.pan_number ?? "—"} />
+          <DetailItem label="GSTIN" value={contractor.gstin ?? "—"} />
+          <DetailItem label="EPF Registration" value={contractor.epf_registration ?? "—"} />
           <DetailItem label="License Number" value={contractor.license_number ?? "—"} />
           <DetailItem label="License Validity" value={formatDate(contractor.license_validity_date)} />
           <DetailItem label="Annual Registration Fee" value={currency.format(contractor.annual_registration_fee ?? 0)} />
           <DetailItem label="Award Date" value={formatDate(contractor.award_date)} />
           <DetailItem label="Tenure" value={contractor.tenure_months ? `${contractor.tenure_months} months` : "—"} />
+          <DetailItem label="Contract End Date" value={formatDate(contractor.contract_end_date)} />
           <DetailItem label="Annual Contract Value" value={currency.format(contractor.annual_contract_value ?? 0)} />
-          <DetailItem label="Status" value={STATUS_LABELS[contractor.contractors_status]} />
+          <DetailItem label="Status" value={STATUS_LABELS[status]} />
         </div>
         {error && <div className={styles.errorBanner}>{error}</div>}
         <div className={styles.modalActions} style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
           {canEdit && (
-            <button type="button" className={styles.addBtn} onClick={() => setIsEditing(true)}>
-              Edit Contract Details
+            <button type="button" className={styles.addBtn} onClick={startEditing}>
+              Edit Contractor Details
             </button>
           )}
-          {canChangeStatus && contractor.contractors_status !== "active" && (
-            <button
-              type="button"
-              className={styles.pageBtn}
-              disabled={isChangingStatus}
-              onClick={() => handleStatusChange("active")}
-            >
-              Mark Active
+          {canChangeStatus && status !== "active" && (
+            <button type="button" className={styles.pageBtn} disabled={isChangingStatus} onClick={() => handleStatusChange("active")}>
+              {status === "pending_approval" ? "Approve (Mark Active)" : "Mark Active"}
             </button>
           )}
-          {canChangeStatus && contractor.contractors_status === "active" && (
-            <button
-              type="button"
-              className={styles.pageBtn}
-              disabled={isChangingStatus}
-              onClick={() => handleStatusChange("suspended")}
-            >
+          {canChangeStatus && status === "active" && (
+            <button type="button" className={styles.pageBtn} disabled={isChangingStatus} onClick={() => handleStatusChange("suspended")}>
               Suspend
             </button>
           )}
-          {canChangeStatus && contractor.contractors_status !== "expired" && (
+          {canChangeStatus && status !== "expired" && status !== "blacklisted" && (
+            <button type="button" className={styles.pageBtn} disabled={isChangingStatus} onClick={() => handleStatusChange("expired")}>
+              Mark Expired
+            </button>
+          )}
+          {canChangeStatus && status !== "blacklisted" && (
             <button
               type="button"
               className={styles.pageBtn}
+              style={{ color: "var(--color-danger, #c0392b)" }}
               disabled={isChangingStatus}
-              onClick={() => handleStatusChange("expired")}
+              onClick={() => handleStatusChange("blacklisted")}
             >
-              Mark Expired
+              Blacklist
+            </button>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              className={styles.pageBtn}
+              style={{ color: "var(--color-danger, #c0392b)", marginLeft: "auto" }}
+              disabled={isDeleting}
+              onClick={handleDelete}
+            >
+              {isDeleting ? "Deleting…" : "Delete"}
             </button>
           )}
         </div>
@@ -423,49 +546,80 @@ function OverviewTab({
   return (
     <div>
       <div className={styles.formGrid}>
+        <Field label="Company Name">
+          <input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} />
+        </Field>
+        <Field label="Division">
+          <select
+            value={form.division_id}
+            disabled={!canChangeDivision}
+            onChange={(e) => set("division_id", e.target.value ? Number(e.target.value) : "")}
+          >
+            <option value="">Select division…</option>
+            {divisions.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.division_name}
+              </option>
+            ))}
+          </select>
+        </Field>
         <Field label="Primary Contact">
-          <input
-            value={form.primary_contact_name}
-            onChange={(e) => setForm((f) => ({ ...f, primary_contact_name: e.target.value }))}
-          />
+          <input value={form.primary_contact_name} onChange={(e) => set("primary_contact_name", e.target.value)} />
         </Field>
         <Field label="Mobile">
-          <input
-            value={form.primary_contact_mobile}
-            onChange={(e) => setForm((f) => ({ ...f, primary_contact_mobile: e.target.value }))}
-          />
+          <input value={form.primary_contact_mobile} onChange={(e) => set("primary_contact_mobile", e.target.value)} />
         </Field>
         <Field label="Email">
-          <input value={form.official_email} onChange={(e) => setForm((f) => ({ ...f, official_email: e.target.value }))} />
+          <input value={form.official_email} onChange={(e) => set("official_email", e.target.value)} />
+        </Field>
+        <Field label="Registered Address">
+          <input value={form.registered_address} onChange={(e) => set("registered_address", e.target.value)} />
+        </Field>
+        <Field label="PAN">
+          <input
+            value={form.pan_number}
+            maxLength={10}
+            placeholder="ABCDE1234F"
+            onChange={(e) => set("pan_number", e.target.value.toUpperCase())}
+          />
+        </Field>
+        <Field label="GSTIN">
+          <input
+            value={form.gstin}
+            maxLength={15}
+            placeholder="22AAAAA0000A1Z5"
+            onChange={(e) => set("gstin", e.target.value.toUpperCase())}
+          />
+        </Field>
+        <Field label="EPF Registration">
+          <input value={form.epf_registration} onChange={(e) => set("epf_registration", e.target.value)} />
         </Field>
         <Field label="License Number">
-          <input value={form.license_number} onChange={(e) => setForm((f) => ({ ...f, license_number: e.target.value }))} />
+          <input value={form.license_number} onChange={(e) => set("license_number", e.target.value)} />
         </Field>
         <Field label="License Validity">
-          <input
-            type="date"
-            value={form.license_validity_date}
-            onChange={(e) => setForm((f) => ({ ...f, license_validity_date: e.target.value }))}
-          />
+          <input type="date" value={form.license_validity_date} onChange={(e) => set("license_validity_date", e.target.value)} />
         </Field>
         <Field label="Annual Registration Fee">
           <input
             type="number"
+            min="0"
             value={form.annual_registration_fee}
-            onChange={(e) => setForm((f) => ({ ...f, annual_registration_fee: e.target.value }))}
+            onChange={(e) => set("annual_registration_fee", e.target.value)}
           />
         </Field>
         <Field label="Award Date">
-          <input type="date" value={form.award_date} onChange={(e) => setForm((f) => ({ ...f, award_date: e.target.value }))} />
+          <input type="date" value={form.award_date} onChange={(e) => set("award_date", e.target.value)} />
         </Field>
         <Field label="Tenure (months)">
-          <input type="number" value={form.tenure_months} onChange={(e) => setForm((f) => ({ ...f, tenure_months: e.target.value }))} />
+          <input type="number" min="1" value={form.tenure_months} onChange={(e) => set("tenure_months", e.target.value)} />
         </Field>
         <Field label="Annual Contract Value">
           <input
             type="number"
+            min="0"
             value={form.annual_contract_value}
-            onChange={(e) => setForm((f) => ({ ...f, annual_contract_value: e.target.value }))}
+            onChange={(e) => set("annual_contract_value", e.target.value)}
           />
         </Field>
       </div>
@@ -491,7 +645,13 @@ function UnitsTab({ contractor, canEdit }: { contractor: Contractor; canEdit: bo
   const [error, setError] = useState<string | null>(null);
 
   const linkedIds = new Set(units.map((u) => u.id));
-  const availableUnits = allUnits.filter((u) => !linkedIds.has(u.id) && !u.contractor_id);
+  // Only free units in the contractor's own division (the server rejects cross-division links).
+  const availableUnits = allUnits.filter(
+    (u) =>
+      !linkedIds.has(u.id) &&
+      !u.contractor_id &&
+      (contractor.division_id == null || u.division_id == null || u.division_id === contractor.division_id)
+  );
 
   async function handleAssign() {
     if (!selectedUnitId) return;
@@ -535,7 +695,7 @@ function UnitsTab({ contractor, canEdit }: { contractor: Contractor; canEdit: bo
         <thead>
           <tr>
             <th>Unit</th>
-            <th>Station</th>
+            <th>Location</th>
             <th>Status</th>
             {canEdit && <th>Actions</th>}
           </tr>
@@ -557,7 +717,12 @@ function UnitsTab({ contractor, canEdit }: { contractor: Contractor; canEdit: bo
             units.map((u) => (
               <tr key={u.id}>
                 <td className={styles.strong}>{u.unit_name}</td>
-                <td>{u.station_name ?? "—"}</td>
+                <td>
+                  {u.location_name ?? u.station_name ?? "—"}
+                  {u.location_type && u.location_type !== "station" && (
+                    <div className={styles.sub}>{u.location_type === "train" ? "Train" : "Cluster"}</div>
+                  )}
+                </td>
                 <td>{u.units_status}</td>
                 {canEdit && (
                   <td>

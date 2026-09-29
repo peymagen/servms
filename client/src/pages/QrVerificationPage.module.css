@@ -226,6 +226,27 @@
   font-weight: 600;
 }
 
+.statusLinkBtn {
+  display: inline-block;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13.5px;
+  text-decoration: none;
+  padding: 10px 18px;
+  border-radius: var(--radius-lg);
+}
+
+.statusLinkBtn:hover {
+  opacity: 0.9;
+}
+
+.statusLinkUnavailable {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  margin: 0;
+}
+
 .footer {
   text-align: center;
   padding: 20px;

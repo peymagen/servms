@@ -1,8 +1,9 @@
-import { useCallback, type ReactNode } from "react";
+import { useCallback, useEffect, type ReactNode } from "react";
 import type { ModuleName, PermissionAction, RolePermission } from "../types";
-import { useLoginMutation, useGetRolePermissionsQuery } from "../api/authApi";
-import { sessionEstablished, sessionCleared } from "../store/authSlice";
+import { useLoginMutation, useGetMeQuery, useGetRolePermissionsQuery } from "../api/authApi";
+import { sessionEstablished, sessionUserRefreshed, sessionCleared } from "../store/authSlice";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { isDivisionScopedRole } from "../types/labels";
 
 const PERMISSION_COLUMN: Record<PermissionAction, keyof RolePermission> = {
   view: "can_view",
@@ -17,6 +18,15 @@ const PERMISSION_COLUMN: Record<PermissionAction, keyof RolePermission> = {
 // are fetched via RTK Query — this wrapper is kept only so App.tsx's <AuthProvider> doesn't
 // need to change; it no longer holds any state of its own.
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // The stored user is a login-time snapshot; refresh it from the server so a
+  // division or role assigned after login (e.g. a Dealing Section's division)
+  // shows up without logging out and back in.
+  const dispatch = useAppDispatch();
+  const loggedIn = useAppSelector((state) => !!state.auth.user);
+  const { data: me } = useGetMeQuery(undefined, { skip: !loggedIn });
+  useEffect(() => {
+    if (me) dispatch(sessionUserRefreshed(me));
+  }, [me, dispatch]);
   return <>{children}</>;
 }
 
@@ -52,4 +62,12 @@ export function useAuth() {
   );
 
   return { user, isLoading: false, login, logout, can };
+}
+
+// Divisional users always enter data into their own division: forms start on it and
+// lock the Division picker (the server pins it regardless). HQ users choose freely.
+export function useDivisionLock(): { locked: boolean; ownDivisionId: number | "" } {
+  const user = useAppSelector((state) => state.auth.user);
+  const locked = isDivisionScopedRole(user?.role_name);
+  return { locked, ownDivisionId: locked ? user?.division_id ?? "" : "" };
 }

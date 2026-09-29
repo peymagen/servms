@@ -2,8 +2,30 @@ import * as unitService from "./unit.service";
 import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
-import { isDivisionScoped, assertRecordAccessible } from "../../common/constants/roles";
+import { isDivisionScoped, assertRecordAccessible, assertInOwnDivision } from "../../common/constants/roles";
 import { logAudit } from "../../common/services/auditLog.service";
+import createHttpError from "http-errors";
+import { assertRefsInOwnDivision } from "../../common/services/divisionScope.service";
+
+// Loads the unit named by :id and applies the caller's division scope.
+const loadAccessibleUnit = async (req: Request) => {
+  const unit = await unitService.getUnitById(req.params.id as string);
+  if (!unit) throw createHttpError(404, "Unit not found");
+  assertRecordAccessible(req.user as any, unit);
+  return unit;
+};
+
+// A unit's division comes from its station/train/cluster, so a divisional user
+// may only place units on locations in their own division.
+const assertLocationInOwnDivision = async (req: Request, isCreate = false) => {
+  const divisionId = await unitService.getLocationDivisionId(req.body);
+  // A new unit with no location would have no division at all.
+  if (isCreate && isDivisionScoped((req.user as any)?.role_name) && divisionId == null) {
+    throw createHttpError(400, "Select a station, train or cluster in your division");
+  }
+  assertInOwnDivision(req.user as any, divisionId, "The selected location");
+  await assertRefsInOwnDivision(req.user as any, { contractor: req.body.contractor_id });
+};
 
 // ─── CREATE UNIT ────────────────────────────────────────────────────────────────
 export const createUnit = asyncHandler(async (req: Request, res: Response) => {
@@ -13,6 +35,7 @@ export const createUnit = asyncHandler(async (req: Request, res: Response) => {
     req.body.sketch_map_file = `/uploads/${req.file.filename}`;
   }
 
+  await assertLocationInOwnDivision(req, true);
   const result = await unitService.createUnit(req.body, userId);
   await logAudit({ req, module: "unit", recordId: result.id, action: "CREATE", newData: req.body });
   res.send(createResponse(result, "Unit saved successfully"));
@@ -71,7 +94,8 @@ export const editUnit = asyncHandler(async (req: Request, res: Response) => {
   if (req.file) {
     req.body.sketch_map_file = `/uploads/${req.file.filename}`;
   }
-  const oldData = await unitService.getUnitById(req.params.id as string);
+  const oldData = await loadAccessibleUnit(req);
+  await assertLocationInOwnDivision(req);
   const result = await unitService.editUnit(req.params.id as string, req.body);
   await logAudit({ req, module: "unit", recordId: req.params.id, action: "UPDATE", oldData, newData: req.body });
   res.send(createResponse(result, "Unit updated successfully"));
@@ -79,6 +103,7 @@ export const editUnit = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── DELETE UNIT ─────────────────────────────────────────────────────────────────
 export const deleteUnit = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessibleUnit(req);
   const result = await unitService.deleteUnit(req.params.id as string);
   await logAudit({ req, module: "unit", recordId: req.params.id, action: "DELETE" });
   res.send(createResponse(result, "Unit deactivated successfully"));

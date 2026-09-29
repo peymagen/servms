@@ -19,7 +19,7 @@ function formatDateTime(value: string | null | undefined): string {
 // Matches the server's requireAnyRole(["hq_admin","divisional_admin"]) gate on
 // DELETE /complaints/import/history/:id — super_admin_hq passes via its own
 // break-glass bypass, not by being listed here.
-const CAN_DELETE_IMPORT_HISTORY_ROLES = ["hq_admin", "divisional_admin", "super_admin_hq"];
+const CAN_DELETE_IMPORT_HISTORY_ROLES = ["hq_admin", "divisional_admin", "dealing_section", "super_admin_hq"];
 
 export default function ComplaintImportPage() {
   const navigate = useNavigate();

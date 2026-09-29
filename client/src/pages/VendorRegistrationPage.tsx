@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { useCreateVendorMutation } from "../api/vendorApi";
+import { useDivisionLock } from "../context/AuthContext";
+import { useNavigate, useParams } from "react-router-dom";
+import { useCreateVendorMutation, useEditVendorMutation, useGetVendorByIdQuery } from "../api/vendorApi";
+import { ASSET_BASE } from "../store/apiSlice";
 import { useGetContractorsLiteQuery, useGetDivisionsQuery, useGetStationsQuery, useGetUnitsLiteQuery } from "../api/mastersApi";
 import { BLOOD_GROUPS, VENDOR_TYPE_LABELS, type VendorType, type VerificationStatus } from "../types";
 import styles from "./VendorRegistrationPage.module.css";
@@ -20,8 +22,24 @@ function validateDocFile(file: File): string | null {
   return null;
 }
 
+// DATE columns come back as ISO timestamps (e.g. "2026-01-31T18:30:00.000Z" for a
+// local-midnight date) — convert to the local YYYY-MM-DD a date input expects.
+function toDateInput(value: string | null | undefined): string {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// Used for both onboarding (/vendors/new) and editing (/vendors/:id/edit) — in edit
+// mode the same wizard is pre-filled from the existing vendor and saved via PATCH.
 export default function VendorRegistrationPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
+  const vendorId = Number(id);
   const [step, setStep] = useState(1);
 
   // Step 1 — Personal Details
@@ -39,7 +57,8 @@ export default function VendorRegistrationPage() {
 
   // Step 2 — Deployment
   const [vendorType, setVendorType] = useState<VendorType>("station_others");
-  const [divisionId, setDivisionId] = useState<number | "">("");
+  const { locked: divisionLocked, ownDivisionId } = useDivisionLock();
+  const [divisionId, setDivisionId] = useState<number | "">(ownDivisionId);
   const [stationId, setStationId] = useState<number | "">("");
   const [contractorId, setContractorId] = useState<number | "">("");
   const [unitId, setUnitId] = useState<number | "">("");
@@ -69,13 +88,52 @@ export default function VendorRegistrationPage() {
   const { data: contractors = [] } = useGetContractorsLiteQuery();
   const { data: units = [] } = useGetUnitsLiteQuery();
   const { data: stations = [] } = useGetStationsQuery(divisionId || undefined);
-  const [createVendor, { isLoading: isSubmitting }] = useCreateVendorMutation();
+  const [createVendor, { isLoading: isCreating }] = useCreateVendorMutation();
+  const [editVendor, { isLoading: isUpdating }] = useEditVendorMutation();
+  const isSubmitting = isCreating || isUpdating;
+  const {
+    data: existingVendor,
+    isLoading: isLoadingVendor,
+    error: vendorLoadError,
+  } = useGetVendorByIdQuery(vendorId, { skip: !isEdit });
+  const [hydrated, setHydrated] = useState(false);
 
+  // Pre-fill the wizard once from the vendor being edited. Station is reset by the
+  // Division select's own onChange (not an effect), so hydrating division and
+  // station together here doesn't wipe the saved station.
   useEffect(() => {
-    // Reset immediately so a division with no stations doesn't briefly show the
-    // previous division's stations (which would wrongly make Station look required).
-    setStationId("");
-  }, [divisionId]);
+    if (!existingVendor || hydrated) return;
+    const v = existingVendor;
+    setFullName(v.full_name ?? "");
+    setFatherName(v.father_name ?? "");
+    setDob(toDateInput(v.date_of_birth));
+    setAadhaar(v.aadhaar_number ?? "");
+    setMobile(v.mobile_number ?? "");
+    setAddress(v.address ?? "");
+    setBloodGroup(v.blood_group ?? "");
+    setPhotoPreview(v.profile_image ? `${ASSET_BASE}${v.profile_image}` : null);
+    setSignaturePreview(v.signature_path ? `${ASSET_BASE}${v.signature_path}` : null);
+    setVendorType(v.vendor_type ?? "station_others");
+    setDivisionId(v.division_id ?? "");
+    setStationId(v.station_id ?? "");
+    setContractorId(v.contractor_id ?? "");
+    setUnitId(v.unit_id ?? "");
+    setValidityStart(toDateInput(v.validity_start));
+    setValidityEnd(toDateInput(v.validity_end));
+    // "expired" is a display-only status derived from the valid-till date — the
+    // stored status underneath it is "verified".
+    setPoliceStatus(v.police_verification_status === "expired" ? "verified" : v.police_verification_status);
+    setPoliceNumber(v.police_verification_number ?? "");
+    setPoliceIssueDate(toDateInput(v.police_verification_issue_date));
+    setPoliceValidTill(toDateInput(v.police_verification_valid_till));
+    setPoliceRemarks(v.police_verification_remarks ?? "");
+    setMedicalStatus(v.medical_verification_status === "expired" ? "verified" : v.medical_verification_status);
+    setMedicalNumber(v.medical_verification_number ?? "");
+    setMedicalIssueDate(toDateInput(v.medical_verification_issue_date));
+    setMedicalValidTill(toDateInput(v.medical_verification_valid_till));
+    setMedicalRemarks(v.medical_verification_remarks ?? "");
+    setHydrated(true);
+  }, [existingVendor, hydrated]);
 
   // Some divisions (e.g. Chakradharpur) have no stations configured at all — Station
   // is only mandatory when the selected division actually has stations to choose from.
@@ -161,48 +219,72 @@ export default function VendorRegistrationPage() {
 
   async function handleSubmit() {
     setError(null);
+    const payload = {
+      full_name: fullName,
+      father_name: fatherName || undefined,
+      date_of_birth: dob || undefined,
+      aadhaar_number: aadhaar || undefined,
+      mobile_number: mobile,
+      address: address || undefined,
+      blood_group: bloodGroup || undefined,
+      vendor_type: vendorType,
+      division_id: divisionId ? Number(divisionId) : undefined,
+      station_id: stationId ? Number(stationId) : undefined,
+      contractor_id: contractorId ? Number(contractorId) : undefined,
+      unit_id: unitId ? Number(unitId) : undefined,
+      validity_start: validityStart || undefined,
+      validity_end: validityEnd || undefined,
+      police_verification_status: policeStatus,
+      police_verification_number: policeNumber,
+      police_verification_issue_date: policeIssueDate || undefined,
+      police_verification_valid_till: policeValidTill || undefined,
+      police_verification_remarks: policeRemarks || undefined,
+      medical_verification_status: medicalStatus,
+      medical_verification_number: medicalNumber,
+      medical_verification_issue_date: medicalIssueDate || undefined,
+      medical_verification_valid_till: medicalValidTill || undefined,
+      medical_verification_remarks: medicalRemarks || undefined,
+      profile_image: photoFile ?? undefined,
+      signature: signatureFile ?? undefined,
+      aadhaar_document: aadhaarDoc ?? undefined,
+      medical_verification_document: medicalDoc ?? undefined,
+      police_verification_document: policeDoc ?? undefined,
+    };
     try {
-      await createVendor({
-        full_name: fullName,
-        father_name: fatherName || undefined,
-        date_of_birth: dob || undefined,
-        aadhaar_number: aadhaar || undefined,
-        mobile_number: mobile,
-        address: address || undefined,
-        blood_group: bloodGroup || undefined,
-        vendor_type: vendorType,
-        division_id: divisionId ? Number(divisionId) : undefined,
-        station_id: stationId ? Number(stationId) : undefined,
-        contractor_id: contractorId ? Number(contractorId) : undefined,
-        unit_id: unitId ? Number(unitId) : undefined,
-        validity_start: validityStart || undefined,
-        validity_end: validityEnd || undefined,
-        police_verification_status: policeStatus,
-        police_verification_number: policeNumber,
-        police_verification_issue_date: policeIssueDate || undefined,
-        police_verification_valid_till: policeValidTill || undefined,
-        police_verification_remarks: policeRemarks || undefined,
-        medical_verification_status: medicalStatus,
-        medical_verification_number: medicalNumber,
-        medical_verification_issue_date: medicalIssueDate || undefined,
-        medical_verification_valid_till: medicalValidTill || undefined,
-        medical_verification_remarks: medicalRemarks || undefined,
-        profile_image: photoFile ?? undefined,
-        signature: signatureFile ?? undefined,
-        aadhaar_document: aadhaarDoc ?? undefined,
-        medical_verification_document: medicalDoc ?? undefined,
-        police_verification_document: policeDoc ?? undefined,
-      }).unwrap();
+      if (isEdit) {
+        await editVendor({ id: vendorId, data: payload }).unwrap();
+      } else {
+        await createVendor(payload).unwrap();
+      }
       navigate("/vendors");
     } catch (err: any) {
-      setError(err?.data?.message ?? err?.message ?? "Unable to onboard vendor");
+      setError(err?.data?.message ?? err?.message ?? (isEdit ? "Unable to update vendor" : "Unable to onboard vendor"));
     }
+  }
+
+  // Leaving a document empty while editing keeps the vendor's current file.
+  const noNewDocLabel = isEdit ? "Unchanged (keep existing)" : "Not uploaded";
+
+  if (isEdit && (isLoadingVendor || vendorLoadError || !hydrated)) {
+    return (
+      <div>
+        <div className={styles.breadcrumb}>
+          Vendor Management <span>&gt;</span> <strong>Edit Vendor</strong>
+        </div>
+        {vendorLoadError ? (
+          <div className={styles.errorBanner}>Unable to load this vendor for editing.</div>
+        ) : (
+          <p>Loading vendor…</p>
+        )}
+      </div>
+    );
   }
 
   return (
     <div>
       <div className={styles.breadcrumb}>
-        Vendor Management <span>&gt;</span> <strong>Registration</strong>
+        Vendor Management <span>&gt;</span>{" "}
+        <strong>{isEdit ? `Edit Vendor — ${existingVendor?.vendor_code ?? ""}` : "Registration"}</strong>
       </div>
 
       <div className={styles.stepper}>
@@ -349,6 +431,7 @@ export default function VendorRegistrationPage() {
             <Field label="Division">
               <select
                 value={divisionId}
+                disabled={divisionLocked}
                 onChange={(e) => {
                   setDivisionId(e.target.value ? Number(e.target.value) : "");
                   setStationId("");
@@ -612,9 +695,9 @@ export default function VendorRegistrationPage() {
             <ReviewItem label="Police Verification Number" value={policeNumber || "—"} />
             <ReviewItem label="Medical Verification" value={medicalStatus} />
             <ReviewItem label="Medical Fitness Certificate Number" value={medicalNumber || "—"} />
-            <ReviewItem label="Aadhaar Document" value={aadhaarDoc?.name ?? "Not uploaded"} />
-            <ReviewItem label="Medical Document" value={medicalDoc?.name ?? "Not uploaded"} />
-            <ReviewItem label="Police Document" value={policeDoc?.name ?? "Not uploaded"} />
+            <ReviewItem label="Aadhaar Document" value={aadhaarDoc?.name ?? noNewDocLabel} />
+            <ReviewItem label="Medical Document" value={medicalDoc?.name ?? noNewDocLabel} />
+            <ReviewItem label="Police Document" value={policeDoc?.name ?? noNewDocLabel} />
           </div>
         </section>
       )}
@@ -626,7 +709,7 @@ export default function VendorRegistrationPage() {
           </button>
         )}
         <button type="button" className={styles.draftBtn} onClick={() => navigate("/vendors")}>
-          Save Draft
+          {isEdit ? "Cancel" : "Save Draft"}
         </button>
         {step < 5 ? (
           <button type="button" className={styles.nextBtn} onClick={goNext}>
@@ -634,7 +717,7 @@ export default function VendorRegistrationPage() {
           </button>
         ) : (
           <button type="button" className={styles.nextBtn} onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Submitting…" : "Submit Registration"}
+            {isSubmitting ? (isEdit ? "Saving…" : "Submitting…") : isEdit ? "Save Changes" : "Submit Registration"}
           </button>
         )}
       </div>

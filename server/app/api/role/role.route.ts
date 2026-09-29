@@ -60,7 +60,7 @@ router.patch("/:id", requirePermission("role_management", "edit"), updateRoleVal
 // uat-clarifications-role-admin-scope.md item 28 for the full history/rationale.
 router.patch(
   "/:id/permissions",
-  requireAnyRole([ROLE.HQ_ADMIN, ROLE.DIVISIONAL_ADMIN]),
+  requireAnyRole([ROLE.HQ_ADMIN, ROLE.DIVISIONAL_ADMIN, ROLE.DEALING_SECTION]),
   updatePermissionsValidation,
   validate,
   roleController.updateRolePermissions

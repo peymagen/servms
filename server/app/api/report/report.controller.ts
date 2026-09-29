@@ -132,7 +132,7 @@ export const listTemplates = asyncHandler(async (req: Request, res: Response) =>
 
 // ─── DASHBOARD ──────────────────────────────────────────────────────────────────
 export const getReportDashboard = asyncHandler(async (req: Request, res: Response) => {
-  const result = await reportService.getReportDashboardMetrics();
+  const result = await reportService.getReportDashboardMetrics(resolveForcedDivisionId(req));
   res.send(createResponse(result));
 });
 
@@ -141,6 +141,6 @@ export const getExportHistory = asyncHandler(async (req: Request, res: Response)
   const moduleKey = req.query.module_key ? String(req.query.module_key) : undefined;
   const limit = req.query.limit ? Number(req.query.limit) : 20;
   const offset = req.query.offset ? Number(req.query.offset) : 0;
-  const result = await reportService.getExportHistory({ module_key: moduleKey, limit, offset });
+  const result = await reportService.getExportHistory({ module_key: moduleKey, limit, offset, division_id: resolveForcedDivisionId(req) });
   res.send(createResponse(result));
 });

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useDivisionLock } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useCreateInspectionMutation,
@@ -26,7 +27,12 @@ export default function InspectionFormPage() {
   const [submitInspection, { isLoading: isSubmitting }] = useSubmitInspectionMutation();
 
   const [unitId, setUnitId] = useState<number | "">("");
-  const [divisionId, setDivisionId] = useState<number | "">("");
+  const { locked: divisionLocked, ownDivisionId } = useDivisionLock();
+  const [divisionId, setDivisionId] = useState<number | "">(ownDivisionId);
+
+  useEffect(() => {
+    if (divisionLocked && ownDivisionId) setDivisionId(ownDivisionId);
+  }, [divisionLocked, ownDivisionId]);
   const { data: stations = [] } = useGetStationsQuery(divisionId || undefined);
   const { data: trainsResult } = useGetTrainsQuery({ division_id: divisionId || undefined, limit: 500 });
   const [trainId, setTrainId] = useState<number | "">("");
@@ -213,6 +219,7 @@ export default function InspectionFormPage() {
               <div className={styles.inputWithIcon}>
                 <select
                   value={divisionId}
+                  disabled={divisionLocked}
                   onChange={(e) => {
                     setDivisionId(e.target.value ? Number(e.target.value) : "");
                     setTrainId("");

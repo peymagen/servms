@@ -18,6 +18,10 @@ export interface ImportSummary {
   failed: ImportRowError[];
 }
 
+interface ImportContext {
+  restrictDivisionId: number | null;
+}
+
 interface MasterImportDef {
   key: string;
   label: string;
@@ -25,7 +29,9 @@ interface MasterImportDef {
   // Inserts a single row; throws to record a per-row failure, returns nothing
   // on success. `duplicate` is signalled by throwing an Error with a message
   // starting "DUPLICATE:" so the generic runner can bucket it correctly.
-  importRow: (row: Record<string, unknown>) => Promise<void>;
+  // ctx.restrictDivisionId is set for division-scoped importers — rows naming any
+  // other division must be rejected, so each division imports only its own data.
+  importRow: (row: Record<string, unknown>, ctx: ImportContext) => Promise<void>;
 }
 
 const cell = (row: Record<string, unknown>, key: string): string => String(row[key] ?? "").trim();
@@ -40,7 +46,7 @@ const MASTER_IMPORTS: Record<string, MasterImportDef> = {
     key: "stations",
     label: "Stations",
     templateColumns: ["Division", "Station Name", "Station Code", "No of Platforms"],
-    importRow: async (row) => {
+    importRow: async (row, ctx) => {
       const divisionName = cell(row, "Division");
       const stationName = cell(row, "Station Name");
       const stationCode = cell(row, "Station Code");
@@ -57,6 +63,9 @@ const MASTER_IMPORTS: Record<string, MasterImportDef> = {
       );
       if (!divisionRows.length) {
         throw new Error(`Unknown division "${divisionName}"`);
+      }
+      if (ctx.restrictDivisionId != null && Number(divisionRows[0]!.id) !== Number(ctx.restrictDivisionId)) {
+        throw new Error(`Division "${divisionName}" is not your division — you can only import your own division's stations`);
       }
 
       try {
@@ -84,7 +93,13 @@ export const buildMasterTemplate = (masterKey: string): Buffer => {
   return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
 };
 
-export const importMasterData = async (masterKey: string, filePath: string, fileName: string, userId: number): Promise<ImportSummary> => {
+export const importMasterData = async (
+  masterKey: string,
+  filePath: string,
+  fileName: string,
+  userId: number,
+  restrictDivisionId: number | null = null
+): Promise<ImportSummary> => {
   const def = MASTER_IMPORTS[masterKey];
   if (!def) {
     fs.unlink(filePath, () => {});
@@ -107,7 +122,7 @@ export const importMasterData = async (masterKey: string, filePath: string, file
     if (!hasAnyValue) continue;
 
     try {
-      await def.importRow(row);
+      await def.importRow(row, { restrictDivisionId });
       importedCount++;
     } catch (err: any) {
       const message = err?.message ?? "Insert failed";
@@ -128,9 +143,13 @@ export const importMasterData = async (masterKey: string, filePath: string, file
   return { importId: historyResult.insertId, totalRecords: rows.length, importedCount, duplicateCount, failedCount: failed.length, failed };
 };
 
-export const getImportHistory = async (masterKey?: string, limit = 50) => {
+export const getImportHistory = async (masterKey?: string, limit = 50, divisionId?: number) => {
   const clauses: string[] = [];
   const params: any[] = [];
+  if (divisionId !== undefined) {
+    clauses.push("u.division_id = ?");
+    params.push(divisionId);
+  }
   if (masterKey) {
     clauses.push("il.master_key = ?");
     params.push(masterKey);

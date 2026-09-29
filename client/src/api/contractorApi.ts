@@ -93,6 +93,8 @@ export const contractorApi = apiSlice.injectEndpoints({
       query: ({ id, data }) => ({ url: `/contractors/${id}`, method: "PATCH", body: toFormData(data) }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: "Contractor" as const, id: "LIST" },
+        { type: "Contractor" as const, id: "METRICS" },
+        { type: "Master" as const, id: "CONTRACTORS" },
         { type: "Contractor" as const, id },
         { type: "ContractorHistory" as const, id },
       ],
@@ -114,6 +116,7 @@ export const contractorApi = apiSlice.injectEndpoints({
       invalidatesTags: [
         { type: "Contractor" as const, id: "LIST" },
         { type: "Contractor" as const, id: "METRICS" },
+        { type: "Master" as const, id: "CONTRACTORS" },
       ],
     }),
     getContractorUnits: builder.query<ContractorUnit[], number>({
@@ -125,6 +128,7 @@ export const contractorApi = apiSlice.injectEndpoints({
       invalidatesTags: (_result, _error, { id }) => [
         { type: "Contractor" as const, id: `UNITS-${id}` },
         { type: "Contractor" as const, id },
+        { type: "Master" as const, id: "UNITS" },
         { type: "ContractorHistory" as const, id },
       ],
     }),
@@ -133,6 +137,7 @@ export const contractorApi = apiSlice.injectEndpoints({
       invalidatesTags: (_result, _error, { id }) => [
         { type: "Contractor" as const, id: `UNITS-${id}` },
         { type: "Contractor" as const, id },
+        { type: "Master" as const, id: "UNITS" },
         { type: "ContractorHistory" as const, id },
       ],
     }),

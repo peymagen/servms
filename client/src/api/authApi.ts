@@ -15,6 +15,9 @@ export const authApi = apiSlice.injectEndpoints({
         body: { username, password },
       }),
     }),
+    getMe: builder.query<AuthUser, void>({
+      query: () => "/users/me",
+    }),
     getRolePermissions: builder.query<RolePermission[], number>({
       query: (roleId) => `/roles/${roleId}/permissions`,
       providesTags: ["RolePermission"],
@@ -22,4 +25,4 @@ export const authApi = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useLoginMutation, useGetRolePermissionsQuery } = authApi;
+export const { useLoginMutation, useGetMeQuery, useGetRolePermissionsQuery } = authApi;

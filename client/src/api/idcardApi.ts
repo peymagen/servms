@@ -59,6 +59,20 @@ export const idcardApi = apiSlice.injectEndpoints({
     verifyIdCard: builder.query<IdCardVerification, string>({
       query: (code) => `/idcards/verify/${code}`,
     }),
+    updateIdCardStatusLink: builder.mutation<
+      { vendor_id: number; excel_status_link: string | null },
+      { vendorId: number; excel_status_link: string | null }
+    >({
+      query: ({ vendorId, excel_status_link }) => ({
+        url: `/idcards/${vendorId}/status-link`,
+        method: "PATCH",
+        body: { excel_status_link },
+      }),
+      invalidatesTags: (_result, _error, { vendorId }) => [
+        { type: "IdCard" as const, id: "LIST" },
+        { type: "IdCard" as const, id: vendorId },
+      ],
+    }),
   }),
 });
 
@@ -68,6 +82,7 @@ export const {
   useApproveIdCardMutation,
   useRejectIdCardMutation,
   useVerifyIdCardQuery,
+  useUpdateIdCardStatusLinkMutation,
 } = idcardApi;
 
 // Binary PDF response, not the {success,data} JSON envelope, so it's fetched

@@ -38,7 +38,7 @@ export default function IdCardQrPage() {
     can("id_card_management", "approve_reject") &&
     (Boolean(user?.card_signing_authority) || user?.role_name === "super_admin_hq");
   const canRequest = can("id_card_management", "create");
-
+  const excelStatusUrl: string | undefined = import.meta.env.VITE_IDCARD_STATUS_EXCEL_URL;
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(
     preselectVendorId ? Number(preselectVendorId) : null
   );
@@ -89,6 +89,8 @@ export default function IdCardQrPage() {
     const issuingAuthority =
       [selectedCard.approved_by_name, selectedCard.approved_by_designation].filter(Boolean).join(", ") || "N/A";
     const verificationUrl = `${window.location.origin}/verify/${selectedCard.id_number}`;
+    // Per-card link wins over the site-wide sheet, same as the server's payload.
+    const statusLink = selectedCard.excel_status_link || excelStatusUrl;
     const qrText = [
       `Name & Address: ${nameAddress}`,
       `Aadhaar No: ${selectedCard.aadhaar_number ?? "N/A"}`,
@@ -100,6 +102,7 @@ export default function IdCardQrPage() {
       `Validity of ID Card: ${formatDate(selectedCard.expiry_date)}`,
       `Issuing Authority: ${issuingAuthority}`,
       `Verify: ${verificationUrl}`,
+      ...(statusLink ? [`Check ID Card Status: ${statusLink}`] : []),
     ].join("\n");
     QRCode.toDataURL(qrText, { width: 400, margin: 4, errorCorrectionLevel: "M" })
       .then(setQrDataUrl)
@@ -305,6 +308,7 @@ export default function IdCardQrPage() {
                   </div>
                 </div>
               )}
+
             </>
           ) : (
             <p className={styles.emptyState}>Select a vendor to preview their ID card.</p>

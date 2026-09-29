@@ -1,7 +1,14 @@
 import * as userService from "./user.service";
 import { createResponse } from "../../common/helper/response.hepler";
 import { logAudit } from "../../common/services/auditLog.service";
-import { isDivisionScoped, assertRecordAccessible, assertCanManageAdminTier } from "../../common/constants/roles";
+import {
+  isDivisionScoped,
+  assertRecordAccessible,
+  assertCanManageAdminTier,
+  assertDivisionForScopedRole,
+  assertOwnDivisionRecord,
+  pinToOwnDivision,
+} from "../../common/constants/roles";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
 import passport from "passport";
@@ -22,6 +29,8 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
 
   const targetRoleName = req.body.role_id ? await userService.getRoleName(Number(req.body.role_id)) : null;
   assertCanManageAdminTier(req.user as any, targetRoleName);
+  pinToOwnDivision(req.user as any, req.body);
+  assertDivisionForScopedRole(targetRoleName, req.body.division_id);
 
   req.body.password = await hashPassword(req.body.password); // ✅ await fixed
   const result = await userService.createUser(req.body);
@@ -60,8 +69,14 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
     req.body.signature_path = `/uploads/${req.file.filename}`;
   }
   const before = await userService.getUserById(req.params.id as string);
+  assertOwnDivisionRecord(req.user as any, before as any);
+  if (req.body.division_id !== undefined) pinToOwnDivision(req.user as any, req.body);
   const targetRoleName = req.body.role_id ? await userService.getRoleName(Number(req.body.role_id)) : null;
   assertCanManageAdminTier(req.user as any, before?.role_name, targetRoleName);
+  assertDivisionForScopedRole(
+    targetRoleName ?? before?.role_name,
+    req.body.division_id !== undefined ? req.body.division_id : before?.division_id
+  );
 
   if (req.body.password) {
     req.body.password = await hashPassword(req.body.password); // ✅ await fixed
@@ -87,8 +102,14 @@ export const editUser = asyncHandler(async (req: Request, res: Response) => {
     req.body.card_signing_authority = req.body.card_signing_authority === "true" || req.body.card_signing_authority === true;
   }
   const before = await userService.getUserById(req.params.id as string);
+  assertOwnDivisionRecord(req.user as any, before as any);
+  if (req.body.division_id !== undefined) pinToOwnDivision(req.user as any, req.body);
   const targetRoleName = req.body.role_id ? await userService.getRoleName(Number(req.body.role_id)) : null;
   assertCanManageAdminTier(req.user as any, before?.role_name, targetRoleName);
+  assertDivisionForScopedRole(
+    targetRoleName ?? before?.role_name,
+    req.body.division_id !== undefined ? req.body.division_id : before?.division_id
+  );
 
   if (req.body.password) {
     // Hash and store under the correct column name before passing to service
@@ -110,10 +131,21 @@ export const editUser = asyncHandler(async (req: Request, res: Response) => {
 // ─── DELETE ────────────────────────────────────────────────────────────────────
 export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
   const before = await userService.getUserById(req.params.id as string);
+  assertOwnDivisionRecord(req.user as any, before as any);
   assertCanManageAdminTier(req.user as any, before?.role_name);
   const result = await userService.deleteUser(req.params.id as string);
   await logAudit({ req, module: "user_management", recordId: req.params.id, action: "DELETE", oldData: before });
   res.send(createResponse(result, "User deleted successfully"));
+});
+
+// ─── GET CURRENT USER ──────────────────────────────────────────────────────────
+export const getMe = asyncHandler(async (req: Request, res: Response) => {
+  const result = await userService.getUserById(String((req.user as any)?.id));
+  if (!result) {
+    res.status(404).send(createResponse(null, "User not found"));
+    return;
+  }
+  res.send(createResponse(result));
 });
 
 // ─── GET BY ID ─────────────────────────────────────────────────────────────────
@@ -138,6 +170,7 @@ export const getAllUser = asyncHandler(async (req: Request, res: Response) => {
 // ─── TOGGLE STATUS ─────────────────────────────────────────────────────────────
 export const toggleStatus = asyncHandler(async (req: Request, res: Response) => {
   const before = await userService.getUserById(req.params.id as string);
+  assertOwnDivisionRecord(req.user as any, before as any);
   assertCanManageAdminTier(req.user as any, before?.role_name);
   const result = await userService.toggleStatus(req.params.id as string);
   await logAudit({
@@ -158,7 +191,7 @@ export const approveUser = asyncHandler(async (req: Request, res: Response) => {
     res.status(404).send(createResponse(null, "User not found"));
     return;
   }
-  assertRecordAccessible(req.user as any, before as any);
+  assertOwnDivisionRecord(req.user as any, before as any);
   const result = await userService.approveUser(req.params.id as string);
   await logAudit({
     req,
@@ -177,7 +210,7 @@ export const rejectUser = asyncHandler(async (req: Request, res: Response) => {
     res.status(404).send(createResponse(null, "User not found"));
     return;
   }
-  assertRecordAccessible(req.user as any, before as any);
+  assertOwnDivisionRecord(req.user as any, before as any);
   const result = await userService.rejectUser(req.params.id as string, req.body?.reason);
   await logAudit({
     req,

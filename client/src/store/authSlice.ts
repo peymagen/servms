@@ -28,6 +28,12 @@ const authSlice = createSlice({
       localStorage.setItem("servms_user", JSON.stringify(action.payload.user));
       state.user = action.payload.user;
     },
+    // Keeps the stored user in step with the server (division/role may change after login).
+    sessionUserRefreshed(state, action: PayloadAction<AuthUser>) {
+      const user = { ...state.user, ...action.payload } as AuthUser;
+      localStorage.setItem("servms_user", JSON.stringify(user));
+      state.user = user;
+    },
     sessionCleared(state) {
       localStorage.removeItem("servms_token");
       localStorage.removeItem("servms_user");
@@ -36,5 +42,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { sessionEstablished, sessionCleared } = authSlice.actions;
+export const { sessionEstablished, sessionUserRefreshed, sessionCleared } = authSlice.actions;
 export default authSlice.reducer;

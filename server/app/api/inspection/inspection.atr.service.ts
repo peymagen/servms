@@ -27,6 +27,12 @@ const assertAtrExists = async (atrId: string) => {
   return rows[0]!;
 };
 
+// Rejects an ATR id that isn't one of the inspection's own ATRs (routes carry both).
+export const assertAtrBelongsTo = async (atrId: string, inspectionId: string) => {
+  const atr = await assertAtrExists(atrId);
+  if (Number(atr.inspection_id) !== Number(inspectionId)) throw new Error("Action Taken Report not found");
+};
+
 // ─── DEALING SECTION: create a new ATR draft ───────────────────────────────────
 export const createAtrDraft = async (inspectionId: string, data: IAtrDraftInput, userId: number) => {
   const inspection = await assertInspectionExists(inspectionId);

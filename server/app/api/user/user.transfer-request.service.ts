@@ -90,9 +90,13 @@ export const raiseTransferRequest = async (
   return { id: result.insertId, user_id: userId };
 };
 
-export const getTransferRequests = async (approvalStatus?: string) => {
+export const getTransferRequests = async (approvalStatus?: string, divisionId?: number) => {
   const params: any[] = [];
   let whereSql = "WHERE utr.status = 1";
+  if (divisionId !== undefined) {
+    whereSql += " AND (utr.from_division_id = ? OR utr.to_division_id = ?)";
+    params.push(divisionId, divisionId);
+  }
   if (approvalStatus) {
     whereSql += " AND utr.approval_status = ?";
     params.push(approvalStatus);

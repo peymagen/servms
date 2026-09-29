@@ -1,5 +1,10 @@
 import { body, param } from "express-validator";
 
+// Contractor status is intentionally absent from create/update — it only changes
+// through changeStatusValidation's dedicated, approve_reject-gated endpoint.
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+
 export const createContractorValidation = [
   body("company_name")
     .trim()
@@ -14,14 +19,16 @@ export const createContractorValidation = [
     .isEmail().withMessage("Must be a valid email address"),
 
   body("pan_number")
-    .optional({ nullable: true })
+    .optional({ nullable: true, values: "falsy" })
     .trim()
-    .isLength({ min: 10, max: 10 }).withMessage("PAN must be exactly 10 characters"),
+    .toUpperCase()
+    .matches(PAN_REGEX).withMessage("PAN must be in the format ABCDE1234F"),
 
   body("gstin")
-    .optional({ nullable: true })
+    .optional({ nullable: true, values: "falsy" })
     .trim()
-    .isLength({ min: 15, max: 15 }).withMessage("GSTIN must be exactly 15 characters"),
+    .toUpperCase()
+    .matches(GSTIN_REGEX).withMessage("GSTIN must be a valid 15-character GST number (e.g. 20ABCDE1234F1Z5)"),
 
   body("license_validity_date")
     .optional({ nullable: true })
@@ -43,10 +50,6 @@ export const createContractorValidation = [
     .notEmpty().withMessage("Division selection is required")
     .isInt().withMessage("division_id must be an integer"),
 
-  body("contractors_status")
-    .optional()
-    .isIn(["active", "pending_approval", "suspended", "expired"]).withMessage("Invalid status value"),
-
   body("fee_status")
     .optional()
     .isIn(["paid", "overdue"]).withMessage("Invalid fee status value"),
@@ -65,14 +68,16 @@ export const updateContractorValidation = [
     .isEmail().withMessage("Must be a valid email address"),
 
   body("pan_number")
-    .optional({ nullable: true })
+    .optional({ nullable: true, values: "falsy" })
     .trim()
-    .isLength({ min: 10, max: 10 }).withMessage("PAN must be exactly 10 characters"),
+    .toUpperCase()
+    .matches(PAN_REGEX).withMessage("PAN must be in the format ABCDE1234F"),
 
   body("gstin")
-    .optional({ nullable: true })
+    .optional({ nullable: true, values: "falsy" })
     .trim()
-    .isLength({ min: 15, max: 15 }).withMessage("GSTIN must be exactly 15 characters"),
+    .toUpperCase()
+    .matches(GSTIN_REGEX).withMessage("GSTIN must be a valid 15-character GST number (e.g. 20ABCDE1234F1Z5)"),
 
   body("division_id")
     .optional()
@@ -85,10 +90,6 @@ export const updateContractorValidation = [
   body("annual_contract_value")
     .optional({ nullable: true })
     .isFloat({ min: 0 }).withMessage("Annual contract value must be a positive number"),
-
-  body("contractors_status")
-    .optional()
-    .isIn(["active", "pending_approval", "suspended", "expired"]).withMessage("Invalid status value"),
 
   body("fee_status")
     .optional()

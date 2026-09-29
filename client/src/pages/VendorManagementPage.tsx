@@ -10,6 +10,7 @@ import {
   useTransferVendorContractorMutation,
   useUpdatePoliceVerificationMutation,
   useUpdateMedicalVerificationMutation,
+  useChangeVendorStatusMutation,
   useGetVendorDocumentsQuery,
   useUploadVendorDocumentMutation,
 } from "../api/vendorApi";
@@ -54,6 +55,8 @@ export default function VendorManagementPage() {
   const navigate = useNavigate();
   const { can } = useAuth();
   const canEdit = can("vendor_management", "edit");
+  const canApprove = can("vendor_management", "approve_reject");
+  const [changeVendorStatus] = useChangeVendorStatusMutation();
   const [offset, setOffset] = useState(0);
   // Seeds initial filters from the URL once (e.g. the Dashboard's Registered
   // Vendors card links here as `/vendors?status=blacklisted&division_id=2`).
@@ -146,6 +149,17 @@ export default function VendorManagementPage() {
       setExportError("Unable to export vendors");
     } finally {
       setIsExporting(false);
+    }
+  }
+
+  async function handleStatusChange(vendorId: number, vendor_status: Vendor["vendor_status"]) {
+    if (vendor_status === "blacklisted" && !window.confirm("Blacklist this vendor? This should only be done for serious violations.")) {
+      return;
+    }
+    try {
+      await changeVendorStatus({ id: vendorId, vendor_status }).unwrap();
+    } catch {
+      window.alert("Unable to update vendor status");
     }
   }
 
@@ -274,20 +288,19 @@ export default function VendorManagementPage() {
               <th>Contractor Entity</th>
               <th>Unit</th>
               <th>Verification</th>
-              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className={styles.emptyCell}>
+                <td colSpan={6} className={styles.emptyCell}>
                   Loading…
                 </td>
               </tr>
             ) : vendors.length === 0 ? (
               <tr>
-                <td colSpan={7} className={styles.emptyCell}>
+                <td colSpan={6} className={styles.emptyCell}>
                   No vendors found.
                 </td>
               </tr>
@@ -312,19 +325,6 @@ export default function VendorManagementPage() {
                     </div>
                   </td>
                   <td>
-                    <span
-                      className={
-                        v.vendor_status === "active"
-                          ? styles.statusGood
-                          : v.vendor_status === "expired"
-                          ? styles.statusBad
-                          : styles.statusWarn
-                      }
-                    >
-                      {v.vendor_status.charAt(0).toUpperCase() + v.vendor_status.slice(1)}
-                    </span>
-                  </td>
-                  <td>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         type="button"
@@ -334,6 +334,16 @@ export default function VendorManagementPage() {
                       >
                         <EyeIcon />
                       </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className={styles.pageBtn}
+                          title="Edit vendor"
+                          onClick={() => navigate(`/vendors/${v.id}/edit`)}
+                        >
+                          <PencilIcon />
+                        </button>
+                      )}
                       <button
                         type="button"
                         className={styles.pageBtn}
@@ -370,7 +380,13 @@ export default function VendorManagementPage() {
       </div>
 
       {liveViewVendor && (
-        <VendorDetailModal vendor={liveViewVendor} canEdit={canEdit} onClose={() => setViewVendor(null)} />
+        <VendorDetailModal
+          vendor={liveViewVendor}
+          canEdit={canEdit}
+          canApprove={canApprove}
+          onStatusChange={handleStatusChange}
+          onClose={() => setViewVendor(null)}
+        />
       )}
 
       {liveDocsVendor && <VendorDocumentsModal vendor={liveDocsVendor} onClose={() => setDocsVendor(null)} />}
@@ -400,10 +416,14 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 function VendorDetailModal({
   vendor,
   canEdit,
+  canApprove,
+  onStatusChange,
   onClose,
 }: {
   vendor: Vendor;
   canEdit: boolean;
+  canApprove: boolean;
+  onStatusChange: (vendorId: number, status: Vendor["vendor_status"]) => void;
   onClose: () => void;
 }) {
   return (
@@ -430,7 +450,23 @@ function VendorDetailModal({
                 : "—"
             }
           />
-          <DetailItem label="Status" value={vendor.vendor_status} />
+          {canApprove ? (
+            <div>
+              <div className={styles.fieldLabel}>Status</div>
+              <select
+                className={styles.select}
+                value={vendor.vendor_status}
+                onChange={(e) => onStatusChange(vendor.id, e.target.value as Vendor["vendor_status"])}
+              >
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="expired">Expired</option>
+                <option value="blacklisted">Blacklisted</option>
+              </select>
+            </div>
+          ) : (
+            <DetailItem label="Status" value={vendor.vendor_status} />
+          )}
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 22 }}>
@@ -885,6 +921,15 @@ function EyeIcon() {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" strokeWidth="1.6" />
       <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M4 20h4L19 9l-4-4L4 16v4Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M13.5 6.5l4 4" stroke="currentColor" strokeWidth="1.6" />
     </svg>
   );
 }

@@ -4,9 +4,19 @@ import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
 import { logAudit, type AuditAction } from "../../common/services/auditLog.service";
+import { assertOwnDivisionRecord } from "../../common/constants/roles";
+
+// Division-scoped roles may only act on their own division's complaints, and an
+// ATR id in the URL must belong to the complaint it's nested under.
+const assertComplaintActionable = async (req: Request): Promise<void> => {
+  const record = await complaintService.getComplaintById(req.params.id as string);
+  assertOwnDivisionRecord(req.user as any, record as any);
+  if (req.params.atrId) await atrService.assertAtrBelongsTo(req.params.atrId as string, req.params.id as string);
+};
 
 // ─── DEALING SECTION: submit ATR (with optional document uploads) ─────────────
 export const submitAtr = asyncHandler(async (req: Request, res: Response) => {
+  await assertComplaintActionable(req);
   const userId = (req.user as any)?.id;
   const result = await atrService.submitAtr(req.params.id as string, req.body.remarks, userId);
 
@@ -21,6 +31,7 @@ export const submitAtr = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── DEALING SECTION: edit ATR while still pending review ─────────────────────
 export const editAtr = asyncHandler(async (req: Request, res: Response) => {
+  await assertComplaintActionable(req);
   const userId = (req.user as any)?.id;
   const result = await atrService.editAtr(req.params.atrId as string, req.body.remarks, userId);
 
@@ -35,6 +46,7 @@ export const editAtr = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── SUB-ADMIN: review ATR, forward to Admin ───────────────────────────────────
 export const reviewAtr = asyncHandler(async (req: Request, res: Response) => {
+  await assertComplaintActionable(req);
   const userId = (req.user as any)?.id;
   const result = await atrService.reviewAtr(req.params.id as string, req.params.atrId as string, req.body.remarks, userId);
   await logAudit({ req, module: "complaint_atr", recordId: req.params.atrId, action: "STATUS_CHANGE", newData: req.body, details: "Sub-admin review" });
@@ -43,6 +55,7 @@ export const reviewAtr = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── ADMIN: accept / reject / send back ────────────────────────────────────────
 export const decideAtr = asyncHandler(async (req: Request, res: Response) => {
+  await assertComplaintActionable(req);
   const userId = (req.user as any)?.id;
   const decision = req.body.decision as "accepted" | "rejected" | "sent_back";
   if (!["accepted", "rejected", "sent_back"].includes(decision)) {
@@ -56,6 +69,7 @@ export const decideAtr = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const getAtrsForComplaint = asyncHandler(async (req: Request, res: Response) => {
+  await assertComplaintActionable(req);
   const result = await atrService.getAtrsForComplaint(req.params.id as string);
   res.send(createResponse(result));
 });

@@ -3,12 +3,34 @@ import { createResponse } from "../../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
 import { isDivisionScoped, assertRecordAccessible } from "../../common/constants/roles";
+import createHttpError from "http-errors";
+import { assertRefsInOwnDivision } from "../../common/services/divisionScope.service";
+
+// Everything a penalty links to must be in the caller's own division.
+const assertPenaltyRefsInOwnDivision = (req: Request) =>
+  assertRefsInOwnDivision(req.user as any, {
+    contractor: req.body?.contractor_id,
+    vendor: req.body?.vendor_id,
+    unit: req.body?.unit_id,
+    complaint: req.body?.complaint_id,
+    inspection: req.body?.inspection_id,
+  });
+
+// Loads the penalty named by :id and applies the caller's division scope, so a
+// divisional user can't act on another division's penalty by its id.
+const loadAccessiblePenalty = async (req: Request) => {
+  const penalty = await penaltyService.getPenaltyById(req.params.id as string);
+  if (!penalty) throw createHttpError(404, "Penalty record not found");
+  assertRecordAccessible(req.user as any, penalty);
+  return penalty as any;
+};
 import { logAudit } from "../../common/services/auditLog.service";
 import { type PenaltyApprovalStatus, type PenaltyRecoveryStatus } from "./penalty.dto";
 
 // ─── LOG PENALTY ───────────────────────────────────────────────────────────────
 export const createPenalty = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id ?? 1;
+  await assertPenaltyRefsInOwnDivision(req);
   const result = await penaltyService.createPenalty(req.body, userId);
   await logAudit({ req, module: "penalty", recordId: result.id, action: "CREATE", newData: req.body });
   res.send(createResponse(result, "Penalty imposed successfully"));
@@ -57,7 +79,8 @@ export const getPenaltyById = asyncHandler(async (req: Request, res: Response) =
 
 // ─── UPDATE PENALTY (basic fields) ───────────────────────────────────────────────
 export const editPenalty = asyncHandler(async (req: Request, res: Response) => {
-  const oldData = await penaltyService.getPenaltyById(req.params.id as string);
+  const oldData = await loadAccessiblePenalty(req);
+  await assertPenaltyRefsInOwnDivision(req);
   const result = await penaltyService.editPenalty(req.params.id as string, req.body);
   await logAudit({
     req,
@@ -72,6 +95,7 @@ export const editPenalty = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── APPROVE / REJECT / REVOKE (Divisional/HQ Admin only) ───────────────────────
 export const approvePenalty = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessiblePenalty(req);
   const userId = (req.user as any)?.id;
   const result = await penaltyService.approvePenalty(req.params.id as string, userId, req.body);
   await logAudit({ req, module: "penalty", recordId: req.params.id, action: "APPROVE", newData: req.body });
@@ -79,6 +103,7 @@ export const approvePenalty = asyncHandler(async (req: Request, res: Response) =
 });
 
 export const rejectPenalty = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessiblePenalty(req);
   const userId = (req.user as any)?.id;
   const result = await penaltyService.rejectPenalty(req.params.id as string, userId, req.body?.reason);
   await logAudit({
@@ -92,6 +117,7 @@ export const rejectPenalty = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const revokePenalty = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessiblePenalty(req);
   const userId = (req.user as any)?.id;
   if (!req.body?.reason) {
     res.status(400).send(createResponse(null, "A revocation reason is required"));
@@ -110,7 +136,7 @@ export const revokePenalty = asyncHandler(async (req: Request, res: Response) =>
 
 // ─── RECOVERY WORKFLOW ────────────────────────────────────────────────────────────
 export const updateRecovery = asyncHandler(async (req: Request, res: Response) => {
-  const oldData = (await penaltyService.getPenaltyById(req.params.id as string)) as any;
+  const oldData = await loadAccessiblePenalty(req);
   const result = await penaltyService.updateRecovery(req.params.id as string, req.body);
   await logAudit({
     req,
@@ -126,7 +152,7 @@ export const updateRecovery = asyncHandler(async (req: Request, res: Response) =
 // ─── RECOVERY DOCUMENT VERIFICATION (Admin/Divisional Admin) ────────────────────
 export const verifyRecovery = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req.user as any)?.id;
-  const oldData = (await penaltyService.getPenaltyById(req.params.id as string)) as any;
+  const oldData = await loadAccessiblePenalty(req);
   const result = await penaltyService.verifyRecovery(req.params.id as string, userId, req.body);
   await logAudit({
     req,
@@ -142,6 +168,7 @@ export const verifyRecovery = asyncHandler(async (req: Request, res: Response) =
 
 // ─── SUPPORTING DOCUMENTS ────────────────────────────────────────────────────────
 export const uploadPenaltyDocument = asyncHandler(async (req: Request, res: Response) => {
+  await loadAccessiblePenalty(req);
   if (!req.file) {
     res.status(400).send(createResponse(null, "A document file is required"));
     return;

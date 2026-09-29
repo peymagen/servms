@@ -4,7 +4,7 @@ import { validationResult } from "express-validator";
 import * as idcardController from "./idcard.controller";
 import { roleAuth } from "../../common/middleware/role-auth.middleware";
 import { requirePermission } from "../../common/middleware/permission.middleware";
-import { requestIdCardValidation, rejectIdCardValidation } from "./idcard.validation";
+import { requestIdCardValidation, rejectIdCardValidation, updateIdCardStatusLinkValidation } from "./idcard.validation";
 
 const validate = (req: Request, res: Response, next: NextFunction) => {
   const errors = validationResult(req);
@@ -57,5 +57,15 @@ router.post(
 );
 
 router.get("/:vendorId/pdf", requirePermission("id_card_management", "view"), idcardController.downloadIdCardPdf);
+
+// Sets/clears the "Check ID Card Status" Excel link shown on the public QR
+// verification page for this card — independent of QR generation/approval.
+router.patch(
+  "/:vendorId/status-link",
+  requirePermission("id_card_management", "edit"),
+  updateIdCardStatusLinkValidation,
+  validate,
+  idcardController.updateIdCardStatusLink
+);
 
 export default router;

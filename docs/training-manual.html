@@ -1,0 +1,1519 @@
+<title>SERVMS Training Manual</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+:root{
+  --paper:#F1F3F1; --surface:#FFFFFF; --surface-2:#E8ECEA;
+  --ink:#16232B; --ink-2:#33454F; --grey:#67757E; --hair:#C9D2D2;
+  --rail:#16495C; --rail-soft:#E3EDF0;
+  --green:#1C6B48; --green-soft:#E0EFE7;
+  --amber:#9C6412; --amber-soft:#F5EBDA;
+  --red:#A32E28; --red-soft:#F6E4E2;
+  --shadow:0 1px 2px rgba(22,35,43,.06),0 8px 24px -16px rgba(22,35,43,.28);
+  --f-display:"Bitter",Georgia,"Times New Roman",serif;
+  --f-body:"Public Sans","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#101A20; --surface:#17242B; --surface-2:#1E2E36;
+    --ink:#E4EAE9; --ink-2:#B4C2C4; --grey:#8B9BA2; --hair:#2B3E47;
+    --rail:#6FB6CE; --rail-soft:#17323D;
+    --green:#63C193; --green-soft:#152E24;
+    --amber:#DCA75A; --amber-soft:#332612;
+    --red:#E8867E; --red-soft:#37201E;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#101A20; --surface:#17242B; --surface-2:#1E2E36;
+  --ink:#E4EAE9; --ink-2:#B4C2C4; --grey:#8B9BA2; --hair:#2B3E47;
+  --rail:#6FB6CE; --rail-soft:#17323D;
+  --green:#63C193; --green-soft:#152E24;
+  --amber:#DCA75A; --amber-soft:#332612;
+  --red:#E8867E; --red-soft:#37201E;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--f-body); font-size:16px; line-height:1.62;
+  -webkit-font-smoothing:antialiased; margin:0;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px 96px;
+  display:grid;grid-template-columns:250px minmax(0,1fr);gap:56px;align-items:start}
+@media(max-width:940px){.wrap{grid-template-columns:1fr;gap:0}}
+
+.mast{grid-column:1/-1;border-bottom:2px solid var(--ink);padding:44px 0 22px;margin-bottom:44px}
+.mast-kicker{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--rail);display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.mast h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.1rem,5.4vw,3.5rem);
+  line-height:1.04;letter-spacing:-.022em;margin:0 0 12px;text-wrap:balance}
+.mast p{margin:0;max-width:64ch;color:var(--ink-2);font-size:1.02rem}
+.mast-meta{margin-top:22px;display:flex;gap:8px;flex-wrap:wrap;
+  font-family:var(--f-mono);font-size:11.5px;color:var(--grey)}
+.mast-meta b{color:var(--ink);font-weight:600}
+.sep{color:var(--hair)}
+
+nav.toc{position:sticky;top:24px;font-size:13.4px;line-height:1.45;max-height:calc(100vh - 48px);overflow-y:auto}
+@media(max-width:940px){nav.toc{position:static;max-height:none;margin-bottom:44px;
+  border:1px solid var(--hair);border-radius:3px;padding:18px 20px;background:var(--surface)}}
+nav.toc h2{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--grey);margin:0 0 14px;font-weight:600}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+nav.toc a{display:grid;grid-template-columns:26px 1fr;gap:8px;padding:5px 8px 5px 8px;
+  color:var(--ink-2);text-decoration:none;border-radius:2px;border-left:2px solid transparent}
+nav.toc a:hover{color:var(--rail);background:var(--rail-soft);border-left-color:var(--rail)}
+nav.toc a:focus-visible{outline:2px solid var(--rail);outline-offset:2px}
+nav.toc .n{font-family:var(--f-mono);font-size:11px;color:var(--grey);padding-top:2px}
+
+main{min-width:0}
+section.chap{scroll-margin-top:20px;margin-bottom:64px}
+.chap-head{border-top:2px solid var(--ink);padding-top:14px;margin-bottom:26px}
+.chap-num{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;color:var(--rail);
+  text-transform:uppercase;display:block;margin-bottom:8px}
+.chap-head h2{font-family:var(--f-display);font-weight:700;font-size:clamp(1.5rem,3.1vw,2.05rem);
+  line-height:1.14;letter-spacing:-.016em;margin:0;text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:600;font-size:1.16rem;line-height:1.28;
+  letter-spacing:-.008em;margin:38px 0 12px;text-wrap:balance}
+h4{font-family:var(--f-body);font-weight:700;font-size:.94rem;letter-spacing:.01em;margin:26px 0 8px}
+p,li{max-width:74ch}
+p{margin:0 0 14px}
+main ul,main ol{margin:0 0 16px;padding-left:22px;display:flex;flex-direction:column;gap:7px}
+main ol{padding-left:24px}
+li::marker{color:var(--grey)}
+code{font-family:var(--f-mono);font-size:.855em;background:var(--surface-2);
+  padding:.1em .38em;border-radius:2px;color:var(--ink)}
+a{color:var(--rail)}
+hr{border:0;border-top:1px solid var(--hair);margin:34px 0}
+
+.tw{overflow-x:auto;margin:0 0 22px;border:1px solid var(--hair);border-radius:3px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.4px;line-height:1.45}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--hair);vertical-align:top}
+thead th{background:var(--surface-2);font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap;
+  position:sticky;top:0;border-bottom:1.5px solid var(--hair)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600}
+.mx td:not(:first-child),.mx th:not(:first-child){text-align:center}
+.mx td:not(:first-child){font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+.y{color:var(--green);font-weight:700}
+.no{color:var(--grey)}
+caption{caption-side:top;text-align:left;font-family:var(--f-mono);font-size:10.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--grey);padding:10px 13px 8px}
+
+.chip{font-family:var(--f-mono);font-size:11px;padding:1.5px 7px;border-radius:2px;
+  border:1px solid var(--hair);background:var(--surface-2);color:var(--ink-2);
+  white-space:nowrap;display:inline-block;line-height:1.55}
+.chip.ok{background:var(--green-soft);border-color:transparent;color:var(--green)}
+.chip.warn{background:var(--amber-soft);border-color:transparent;color:var(--amber)}
+.chip.bad{background:var(--red-soft);border-color:transparent;color:var(--red)}
+.chip.info{background:var(--rail-soft);border-color:transparent;color:var(--rail)}
+
+.call{border-left:3px solid var(--rail);background:var(--surface);padding:14px 18px;
+  margin:0 0 22px;border-radius:0 3px 3px 0;box-shadow:var(--shadow);max-width:80ch}
+.call p:last-child{margin-bottom:0}
+.call ul{margin-bottom:0}
+.call .lbl{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--rail);font-weight:600;display:block;margin-bottom:6px}
+.call.caution{border-left-color:var(--amber)}
+.call.caution .lbl{color:var(--amber)}
+.call.gap{border-left-color:var(--red)}
+.call.gap .lbl{color:var(--red)}
+.call.tip{border-left-color:var(--green)}
+.call.tip .lbl{color:var(--green)}
+
+.flow{display:flex;flex-wrap:wrap;gap:0;margin:0 0 24px;border:1px solid var(--hair);
+  border-radius:3px;overflow:hidden;background:var(--surface)}
+.flow div{flex:1 1 120px;padding:12px 14px;border-right:1px solid var(--hair);min-width:0}
+.flow div:last-child{border-right:0}
+.flow .s{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;color:var(--grey);
+  text-transform:uppercase;display:block;margin-bottom:5px}
+.flow .t{font-weight:700;font-size:13px;line-height:1.3;display:block}
+.flow .w{font-size:11.5px;color:var(--grey);line-height:1.35;display:block;margin-top:3px}
+
+ol.steps{counter-reset:st;list-style:none;padding-left:0;gap:0}
+ol.steps>li{counter-increment:st;position:relative;padding:0 0 12px 40px;max-width:76ch}
+ol.steps>li::before{content:counter(st,decimal-leading-zero);position:absolute;left:0;top:1px;
+  font-family:var(--f-mono);font-size:11px;color:var(--rail);border:1px solid var(--hair);
+  border-radius:2px;padding:1px 5px;background:var(--surface)}
+
+footer{grid-column:1/-1;border-top:2px solid var(--ink);margin-top:32px;padding-top:20px;
+  font-family:var(--f-mono);font-size:11.5px;color:var(--grey);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.ex{border:1px solid var(--hair);border-radius:3px;background:var(--surface);
+  margin:0 0 24px;overflow:hidden;box-shadow:var(--shadow)}
+.ex-head{background:var(--surface-2);padding:10px 16px;border-bottom:1px solid var(--hair);
+  display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.ex-id{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--rail);font-weight:600}
+.ex-title{font-weight:700;font-size:14px}
+.ex-lvl{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--grey);margin-left:auto}
+.ex-body{padding:16px 18px 6px}
+.ex-body h5{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--grey);margin:0 0 8px;font-weight:600}
+.ex-body h5+*{margin-top:0}
+.ex-sec+.ex-sec{margin-top:18px;padding-top:16px;border-top:1px solid var(--hair)}
+.ex-body ol,.ex-body ul{margin-bottom:10px}
+.ex-body p{margin-bottom:10px}
+.chk{list-style:none;padding-left:0}
+.chk li{position:relative;padding-left:28px}
+.chk li::before{content:"";position:absolute;left:0;top:.42em;width:13px;height:13px;
+  border:1.5px solid var(--hair);border-radius:2px;background:var(--surface)}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="mast-kicker">
+    <span>South Eastern Railway</span><span class="sep">/</span>
+    <span>CRIS</span><span class="sep">/</span>
+    <span>Part B &mdash; Trainer&rsquo;s Manual</span>
+  </div>
+  <h1>SERVMS Training Manual</h1>
+  <p>A trainer-ready programme for the South Eastern Railway Vendor Management System &mdash; session plans, role-specific curricula, hands-on exercises with expected results, and an assessment framework.</p>
+  <div class="mast-meta">
+    <span><b>Edition</b> 1.0</span><span class="sep">&middot;</span>
+    <span><b>Companion to</b> SERVMS User Manual</span><span class="sep">&middot;</span>
+    <span><b>Sessions</b> 9</span><span class="sep">&middot;</span>
+    <span><b>Exercises</b> 24</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#t0"><span class="n">0</span><span>How to Use This Manual</span></a></li>
+    <li><a href="#t1"><span class="n">1</span><span>Training Objectives</span></a></li>
+    <li><a href="#t2"><span class="n">2</span><span>Audience</span></a></li>
+    <li><a href="#t3"><span class="n">3</span><span>Training Plan</span></a></li>
+    <li><a href="#t4"><span class="n">4</span><span>Role-Based Curricula</span></a></li>
+    <li><a href="#t5"><span class="n">5</span><span>Practical Module Training</span></a></li>
+    <li><a href="#t6"><span class="n">6</span><span>Approval Workflow Training</span></a></li>
+    <li><a href="#t7"><span class="n">7</span><span>Data Management Training</span></a></li>
+    <li><a href="#t8"><span class="n">8</span><span>Dashboard &amp; Reports Training</span></a></li>
+    <li><a href="#t9"><span class="n">9</span><span>Troubleshooting Training</span></a></li>
+    <li><a href="#t10"><span class="n">10</span><span>Exercises &amp; Assessment</span></a></li>
+    <li><a href="#t11"><span class="n">11</span><span>Trainer&rsquo;s Notes</span></a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ═══ 0 ═══ -->
+<section class="chap" id="t0">
+  <div class="chap-head"><span class="chap-num">Section 0</span><h2>How to Use This Manual</h2></div>
+
+  <p>This manual is for the person <em>delivering</em> SERVMS training. It assumes the <strong>SERVMS User Manual</strong> is available to every trainee as the reference document, and it does not repeat that manual's field-by-field detail. Where a procedure is fully documented there, this manual points to it and spends its space on how to teach and assess it instead.</p>
+
+  <h3>Before the first session</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Preparation</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Training environment</td><td>A separate SERVMS instance with its own database. <strong>Never train on production</strong> &mdash; every exercise in this manual creates or alters records, and several are irreversible because SERVMS has no edit screen for vendors or users.</td></tr>
+      <tr><td>Training accounts</td><td>One account per trainee at their real role, plus one Super Admin HQ account for the trainer. At least one account must hold Card Signing Authority for Session 5.</td></tr>
+      <tr><td>Seed data</td><td>At least two divisions, four stations, two trains, one cluster, six units, three contractors, ten vendors at mixed verification states, and a handful of complaints, inspections, and penalties spread across the workflow states.</td></tr>
+      <tr><td>Sample files</td><td>A RailMadad Excel export, a completed station import template, two PDFs under 5&nbsp;MB, one PDF over 20&nbsp;MB (to demonstrate rejection), and a PNG signature image.</td></tr>
+      <tr><td>Room</td><td>One desktop per trainee at 1366&times;768 or better, plus a projector. Several screens do not fit comfortably on a laptop.</td></tr>
+      <tr><td>Handouts</td><td>The permission matrix from User Manual &sect;6.3, the exercise sheets from Section 10 of this manual, and the assessment checklist.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Conventions used here</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Marker</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip">EX&ndash;00</span></td><td>Numbered exercise. Each has an Objective, a Demonstration, a Hands-On task, and an Expected Result.</td></tr>
+      <tr><td><span class="chip info">Beginner</span> <span class="chip warn">Intermediate</span> <span class="chip bad">Advanced</span></td><td>Difficulty tier, used to build the assessment in Section 10.</td></tr>
+      <tr><td>&sect;n</td><td>A section of the <strong>SERVMS User Manual</strong>, not of this manual.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call caution"><span class="lbl">Trainers must know this</span>
+    <p>Several things trainees will expect do not exist in SERVMS: self-service password reset, global search, an edit screen for vendors or users, delete for any role but Super Admin HQ, and outbound email or SMS notifications. Deactivating a user does not stop them signing in. These are covered deliberately in Session 9 (Section 9) so trainees hear them from you rather than discovering them under pressure. <strong>Do not let a trainee leave believing a feature exists that does not.</strong></p>
+  </div>
+</section>
+
+<!-- ═══ 1 ═══ -->
+<section class="chap" id="t1">
+  <div class="chap-head"><span class="chap-num">Section 1</span><h2>Training Objectives</h2></div>
+
+  <p>On completion of the programme, each trainee will be able to do the following <strong>within the limits of their own role</strong>.</p>
+
+  <h3>1.1 Universal objectives &mdash; all roles</h3>
+  <ol>
+    <li>Sign in, recognise their role and division scope, and sign out securely.</li>
+    <li>Read the Dashboard, apply its filters, and drill through to a listing.</li>
+    <li>Navigate the sidebar and explain why a colleague's menu differs from theirs.</li>
+    <li>Search, filter, and page through any listing screen they can reach.</li>
+    <li>Interpret a permission error and identify who to route the task to.</li>
+    <li>Use the Notification Centre, and state that SERVMS sends no email or SMS.</li>
+    <li>Escalate a fault with the exact message, screen, and time.</li>
+  </ol>
+
+  <h3>1.2 Role-specific objectives</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Role</th><th>On completion, the trainee can&hellip;</th></tr></thead>
+    <tbody>
+      <tr><td>Super Admin HQ</td><td>Create Admin-tier accounts, edit any role's permission matrix, delete records, and audit any action across every division.</td></tr>
+      <tr><td>HQ Admin</td><td>Manage staff accounts and roles, approve every workflow, manage master data, and export from every module across all divisions.</td></tr>
+      <tr><td>HQ Sub Admin</td><td>Create and edit records across all divisions, approve ID cards where holding signing authority, and export reports.</td></tr>
+      <tr><td>Divisional Admin</td><td>Run their division end to end &mdash; users, masters, vendors, contractors, cards, complaints, inspections, penalties, audit, and reports.</td></tr>
+      <tr><td>Divisional Sub Admin</td><td>Create and edit within their division, approve ID cards where holding signing authority, and prepare work for Admin approval.</td></tr>
+      <tr><td>Inspector</td><td>File, submit, and correct their own inspections, and register complaints.</td></tr>
+      <tr><td>Dealing Section</td><td>Prepare and submit Action Taken Reports for delegated inspections and complaints, record penalty recovery, and export reports.</td></tr>
+      <tr><td>Complaint Cell</td><td>Register, classify, assign, and progress complaints within their division.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ═══ 2 ═══ -->
+<section class="chap" id="t2">
+  <div class="chap-head"><span class="chap-num">Section 2</span><h2>Audience</h2></div>
+
+  <p>Eight roles, three training tracks. Assign each trainee a track by their role.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Track</th><th>Roles</th><th>Sessions</th><th>Total</th></tr></thead>
+    <tbody>
+      <tr><td>A &mdash; Administration</td><td>Super Admin HQ, HQ Admin, Divisional Admin</td><td>1&ndash;9, all</td><td>13 h 30 m</td></tr>
+      <tr><td>B &mdash; Operations</td><td>HQ Sub Admin, Divisional Sub Admin</td><td>1, 2, 3, 4, 5, 6, 7, 9</td><td>11 h 00 m</td></tr>
+      <tr><td>C &mdash; Field</td><td>Inspector, Dealing Section, Complaint Cell</td><td>1, 6, 7, 8, 9</td><td>6 h 30 m</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>2.1 Prior knowledge assumed</h3>
+  <ul>
+    <li>Comfortable using a web browser, filling forms, and attaching files.</li>
+    <li>Familiar with their own division's vendor, contract, and complaint procedures.</li>
+    <li>Understands Excel well enough to complete a supplied template &mdash; needed only for Track A and the RailMadad import in Session 7.</li>
+  </ul>
+  <p>No technical background is required and none of this programme assumes any.</p>
+
+  <h3>2.2 Group size and pacing</h3>
+  <p>Eight to twelve trainees per session. Above twelve, exercises requiring a second person &mdash; every approval exercise &mdash; become hard to supervise. Below six, pair trainees so that both sides of each two-person workflow are practised.</p>
+  <div class="call tip"><span class="lbl">Pairing</span>
+    <p>SERVMS is built around two-person workflows: password reset, transfer, ID card approval, ATR review, and penalty recovery verification. <strong>Seat trainees in pairs from the first session</strong> and keep the pairs constant. Pair A raises, Pair B approves; then swap. A trainee who only ever raises never learns what an approver sees.</p>
+  </div>
+</section>
+
+<!-- ═══ 3 ═══ -->
+<section class="chap" id="t3">
+  <div class="chap-head"><span class="chap-num">Section 3</span><h2>Training Plan</h2></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>Session</th><th>Topic</th><th>Duration</th><th>Target users</th><th>Practical exercise</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Orientation, sign-in, navigation, dashboard</td><td>1 h 00 m</td><td>All roles</td><td>EX&ndash;01 to EX&ndash;04</td></tr>
+      <tr><td>2</td><td>Roles, permissions, and user administration</td><td>2 h 00 m</td><td>Tracks A &amp; B</td><td>EX&ndash;05 to EX&ndash;08</td></tr>
+      <tr><td>3</td><td>Location, unit, and master data</td><td>1 h 30 m</td><td>Tracks A &amp; B</td><td>EX&ndash;09 to EX&ndash;11</td></tr>
+      <tr><td>4</td><td>Contractor and vendor lifecycle</td><td>2 h 00 m</td><td>Tracks A &amp; B</td><td>EX&ndash;12 to EX&ndash;15</td></tr>
+      <tr><td>5</td><td>ID cards, digital signature, and QR verification</td><td>1 h 30 m</td><td>Tracks A &amp; B</td><td>EX&ndash;16 to EX&ndash;18</td></tr>
+      <tr><td>6</td><td>Complaints and the ATR chain</td><td>2 h 00 m</td><td>All roles</td><td>EX&ndash;19, EX&ndash;20</td></tr>
+      <tr><td>7</td><td>Inspections, penalties, and recovery</td><td>2 h 00 m</td><td>All roles</td><td>EX&ndash;21, EX&ndash;22</td></tr>
+      <tr><td>8</td><td>Reports, exports, and audit</td><td>1 h 00 m</td><td>Tracks A &amp; C</td><td>EX&ndash;23</td></tr>
+      <tr><td>9</td><td>Known limitations, troubleshooting, assessment</td><td>1 h 00 m</td><td>All roles</td><td>EX&ndash;24 + assessment</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.1 Suggested two-day schedule &mdash; Track A</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Day</th><th>Morning</th><th>Afternoon</th></tr></thead>
+    <tbody>
+      <tr><td>Day 1</td><td>Session 1 &middot; Session 2</td><td>Session 3 &middot; Session 4</td></tr>
+      <tr><td>Day 2</td><td>Session 5 &middot; Session 6</td><td>Session 7 &middot; Session 8 &middot; Session 9</td></tr>
+    </tbody>
+  </table></div>
+  <p>Track B omits Session 8; Track C runs Sessions 1, 6, 7, 8, and 9 in a single day. Allow fifteen minutes between sessions &mdash; several exercises need one pair to finish before another can begin.</p>
+
+  <h3>3.2 Session structure</h3>
+  <div class="flow">
+    <div><span class="s">10%</span><span class="t">Frame</span><span class="w">What this module is for, in railway terms</span></div>
+    <div><span class="s">30%</span><span class="t">Demonstrate</span><span class="w">Trainer works the screen on the projector</span></div>
+    <div><span class="s">45%</span><span class="t">Practise</span><span class="w">Trainees run the exercises</span></div>
+    <div><span class="s">15%</span><span class="t">Debrief</span><span class="w">Expected results, errors seen, limitations</span></div>
+  </div>
+</section>
+
+<!-- ═══ 4 ═══ -->
+<section class="chap" id="t4">
+  <div class="chap-head"><span class="chap-num">Section 4</span><h2>Role-Based Curricula</h2></div>
+
+  <p>One curriculum per role. Each states what the trainee signs in as, what their Dashboard shows, which modules they reach, what they may do, what approvals they own, which reports they can produce, and &mdash; critically &mdash; what they must <em>not</em> attempt.</p>
+
+  <h3>4.1 Super Admin HQ</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Topic</th><th>Teach</th></tr></thead>
+    <tbody>
+      <tr><td>Sign-in</td><td>Standard sign-in. Emphasise that this account bypasses the permission matrix entirely &mdash; it is the break-glass account and should be used sparingly.</td></tr>
+      <tr><td>Dashboard</td><td>Full HQ view with the division toggle. Demonstrate All vs. a single division vs. HQ (records with no division).</td></tr>
+      <tr><td>Modules</td><td>All thirteen menu items.</td></tr>
+      <tr><td>Allowed actions</td><td>Everything, including the <strong>only</strong> Delete permission in the system, and the exclusive right to create or manage Admin-tier accounts.</td></tr>
+      <tr><td>Approvals owned</td><td>Every approval in every module, plus ID card approval without needing the signing-authority credential.</td></tr>
+      <tr><td>Reports</td><td>All modules, all exports, full audit access.</td></tr>
+      <tr><td>Restrictions</td><td>None technically &mdash; which is the point. Teach restraint: use a Divisional Admin account for routine work and reserve this one for account provisioning, permission changes, and deletions.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.2 HQ Admin</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Topic</th><th>Teach</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard</td><td>Full HQ view with the division toggle.</td></tr>
+      <tr><td>Modules</td><td>All thirteen.</td></tr>
+      <tr><td>Allowed actions</td><td>View, Add, Edit, Approve/Reject, Export across every module. Full authority over Role Management including the permission matrix. Manages complaint and inspection type masters.</td></tr>
+      <tr><td>Approvals owned</td><td>Password resets, transfers, vendor and contractor status, complaint and inspection ATR decisions and closures, penalty approval, rejection, revocation, and recovery verification.</td></tr>
+      <tr><td>Reports</td><td>All eight report modules, all exports, audit log view and export.</td></tr>
+      <tr><td>Restrictions</td><td><strong>No Delete anywhere.</strong> Cannot create or edit Admin-tier accounts &mdash; those go to Super Admin HQ. Cannot approve an ID card without the Card Signing Authority credential.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.3 HQ Sub Admin</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Topic</th><th>Teach</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard</td><td>Full HQ view with the division toggle.</td></tr>
+      <tr><td>Modules</td><td>Eleven &mdash; no Role Management, no Audit Logs.</td></tr>
+      <tr><td>Allowed actions</td><td>View, Add, and Edit across the operational modules; Export on Reports.</td></tr>
+      <tr><td>Approvals owned</td><td><strong>ID card approval only</strong>, and only with the Card Signing Authority credential. Every other approval belongs to the Admin tier.</td></tr>
+      <tr><td>Reports</td><td>View and export.</td></tr>
+      <tr><td>Restrictions</td><td>No Delete. No approvals except ID cards. Cannot see Role Management or Audit Logs. Entitled to manage complaint and inspection type masters, but <strong>the buttons are hidden</strong> &mdash; route type-master changes to an Admin (see Section 9.2).</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.4 Divisional Admin</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Topic</th><th>Teach</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard</td><td><strong>No division toggle.</strong> Every figure is locked to their own division. Make this explicit &mdash; trainees often look for the toggle they saw on the projector.</td></tr>
+      <tr><td>Modules</td><td>All thirteen, division-scoped.</td></tr>
+      <tr><td>Allowed actions</td><td>Same as HQ Admin but confined to one division: View, Add, Edit, Approve/Reject, Export, plus full Role Management including the permission matrix.</td></tr>
+      <tr><td>Approvals owned</td><td>Every approval within their division.</td></tr>
+      <tr><td>Reports</td><td>All modules and exports, division-scoped. Audit log view and export for their own division's activity.</td></tr>
+      <tr><td>Restrictions</td><td>No Delete. Cannot create or edit Admin-tier accounts. Records in other divisions return <em>&ldquo;Record not found&rdquo;</em> &mdash; teach that this means &ldquo;not yours&rdquo;, not &ldquo;does not exist&rdquo;.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.5 Divisional Sub Admin</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Topic</th><th>Teach</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard</td><td>Locked to their own division; no toggle.</td></tr>
+      <tr><td>Modules</td><td>Eleven, division-scoped &mdash; no Role Management, no Audit Logs.</td></tr>
+      <tr><td>Allowed actions</td><td>View, Add, and Edit within their division.</td></tr>
+      <tr><td>Approvals owned</td><td>ID card approval only, with the signing-authority credential, and only for vendors in their own division.</td></tr>
+      <tr><td>Reports</td><td>View only &mdash; <strong>no export permission</strong>. This is the one place Divisional Sub Admin is narrower than HQ Sub Admin.</td></tr>
+      <tr><td>Restrictions</td><td>No Delete. No approvals except ID cards. No exports. Type-master buttons hidden despite entitlement.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.6 Inspector</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Topic</th><th>Teach</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard</td><td>View only. No toggle.</td></tr>
+      <tr><td>Modules</td><td>Nine, almost all read-only: Dashboard, Location Masters, Vendors, Contractors, ID Card / QR, Vendor Renewals, Complaints, Inspections, Penalties, Reports.</td></tr>
+      <tr><td>Allowed actions</td><td><strong>Inspections</strong> &mdash; create, edit, and submit their own. <strong>Complaints</strong> &mdash; register only, no editing. Everything else is read-only.</td></tr>
+      <tr><td>Scope</td><td>The tightest in the system: an Inspector sees <strong>only inspections they filed themselves</strong> &mdash; not their division's, not their station's. Demonstrate this by having two Inspectors compare lists.</td></tr>
+      <tr><td>Approvals owned</td><td>None. An Inspector never approves anything.</td></tr>
+      <tr><td>Reports</td><td>View only. No export.</td></tr>
+      <tr><td>Restrictions</td><td>Cannot assign inspections, decide ATRs, or close cases. Once an inspection is submitted it leaves their control unless a Sub Admin returns it.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.7 Dealing Section</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Topic</th><th>Teach</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard</td><td>View only. No toggle.</td></tr>
+      <tr><td>Modules</td><td>Ten. Read-only on vendors, contractors, units, locations, and ID cards; Edit on complaints, inspections, and penalties.</td></tr>
+      <tr><td>Allowed actions</td><td>Write and submit Action Taken Reports for complaints and inspections. Record penalty recovery &mdash; <strong>a right no other role holds</strong>. Upload recovery documents. Export reports.</td></tr>
+      <tr><td>Scope</td><td>Sees only inspections currently delegated to them. Emphasise that work appears when it is assigned and disappears when it is reassigned.</td></tr>
+      <tr><td>Approvals owned</td><td>None. They <em>prepare</em> reports and record recovery; Admin approves, and a separate approver verifies the recovery.</td></tr>
+      <tr><td>Reports</td><td>View and export.</td></tr>
+      <tr><td>Restrictions</td><td>Cannot create complaints, inspections, or penalties &mdash; only act on existing ones. Cannot approve or close anything. Recovery status can only move forward.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.8 Complaint Cell</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Topic</th><th>Teach</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard</td><td>Locked to their own division; no toggle.</td></tr>
+      <tr><td>Modules</td><td>Six only &mdash; the shortest menu in SERVMS: Dashboard, Location Masters, Vendor Management, Vendor Renewals, Complaints, Reports.</td></tr>
+      <tr><td>Allowed actions</td><td>Complaints &mdash; register, edit, assign, reassign, transfer, submit ATRs. Vendors, units, and locations are read-only.</td></tr>
+      <tr><td>Approvals owned</td><td>None. Complaint closure and ATR decisions belong to the Admin tier.</td></tr>
+      <tr><td>Reports</td><td>View only. No export.</td></tr>
+      <tr><td>Restrictions</td><td>No access to Contractors, ID Cards, Inspections, Penalties, Users, Roles, or Audit Logs. Cannot close a complaint &mdash; teach the hand-off to Admin explicitly, because this is where Complaint Cell work most often stalls.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ═══ 5 ═══ -->
+<section class="chap" id="t5">
+  <div class="chap-head"><span class="chap-num">Section 5</span><h2>Practical Module Training</h2></div>
+
+  <h3>Session 1 &mdash; Orientation, sign-in, navigation, dashboard</h3>
+  <p><strong>1 h 00 m &middot; All roles</strong></p>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;01</span><span class="ex-title">Sign in and identify your scope</span><span class="ex-lvl">Beginner</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Sign in reliably and recognise, from the screen alone, what the account is allowed to see.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <ol class="steps">
+          <li>Open SERVMS. Point out that any address redirects to the login page while signed out.</li>
+          <li>Show the &ldquo;Internal Intranet Access Only&rdquo; badge and explain that vendors never log in.</li>
+          <li>Sign in. Highlight that the field says &ldquo;Employee ID / Username&rdquo; but <strong>only the username works</strong>.</li>
+          <li>On the Dashboard, point to the role tag at the top right and the user badge at the top of the frame.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Sign in with your training account.</li>
+          <li>Write down your role tag and count your sidebar items.</li>
+          <li>Compare with the trainee beside you and note one menu item they have that you do not, or the reverse.</li>
+          <li>Sign out using the button at the foot of the sidebar.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>Sign-in succeeds and lands on the Dashboard. The role tag matches the assigned role. Sidebar counts differ between roles &mdash; thirteen items for an Admin, six for Complaint Cell. Logout returns to the login screen and the browser Back button does not restore the session.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;02</span><span class="ex-title">Read and filter the Dashboard</span><span class="ex-lvl">Beginner</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Interpret the five group cards and the Critical Alerts panel, and narrow them with filters.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <ol class="steps">
+          <li>Walk the five group cards &mdash; Registered Units, Registered Contractors, Registered Vendors, Penalty, Pending Action &mdash; naming each sub-group.</li>
+          <li>For HQ trainees, switch the division toggle and show every figure change. Explain that <strong>HQ</strong> means records with no division at all.</li>
+          <li>Set a From and To date and show the counts narrow.</li>
+          <li>Expand a card to reveal its chart and switch between doughnut, pie, and bar.</li>
+          <li>Walk the seven Critical Alerts cards, explaining what each measures.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Record the total on <strong>Registered Vendors</strong> and its three sub-group figures.</li>
+          <li>Apply a Contractor filter. Record the new totals.</li>
+          <li>Expand the Penalty card and switch to a bar chart.</li>
+          <li>Clear every filter and confirm the original figures return.</li>
+          <li>Find the highest non-zero figure in Critical Alerts and name the module it would send you to.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>Filtered totals are lower than or equal to unfiltered totals. The chart renders and redraws on type change. Clearing filters restores the original figures exactly. The trainee correctly names the destination module for their chosen alert.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;03</span><span class="ex-title">Drill through from a Dashboard figure</span><span class="ex-lvl">Beginner</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Use the Dashboard as a work queue, and recognise the one drill-through that does not reproduce its figure.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <ol class="steps">
+          <li>Press <strong>Penalty &rarr; Overdue</strong>. Show that Penalties opens with recovery-pending and an overdue due-date range already applied.</li>
+          <li>Return to the Dashboard and press <strong>Pending Action &rarr; License Fee Overdue</strong>. Show that Location &amp; Unit Management opens <strong>division-scoped only</strong> &mdash; the figure is not reproduced, because that screen has no licence-fee filter.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Drill through from <strong>Registered Vendors &rarr; Active</strong> and confirm the Validity filter is pre-set to Active.</li>
+          <li>Drill through from any <strong>License Fee</strong> figure and note how many rows appear versus the figure you clicked.</li>
+          <li>State in one sentence why they differ.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>The vendor drill-through arrives with filters pre-applied and a row count consistent with the figure. The licence-fee drill-through arrives with only a division filter and a row count that does not match. The trainee explains that the destination screen has no licence-fee filter and that the Dashboard figure is the authority.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;04</span><span class="ex-title">Prove the permission boundary</span><span class="ex-lvl">Intermediate</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Experience both permission failure modes so neither is mistaken for a fault.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Signed in as Complaint Cell, type <code>/penalties</code> into the address bar. The Dashboard reappears immediately &mdash; the page never renders. Explain that the browser hides what the role cannot use and the server independently refuses it.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Type the address of a module absent from your sidebar. Record what happens.</li>
+          <li>Find an action your role lacks &mdash; a Delete for anyone but Super Admin HQ &mdash; and attempt it. Record the exact message.</li>
+          <li>Divisional trainees: ask a colleague in another division for one of their record codes, search for it, and record the result.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>Address entry redirects silently to the Dashboard. A refused action shows &ldquo;You do not have permission to <em>&lt;action&gt;</em> <em>&lt;module&gt;</em>&rdquo;. A cross-division search returns nothing, or &ldquo;Record not found&rdquo;. The trainee states that this message is deliberately ambiguous between &ldquo;absent&rdquo; and &ldquo;not yours&rdquo;.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h3>Session 2 &mdash; Roles, permissions, and user administration</h3>
+  <p><strong>2 h 00 m &middot; Tracks A &amp; B</strong> &mdash; reference &sect;6, &sect;7, &sect;8</p>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;05</span><span class="ex-title">Create a staff account</span><span class="ex-lvl">Beginner</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Create a working account with correct role and division, and understand what cannot be changed afterwards.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <ol class="steps">
+          <li>Open User Management and walk the columns, especially <strong>Signing Authority</strong> and <strong>Last Login</strong>.</li>
+          <li>Press <strong>+ Add New User</strong>. Type an Employee Number and show Username auto-filling until it is edited directly.</li>
+          <li>State plainly: <strong>there is no edit-user screen.</strong> Everything on this form except role and division is permanent.</li>
+          <li>Complete the form and create the user.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Create an Inspector for your own division. Use <code>TRN-&lt;your initials&gt;</code> as the Employee Number.</li>
+          <li>Set a temporary password of at least six characters and write it down.</li>
+          <li>Give a Designation and a Designation Grade of <strong>Other</strong>, then confirm Card Signing Authority stays disabled.</li>
+          <li>Create the user, then find them with the search box.</li>
+          <li>Export the filtered list to CSV and open it.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>The user appears in the list with Status <strong>Active</strong>, Last Login <strong>Never</strong>, and Signing Authority <strong>&mdash;</strong>. Card Signing Authority remained disabled throughout. The CSV contains the created user with all ten columns. The trainee states that the name and Employee Number cannot now be corrected on screen.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;06</span><span class="ex-title">Grant Card Signing Authority</span><span class="ex-lvl">Intermediate</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Understand that ID card approval rests on a personal credential, not a role.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <ol class="steps">
+          <li>Start a new user with role <strong>Inspector</strong>. Show Card Signing Authority disabled.</li>
+          <li>Change the role to <strong>Divisional Sub Admin</strong>. Still disabled &mdash; the grade is wrong.</li>
+          <li>Set Designation Grade to <strong>JS</strong>. The control enables.</li>
+          <li>Set it to <strong>Yes</strong>; the mandatory <strong>Authority Designation</strong> field appears. Explain that this exact wording is printed on every card this person signs.</li>
+          <li>Upload a PNG signature and explain it is applied automatically at approval.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Create a <strong>Divisional Sub Admin</strong> for your division with grade <strong>SS</strong>.</li>
+          <li>Grant Card Signing Authority and enter an Authority Designation naming your division.</li>
+          <li>Upload the supplied PNG signature.</li>
+          <li>Try to submit with the Authority Designation blank and record the outcome.</li>
+          <li>Complete and create. Confirm the list shows Signing Authority <strong>Yes</strong>.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>Card Signing Authority stays disabled until role and grade both qualify. Submitting with a blank Authority Designation is refused. The created user shows Signing Authority <strong>Yes</strong>. The trainee can state the two conditions for eligibility without prompting.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;07</span><span class="ex-title">Two-person password reset</span><span class="ex-lvl">Intermediate</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Run the full assisted reset and understand why the temporary password must be captured on sight.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Raise a reset for the user created in EX&ndash;05, then approve it from a second account. Read the green banner aloud and stress that this value is displayed <strong>once</strong>, is never emailed, and cannot be retrieved.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on &mdash; in pairs</h5>
+        <ol>
+          <li><strong>Partner A:</strong> find your EX&ndash;05 user, press <strong>Reset Password</strong>, record a reason, and submit.</li>
+          <li><strong>Partner B:</strong> open <strong>Pending Requests &rarr; Password Resets</strong> and confirm the request is listed with A named as requester.</li>
+          <li><strong>Partner B:</strong> press <strong>Approve</strong> and write down the temporary password exactly.</li>
+          <li>Sign in as the reset user in a private window using that password.</li>
+          <li>Look for a screen to change the password. Record what you find.</li>
+          <li>Swap roles and repeat, ending in <strong>Reject</strong> this time.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>The request appears in B's queue. Approval reveals a roughly eight-character password in a green banner. The reset user signs in with it successfully. <strong>No password-change screen exists</strong> &mdash; the temporary password becomes permanent. The rejected request disappears from the pending queue and that user's password is unchanged.</p>
+      </div>
+      <div class="ex-sec"><h5>Trainer&rsquo;s note</h5>
+        <p>Step 5 is the point of the exercise. Trainees must leave knowing there is no self-service password change, so they do not tell a colleague to &ldquo;go and change it&rdquo;.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;08</span><span class="ex-title">Edit a permission matrix and observe the effect</span><span class="ex-lvl">Advanced</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Change a role's permissions safely and see the change reach a signed-in user.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <ol class="steps">
+          <li>Open Role Management and select a role. The matrix loads below the table.</li>
+          <li>Walk the 14 modules against the six action columns.</li>
+          <li>Press <strong>Reset to Default</strong> and explain that it <strong>discards unsaved ticks</strong> &mdash; it does not restore shipped defaults. There is no way back once saved.</li>
+          <li>Untick a View box, save, and show the module vanish from a colleague's sidebar without them signing out.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Hands-on &mdash; in pairs</h5>
+        <ol>
+          <li>Create a role called <code>TRAINING_&lt;initials&gt;</code> with a description.</li>
+          <li>Select it and note that <strong>every box is unticked</strong>.</li>
+          <li>Grant View on Dashboard and Complaints, plus Add on Complaints. Save.</li>
+          <li>Create a user on that role and have your partner sign in as them.</li>
+          <li>Partner: count the sidebar items and try to register a complaint.</li>
+          <li>Owner: grant Edit on Complaints and save. Partner: refresh and confirm the edit action appears.</li>
+          <li>Owner: revoke View on Complaints and save. Partner: report what happens.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>The new role starts with no permissions and its user sees an almost empty sidebar. After the first save, Dashboard and Complaints appear and a complaint can be registered but not edited. After the second, editing works. After the revocation, Complaints disappears from the partner's sidebar without a sign-out.</p>
+      </div>
+      <div class="ex-sec"><h5>Trainer&rsquo;s note</h5>
+        <p>Only ever run this on a role created for training. Emphasise that saving takes effect immediately for every holder of that role &mdash; an accidental save on Divisional Admin can lock a whole division out mid-shift.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h3>Session 3 &mdash; Location, unit, and master data</h3>
+  <p><strong>1 h 30 m &middot; Tracks A &amp; B</strong> &mdash; reference &sect;9</p>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;09</span><span class="ex-title">Build the geography</span><span class="ex-lvl">Beginner</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Create a station, a train, and a cluster, and understand which can be edited later.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Walk the four tabs. Explain the hierarchy: divisions hold stations and trains; clusters group several of either; units sit on a station, a train, or a cluster; vendors sit on a unit. Show that a train record captures both directions in one row.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li><strong>Stations:</strong> add <code>TRN&lt;initials&gt;</code> in your division with a name and platform count.</li>
+          <li><strong>Trains:</strong> add a train with both directions completed.</li>
+          <li><strong>Clusters:</strong> create a Station Cluster containing your new station and one existing station.</li>
+          <li>Edit your station's platform count and save.</li>
+          <li>Look for an edit action on your cluster and record what you find.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>All three records are created and appear in their tabs. The station edit saves. <strong>The Clusters tab offers only Remove</strong> &mdash; there is no edit, so a cluster must be removed and recreated to change it.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;10</span><span class="ex-title">Create a unit</span><span class="ex-lvl">Intermediate</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Create the unit that a contract, a vendor, a complaint, and a penalty will all attach to.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Add a unit. Change Location Type between Station, Train, and Cluster and show the third field switch each time. Explain Contract Type: <strong>Earning</strong> means the contractor pays the railway; <strong>Expenditure</strong> means the railway pays the contractor.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Create a station unit on your EX&ndash;09 station, Contract Type <strong>Earning</strong>, named <code>Stall &lt;initials&gt;</code>.</li>
+          <li>Set an Annual License Fee and attach the supplied sketch.</li>
+          <li>Leave the Contractor unassigned &mdash; it will be linked in Session 4.</li>
+          <li>Create a second unit with Location Type <strong>Cluster</strong> against your EX&ndash;09 cluster.</li>
+          <li>Filter the Units tab by Contract Type <strong>Earning</strong> and confirm both appear.</li>
+          <li>Deactivate the second unit and note the button's exact label.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>Both units are created and visible under the Earning filter. The deactivate button reads <strong>&ldquo;Deactivate unit&rdquo;</strong>, not Delete. The trainee explains that deactivation preserves the unit's history in complaints, inspections, and penalties.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;11</span><span class="ex-title">Bulk-import stations</span><span class="ex-lvl">Intermediate</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Run the only master-data import SERVMS offers, and read its error report.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Open Reports &rarr; Import Management, select <strong>Stations</strong>, and download the template. Point out that the button itself names the four required columns. Note that <strong>Stations is the only importable master</strong>.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Download the Stations template.</li>
+          <li>Add three rows: one valid, one duplicating an existing station code, one with a Division name that does not exist.</li>
+          <li>Upload and record the four summary figures.</li>
+          <li>Read the Error Report and note the row number and reason for the failure.</li>
+          <li>Confirm the entry now appears in Import History.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>Total Records 3, Imported 1, Duplicates 1, Failed 1. The Error Report names the row and its reason. The valid station appears in Location Masters; the duplicate is skipped without overwriting; the invalid row imports nothing. Import History records the file, the user, and the counts.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h3>Session 4 &mdash; Contractor and vendor lifecycle</h3>
+  <p><strong>2 h 00 m &middot; Tracks A &amp; B</strong> &mdash; reference &sect;10, &sect;11</p>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;12</span><span class="ex-title">Register a contractor and assign a unit</span><span class="ex-lvl">Beginner</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Register a contractor correctly first time, knowing which fields become permanent.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <ol class="steps">
+          <li>Walk the Master Contractor Listing and its status values.</li>
+          <li>Open the registration form and note that codes are generated automatically as <code>CON-001</code>.</li>
+          <li>Point out the PAN and GSTIN length rules &mdash; exactly 10 and exactly 15.</li>
+          <li>State plainly: the edit form is narrower than this one. <strong>Company Name, PAN, GSTIN, Registered Address, and Division cannot be changed later.</strong></li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Register <code>&lt;Initials&gt; Catering Services</code> in your division with a full address, a 10-character PAN, a 15-character GSTIN, a licence validity six months ahead, and an annual contract value.</li>
+          <li>Try a 9-character PAN first and record the message.</li>
+          <li>Complete and register.</li>
+          <li>Open the contractor and assign your EX&ndash;10 unit.</li>
+          <li>Confirm the unit count updates, then unassign and re-assign it.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>The 9-character PAN is refused with &ldquo;PAN must be exactly 10 characters&rdquo;. Registration succeeds with an auto-generated code. The unit appears under the contractor and the unit count updates. Unassigning returns the unit to the unassigned pool without deleting it.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;13</span><span class="ex-title">Onboard a vendor through the five-step wizard</span><span class="ex-lvl">Intermediate</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Complete a vendor onboarding, understanding that most of what is entered can never be corrected afterwards.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <ol class="steps">
+          <li>Open the wizard and walk the five steps: Personal Details, Deployment, Verification, Documents, Submit.</li>
+          <li>Show that Station and Unit become required only when the chosen division actually has them &mdash; the labels change to &ldquo;(optional)&rdquo; when it does not.</li>
+          <li>At Step 3, stress that both certificate <strong>numbers</strong> are mandatory while the certificate <strong>files</strong> are not.</li>
+          <li>Stress the <strong>Valid Till</strong> dates: an ID card's expiry is copied from one of them, and a vendor with neither cannot be issued a card at all.</li>
+          <li>State plainly: <strong>there is no edit-vendor screen.</strong> Only status, the two verifications, and unit or contractor transfers can be changed after this wizard.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li><strong>Step 1:</strong> full name, father's name, date of birth, a 12-digit Aadhaar, a blood group, mobile, and address. Attach the supplied photograph and signature.</li>
+          <li>Try an 11-digit Aadhaar first and record the message.</li>
+          <li><strong>Step 2:</strong> vendor type <strong>Station Stall</strong>, your division, your EX&ndash;09 station, your EX&ndash;12 contractor, your EX&ndash;10 unit, and a one-year validity range.</li>
+          <li><strong>Step 3:</strong> complete both verifications as <strong>Verified</strong>, with numbers, issue dates, and Valid Till dates one year ahead. Try a Valid Till before the Issue Date and record the message.</li>
+          <li><strong>Step 4:</strong> attach the supplied PDF as the Aadhaar document.</li>
+          <li><strong>Step 5:</strong> review and submit. Record the generated vendor code.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>The 11-digit Aadhaar is refused with &ldquo;Aadhaar number must be exactly 12 digits&rdquo;. The reversed dates are refused with &ldquo;Valid till date cannot be before the issue date&rdquo;. Submission succeeds with a code in the form <code>V-2026-1234</code>. The vendor appears in the listing with both verifications green. The trainee can name the four things that remain changeable afterwards.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;14</span><span class="ex-title">Update verification and manage documents</span><span class="ex-lvl">Intermediate</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Maintain a vendor's compliance record over time and handle document uploads correctly.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Open a vendor and walk the two verification cards. Press <strong>Update Verification</strong> and complete the form. Then open the documents folder and show upload, view, download, and replace &mdash; noting there is no delete for vendor documents.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Open your EX&ndash;13 vendor and press <strong>Update Verification</strong> on the Medical card.</li>
+          <li>Clear the certificate number and try to save. Record the message.</li>
+          <li>Restore the number, set the status to <strong>Pending</strong>, add remarks, attach a replacement PDF, and save.</li>
+          <li>Confirm the listing's Verification column turns amber for Medical.</li>
+          <li>Open the documents folder and upload the Police Verification document.</li>
+          <li>Try to upload the supplied 20&nbsp;MB+ file and record the message.</li>
+          <li>Press <strong>View</strong> on a PDF and confirm it previews inline.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>A blank certificate number is refused. The saved change turns the listing's Medical indicator amber. The oversized file is refused with a size message. PDFs preview inline. There is <strong>no delete action</strong> on a vendor document &mdash; replacing is the only way to change one.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;15</span><span class="ex-title">Transfer and blacklist a vendor</span><span class="ex-lvl">Advanced</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Move a vendor between units and contractors, and apply the most consequential status change in the module.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Open a vendor's detail view and show the Transfer panel &mdash; two independent transfers, unit and contractor. Then show the Status dropdown, available only with Approve/Reject permission, and the confirmation prompt that Blacklisted raises.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Transfer your EX&ndash;13 vendor to a different unit. Confirm the Unit column changes in the listing.</li>
+          <li>Transfer them to a different contractor. Confirm the Contractor Entity column changes.</li>
+          <li>Set the status to <strong>Blacklisted</strong> and read the confirmation before accepting.</li>
+          <li>Filter the listing by <strong>Blacklisted</strong> and confirm your vendor appears.</li>
+          <li>Set the status back to <strong>Active</strong>.</li>
+          <li>Open Audit Logs and find the two transfers and both status changes.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>Both transfers are reflected immediately in the listing. Blacklisting raises &ldquo;Blacklist this vendor? This should only be done for serious violations.&rdquo; The vendor appears under the Blacklisted filter and returns to Active. Four separate audit entries are found, each naming the trainee.</p>
+      </div>
+      <div class="ex-sec"><h5>Trainer&rsquo;s note</h5>
+        <p>Track C trainees can observe step 6 even though they cannot reach Audit Logs &mdash; project it. Seeing their own name attached to an action is the most effective argument against account sharing you will make all programme.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h3>Session 5 &mdash; ID cards, digital signature, and QR verification</h3>
+  <p><strong>1 h 30 m &middot; Tracks A &amp; B</strong> &mdash; reference &sect;12</p>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;16</span><span class="ex-title">Request an ID card</span><span class="ex-lvl">Beginner</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Raise a card request and understand what determines its expiry date.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <ol class="steps">
+          <li>Open ID Card / QR Management and walk the four card states.</li>
+          <li>Show the two formats: <strong>Format 1 &mdash; Indian Railway</strong> and <strong>Format 2 &mdash; Entry Pass</strong>.</li>
+          <li>Raise a request and explain the <strong>ID Card Expiry Driver</strong> &mdash; the card's expiry is copied from the vendor's medical or police verification Valid Till date.</li>
+          <li>Attempt a request on a vendor with no Valid Till date and show the refusal.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Find your EX&ndash;13 vendor by name in the left-hand list.</li>
+          <li>Note their current card state.</li>
+          <li>Select <strong>Format 2 &mdash; Entry Pass</strong>.</li>
+          <li>Press <strong>Request ID Card</strong> and choose <strong>Use Medical Expiry</strong>.</li>
+          <li>Submit and confirm the state becomes <strong>Pending Sub Admin Approval</strong>.</li>
+          <li>Record who is shown as requester and when.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>The state moves from <em>Not Requested</em> to <em>Pending Sub Admin Approval</em>, showing the trainee's name and the request time. A vendor without a Valid Till date is refused with &ldquo;Cannot use medical expiry &mdash; no valid-till date on file&rdquo;.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;17</span><span class="ex-title">Approve, sign, and download</span><span class="ex-lvl">Advanced</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Exercise the signing-authority credential and see everything one approval produces.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Sign in as the signing authority created in EX&ndash;06 and press <strong>Approve &amp; Sign</strong>. Emphasise that one action applies the signature image, generates the QR, renders the PDF, stamps the issue date, and activates the card. Then show a non-signing Admin account and point out the button is absent.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on &mdash; in pairs</h5>
+        <ol>
+          <li><strong>Partner A</strong> (no signing authority): open the pending card and record which buttons you can see.</li>
+          <li><strong>Partner B</strong> (signing authority): open the same card and press <strong>Approve &amp; Sign</strong>.</li>
+          <li>Confirm the live card preview with QR now renders.</li>
+          <li>Download both formats and open the PDFs.</li>
+          <li>On the printed card, find: the signing authority's name, their Authority Designation, the signature image, and the expiry date.</li>
+          <li>Confirm the expiry matches the vendor's medical Valid Till date.</li>
+          <li>Repeat on a second vendor, this time pressing <strong>Reject</strong> with a reason, and confirm the reason is displayed.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>Partner A sees no Approve or Reject button. Partner B's approval produces the preview and both PDFs. The card carries B's name, the Authority Designation entered in EX&ndash;06, and B's signature image. The expiry matches the medical Valid Till date exactly. The rejected card shows its reason on the panel.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;18</span><span class="ex-title">Verify a card by QR &mdash; and handle a re-issue</span><span class="ex-lvl">Intermediate</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Perform the platform-side check, and understand the risk that a re-issue creates.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Scan an issued card's QR with a phone. Walk the verification page: status, vendor information, validity, days remaining, verification steps. Point out that the page needs no sign-in and that every scan updates &ldquo;Last Checked&rdquo;.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Scan the QR on your EX&ndash;17 card, or open <code>/verify/&lt;card number&gt;</code> in a private window.</li>
+          <li>Confirm the status reads <strong>VALID</strong>.</li>
+          <li>Record every field of vendor information shown. Note which are personally sensitive.</li>
+          <li>Reload and confirm &ldquo;Last Checked&rdquo; has updated.</li>
+          <li>Back in SERVMS, press <strong>Re-issue ID Card</strong> on the same vendor.</li>
+          <li>Reload the verification page and record the status now.</li>
+          <li>Have your signing-authority partner approve it again, then reload once more.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>An issued card reads <strong>VALID</strong>. Vendor information includes the <strong>full Aadhaar number and home address</strong>. &ldquo;Last Checked&rdquo; updates on every load. After re-issue the status reads <strong>NOT ISSUED</strong> &mdash; a vendor mid-re-issue has no verifiable card. After re-approval it reads VALID again.</p>
+      </div>
+      <div class="ex-sec"><h5>Trainer&rsquo;s note</h5>
+        <p>Two points must land here. First: <strong>never re-issue unless a fresh card is genuinely needed</strong>, because the vendor is unverifiable until re-approved. Second: the QR carries full Aadhaar and address in plain text, so a printed card is an identity document and must be handled as one.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h3>Session 6 &mdash; Complaints and the ATR chain</h3>
+  <p><strong>2 h 00 m &middot; All roles</strong> &mdash; reference &sect;14</p>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;19</span><span class="ex-title">Register, classify, and assign a complaint</span><span class="ex-lvl">Beginner</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Take a complaint from intake to assignment, including the source-specific reference rules.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <ol class="steps">
+          <li>Walk the listing, its four breakdown charts, and the seven statuses.</li>
+          <li>Open the registration form and change the source between RailMadad, CPGRAMS, and Manual, showing the reference fields change with it.</li>
+          <li>Show Complaint Sub-Type staying locked until a Type is chosen.</li>
+          <li>Register a complaint, then assign it to a unit.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Press <strong>+ Register Complaint</strong> and choose source <strong>CPGRAMS</strong>.</li>
+          <li>Leave the Portal Registration Number blank and try to continue. Record the message.</li>
+          <li>Enter a portal number, then your division and station.</li>
+          <li>Choose a Complaint Type. Confirm Sub-Type unlocks. Choose a Sub-Type.</li>
+          <li>Select your EX&ndash;10 unit, write a description, and add complainant details.</li>
+          <li>Attach the supplied image as evidence and submit. Record the complaint code.</li>
+          <li>Open the complaint and press <strong>Assign</strong>. Choose a unit, add remarks, and confirm.</li>
+          <li>Confirm the status changed and the assignment history shows one entry.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>The blank portal number is refused with &ldquo;Portal Registration Number is required for CPGRAMS complaints&rdquo;. Sub-Type is locked until a Type is chosen. Registration yields a code in the form <code>CMP-1234</code> at status <strong>Pending</strong>. Assignment moves it to <strong>Assigned</strong> and records one history entry with the remarks. The assignment dialog offers <strong>a unit only</strong> &mdash; there is no way to assign to a named person.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;20</span><span class="ex-title">Run the complaint ATR chain end to end</span><span class="ex-lvl">Advanced</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Move one complaint through every state, including a send-back, using three different accounts.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Project the four-stage chain: submit, review, decide, close. Explain that each stage is a different person and that none can be skipped &mdash; deciding before Sub Admin review is refused.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on &mdash; in threes</h5>
+        <ol>
+          <li><strong>Dealing Section:</strong> open the EX&ndash;19 complaint and submit an ATR with remarks and an attachment. Confirm the status becomes <strong>Action Taken</strong>.</li>
+          <li><strong>Dealing Section:</strong> edit the ATR remarks and save. Confirm it succeeds.</li>
+          <li><strong>Another trainee:</strong> try to edit the same ATR. Record the message.</li>
+          <li><strong>Sub Admin:</strong> try to decide the ATR before reviewing it. Record the message.</li>
+          <li><strong>Sub Admin:</strong> review and forward it. Confirm the status becomes <strong>Under Review</strong>.</li>
+          <li><strong>Admin:</strong> choose <strong>Send Back</strong> with remarks. Confirm the complaint returns to <strong>Assigned</strong>.</li>
+          <li><strong>Dealing Section:</strong> submit a fresh ATR. <strong>Sub Admin:</strong> review it. <strong>Admin:</strong> <strong>Accept</strong> it.</li>
+          <li><strong>Admin:</strong> close the complaint.</li>
+          <li>Read the status history from top to bottom.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>Only the submitter can edit the ATR &mdash; anyone else gets &ldquo;Only the submitter can edit this Action Taken Report&rdquo;. Deciding early is refused with &ldquo;Cannot decide an Action Taken Report before Sub-admin review&rdquo;. The send-back returns the complaint to <strong>Assigned</strong> with remarks prefixed &ldquo;Sent back to Dealing Section:&rdquo;. Acceptance yields <strong>Approved</strong>, and closure yields <strong>Closed</strong> stamped with the closer and time. The status history records all seven transitions with names.</p>
+      </div>
+      <div class="ex-sec"><h5>Trainer&rsquo;s note</h5>
+        <p>This is the single most important exercise in the programme &mdash; the same chain governs inspections. Budget forty minutes and do not cut step 6; the send-back is the path most often needed in real work and least often practised.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h3>Session 7 &mdash; Inspections, penalties, and recovery</h3>
+  <p><strong>2 h 00 m &middot; All roles</strong> &mdash; reference &sect;15, &sect;16</p>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;21</span><span class="ex-title">File, submit, return, and resubmit an inspection</span><span class="ex-lvl">Intermediate</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Complete the inspection cycle and demonstrate the Inspector's uniquely narrow visibility.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Walk the listing and its six breakdown charts. Open the form and identify the four mandatory fields: Date of Inspection, Unit of Inspection, Inspection Category, and Inspection Type. Note that attachments here also accept Word documents, unlike everywhere else in SERVMS.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on &mdash; in pairs</h5>
+        <ol>
+          <li><strong>Inspector A:</strong> file an inspection against your EX&ndash;10 unit with observations, deficiencies, recommendations, priority <strong>High</strong>, and a DOCX attachment. Record the inspection number.</li>
+          <li><strong>Inspector B:</strong> open Inspections and search for A's inspection number. Record the result.</li>
+          <li><strong>Inspector A:</strong> submit the inspection. Confirm the status becomes <strong>Submitted</strong>.</li>
+          <li><strong>Inspector B:</strong> try to submit A's inspection. Record the message.</li>
+          <li><strong>Sub Admin:</strong> return it to the inspector with remarks.</li>
+          <li><strong>Inspector A:</strong> confirm the status is <strong>Returned</strong>, correct the deficiencies, and submit again.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>The number is generated as <code>INSP-2026-000001</code>. <strong>Inspector B cannot find A's inspection at all</strong> &mdash; an Inspector sees only their own. Submitting another Inspector's work is refused with &ldquo;Only the inspector who created this inspection can submit it&rdquo;. The return sets <strong>Returned</strong> and A can edit and resubmit.</p>
+      </div>
+      <div class="ex-sec"><h5>Trainer&rsquo;s note</h5>
+        <p>Step 2 surprises trainees more than anything else in the programme. Inspectors routinely assume they can see their station's or division's inspections. Make the comparison explicit and let it land.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;22</span><span class="ex-title">Impose, approve, recover, and verify a penalty</span><span class="ex-lvl">Advanced</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Run the complete four-stage money trail and experience each rule that guards it.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Project the three independent state families &mdash; approval, recovery, verification &mdash; and stress that recovery only opens after approval, and verification only after full recovery. Note that only <strong>Dealing Section</strong> may record recovery.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on &mdash; in threes</h5>
+        <ol>
+          <li><strong>Admin:</strong> raise a penalty against your EX&ndash;12 contractor. Set Origin to <strong>Inspection</strong> and link the EX&ndash;21 inspection. Amount &#8377;5,000, a due date thirty days ahead, and a reason. Record the penalty code.</li>
+          <li><strong>Dealing Section:</strong> try to record recovery now. Record the message.</li>
+          <li><strong>Admin:</strong> approve the penalty, entering a Recovery Due Date, Penalty Order Number, and Order Date.</li>
+          <li><strong>Dealing Section:</strong> set recovery to <strong>Partially Recovered</strong> with amount 0. Record the message.</li>
+          <li><strong>Dealing Section:</strong> set amount &#8377;2,000 and save.</li>
+          <li><strong>Dealing Section:</strong> try to move recovery back to <strong>Pending</strong>. Record the message.</li>
+          <li><strong>Dealing Section:</strong> set <strong>Recovered</strong> with amount &#8377;2,000. Record the message. Then set &#8377;5,000 with an MR number, date of receipt, and a recovery-proof upload.</li>
+          <li><strong>Admin:</strong> verify the recovery, choosing <strong>Rejected</strong> with remarks. Confirm a <strong>Resubmit recovery</strong> action appears.</li>
+          <li><strong>Dealing Section:</strong> resubmit. <strong>Admin:</strong> verify as <strong>Verified</strong>.</li>
+          <li>Confirm the recovery status is now <strong>closed</strong> and a resolution date is stamped.</li>
+          <li>Open the Dashboard and check the Penalty card reflects the recovery.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>Recovery before approval is refused with &ldquo;Recovery can only be tracked on an approved penalty&rdquo;. Partial recovery at zero is refused. Moving backward is refused with &ldquo;Recovery status cannot move backward&rdquo;. Marking Recovered at &#8377;2,000 is refused with &ldquo;Recovery amount must equal the full penalty amount&rdquo;. A rejected verification leaves recovery at <em>recovered</em> and offers resubmission. A verified recovery sets <strong>closed</strong> with a resolution date, and the Dashboard's Recovered figure increases.</p>
+      </div>
+      <div class="ex-sec"><h5>Trainer&rsquo;s note</h5>
+        <p>Every refusal here is a control, not a defect. Ask the group after each one: <em>what would go wrong if this rule did not exist?</em> That framing converts a frustrating error into an understood safeguard.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h3>Session 8 &mdash; Reports, exports, and audit</h3>
+  <p><strong>1 h 00 m &middot; Tracks A &amp; C</strong> &mdash; reference &sect;17, &sect;18, &sect;20</p>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;23</span><span class="ex-title">Build, save, and export a report; then find yourself in the audit trail</span><span class="ex-lvl">Advanced</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Produce a reusable report and confirm the extraction is recorded.</p></div>
+      <div class="ex-sec"><h5>Demonstration</h5>
+        <p>Open the Report Builder, select a module, choose fields, add a filter, preview, and export. Show that operators change with the field type. Note that only Report Builder exports appear in Export History &mdash; the per-module downloads do not.</p>
+      </div>
+      <div class="ex-sec"><h5>Hands-on</h5>
+        <ol>
+          <li>Open the Report Builder and select <strong>Vendors</strong>.</li>
+          <li>Choose fields covering name, code, contractor, unit, both verification statuses, and validity end.</li>
+          <li>Add a filter restricting to your division.</li>
+          <li>Add a second filter on validity end within the next ninety days.</li>
+          <li>Sort by validity end ascending, then <strong>Preview</strong>. Confirm 20 rows at most.</li>
+          <li>Export as <strong>Excel</strong> and open it. Confirm it is a genuine <code>.xlsx</code>.</li>
+          <li>Save as a template named <code>&lt;Division&gt; Expiring Vendors</code>, marked <strong>Shared</strong>.</li>
+          <li>Open <strong>Saved Reports</strong> and run it. Confirm the usage count increments.</li>
+          <li>Open <strong>Export History</strong> and find your export with its row count.</li>
+          <li>Now export the Vendor listing using <strong>Export to Excel</strong> on Vendor Management. Open the file and note its actual format.</li>
+          <li>Admin trainees: open Audit Logs, filter to today and your user, and find the actions from this session. Expand one entry and read its before and after values.</li>
+          <li>Filter Audit Logs by action <strong>Login</strong> and record the result.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result</h5>
+        <p>The preview returns at most 20 rows. The builder export is a genuine <code>.xlsx</code>; the Vendor Management export is a <strong>CSV despite its Excel label</strong>. The saved template appears under Saved Reports and its usage count increments on each run. Export History records the builder export but <strong>not</strong> the Vendor Management one. The audit trail shows the trainee's own actions with before and after values. <strong>Filtering by Login returns nothing &mdash; sign-ins are not audited.</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h3>Session 9 &mdash; Known limitations, troubleshooting, assessment</h3>
+  <p><strong>1 h 00 m &middot; All roles</strong> &mdash; reference &sect;22, &sect;24</p>
+
+  <div class="ex">
+    <div class="ex-head"><span class="ex-id">EX&ndash;24</span><span class="ex-title">Limitation walk-through</span><span class="ex-lvl">Beginner</span></div>
+    <div class="ex-body">
+      <div class="ex-sec"><h5>Objective</h5><p>Encounter every known limitation under supervision, so none is met for the first time in live service.</p></div>
+      <div class="ex-sec"><h5>Hands-on &mdash; run every step and record the outcome</h5>
+        <ol>
+          <li>Type into the top-bar &ldquo;Search across SERVMS&hellip;&rdquo; field and press Enter.</li>
+          <li>Sign out and press <strong>Forgot Password?</strong> on the login screen.</li>
+          <li>In User Management, look for an edit action on any user.</li>
+          <li>In Vendor Management, look for an edit action on any vendor.</li>
+          <li>Set a training user to <strong>Inactive</strong>, then sign in as them in a private window.</li>
+          <li>In the Notification Centre, switch on Email Alerts, save, and wait for an email.</li>
+          <li>In Role Management, tick several boxes and press <strong>Reset to Default</strong>.</li>
+          <li>In the Clusters tab, look for an edit action.</li>
+          <li>Try to open <code>/settings</code> and <code>/help</code>.</li>
+          <li>Sub Admins: look for the <strong>Manage Types</strong> button on Complaints.</li>
+        </ol>
+      </div>
+      <div class="ex-sec"><h5>Expected result &mdash; every one of these is correct behaviour</h5>
+        <div class="tw"><table>
+          <thead><tr><th>#</th><th>Outcome</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Nothing. There is no global search &mdash; use each module's own search box.</td></tr>
+            <tr><td>2</td><td>Nothing. There is no self-service reset &mdash; ask an administrator (&sect;7.4).</td></tr>
+            <tr><td>3</td><td>No edit action exists. Only Toggle, Reset Password, and Transfer.</td></tr>
+            <tr><td>4</td><td>No edit action exists. Only status, verifications, and transfers can change.</td></tr>
+            <tr><td>5</td><td><strong>Sign-in succeeds.</strong> Deactivation does not block access &mdash; reset the password instead.</td></tr>
+            <tr><td>6</td><td>No email arrives. SERVMS sends none. The preferences are a placeholder.</td></tr>
+            <tr><td>7</td><td>Unsaved ticks are discarded. Shipped defaults are <em>not</em> restored.</td></tr>
+            <tr><td>8</td><td>Only Remove. A cluster must be recreated to change it.</td></tr>
+            <tr><td>9</td><td>Both redirect to the Dashboard. Neither screen exists.</td></tr>
+            <tr><td>10</td><td>The button is absent, although Sub Admins are entitled to use it. Route the request to an Admin.</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="ex-sec"><h5>Trainer&rsquo;s note</h5>
+        <p>Run this as a group with everyone working through it together. Ending on limitations rather than features sends trainees away with accurate expectations, and it is far cheaper than a support call three weeks later.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 6 ═══ -->
+<section class="chap" id="t6">
+  <div class="chap-head"><span class="chap-num">Section 6</span><h2>Approval Workflow Training</h2></div>
+
+  <p>SERVMS contains six distinct approval workflows. Every trainee should be able to name the workflows they participate in and identify the person on the other side of each hand-off.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Workflow</th><th>Raised by</th><th>Decided by</th><th>Exercise</th></tr></thead>
+    <tbody>
+      <tr><td>Password reset</td><td>Anyone with User Management edit</td><td>Anyone with User Management approve</td><td>EX&ndash;07</td></tr>
+      <tr><td>User transfer</td><td>Anyone with User Management edit</td><td>Anyone with User Management approve</td><td>&sect;7.5</td></tr>
+      <tr><td>ID card issue</td><td>Anyone with ID Card add</td><td><strong>Card Signing Authority only</strong></td><td>EX&ndash;16, EX&ndash;17</td></tr>
+      <tr><td>Complaint ATR</td><td>Dealing Section</td><td>Sub Admin reviews &rarr; Admin decides &rarr; Admin closes</td><td>EX&ndash;20</td></tr>
+      <tr><td>Inspection ATR</td><td>Dealing Section</td><td>Sub Admin reviews &rarr; Admin decides &rarr; Admin closes</td><td>EX&ndash;21, &sect;15.7</td></tr>
+      <tr><td>Penalty and recovery</td><td>Admin raises &rarr; Dealing Section recovers</td><td>Admin approves, then verifies the recovery</td><td>EX&ndash;22</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>6.1 Four rules that govern every workflow</h3>
+  <ol>
+    <li><strong>No stage may be skipped.</strong> Deciding an ATR before Sub Admin review is refused; verifying a recovery before full recovery is refused.</li>
+    <li><strong>Remarks are the record.</strong> They are the only free-text explanation of why a decision went the way it did, and they are permanent.</li>
+    <li><strong>Send back rather than reject when the work is fixable.</strong> Rejection ends the case; send-back returns it for correction. Trainees over-use rejection.</li>
+    <li><strong>Decisions cannot be undone.</strong> Only penalties offer any reversal, through revocation, and only from the approved state.</li>
+  </ol>
+
+  <h3>6.2 Group exercise &mdash; the hand-off map</h3>
+  <p>Fifteen minutes, whole group. Give each trainee a card naming a role. Read out a scenario and ask the group to arrange themselves in the order the work passes between them.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Scenario</th><th>Correct sequence</th></tr></thead>
+    <tbody>
+      <tr><td>A passenger complains about a platform stall</td><td>Complaint Cell registers and assigns &rarr; Dealing Section submits the ATR &rarr; Sub Admin reviews &rarr; Admin decides &rarr; Admin closes</td></tr>
+      <tr><td>An inspection finds a deficiency warranting a fine</td><td>Inspector files and submits &rarr; Sub Admin returns or forwards &rarr; Admin assigns &rarr; Dealing Section submits the ATR &rarr; Sub Admin reviews &rarr; Admin decides &rarr; Admin raises the penalty &rarr; Admin approves it &rarr; Dealing Section records recovery &rarr; Admin verifies</td></tr>
+      <tr><td>A new vendor needs an ID card</td><td>Sub Admin onboards the vendor &rarr; completes both verifications &rarr; requests the card &rarr; Card Signing Authority approves and signs &rarr; card downloaded and printed</td></tr>
+      <tr><td>A member of staff has forgotten their password</td><td>Any administrator raises the request &rarr; a second administrator approves &rarr; the temporary password is relayed in person</td></tr>
+    </tbody>
+  </table></div>
+  <p>The second scenario is the longest chain in SERVMS at ten hand-offs. Trainees who can trace it end to end have understood the system.</p>
+</section>
+
+<!-- ═══ 7 ═══ -->
+<section class="chap" id="t7">
+  <div class="chap-head"><span class="chap-num">Section 7</span><h2>Data Management Training</h2></div>
+
+  <h3>7.1 The golden rule</h3>
+  <div class="call caution"><span class="lbl">Teach this first, every session</span>
+    <p><strong>SERVMS has no edit screen for vendors or for users.</strong> What is typed into the vendor onboarding wizard and the Add New User form is, in practice, permanent. Correcting a misspelled name requires a database change through the CRIS support desk.</p>
+    <p>Train the habit of a <strong>read-back before submit</strong>: on the final step of the vendor wizard and before creating a user, read the name, identity number, and mobile aloud against the source document. Thirty seconds there saves a support ticket.</p>
+  </div>
+
+  <h3>7.2 What can be changed after creation</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Record</th><th>Changeable</th><th>Permanent</th></tr></thead>
+    <tbody>
+      <tr><td>User</td><td>Status (toggle), password (assisted reset), role and division (transfer)</td><td>Name, Employee Number, username, HRMS ID, designation, grade, email, mobile, station, signing authority, signature</td></tr>
+      <tr><td>Vendor</td><td>Status, police verification, medical verification, unit, contractor</td><td>Name, father's name, date of birth, Aadhaar, mobile, address, blood group, vendor type, photograph, signature, validity dates</td></tr>
+      <tr><td>Contractor</td><td>Contact, mobile, email, licence number and validity, registration fee, award date, tenure, contract value, status</td><td>Company name, PAN, GSTIN, registered address, division</td></tr>
+      <tr><td>Unit</td><td>Everything, through the edit form</td><td>&mdash;</td></tr>
+      <tr><td>Station, Train</td><td>Everything, through the edit form</td><td>&mdash;</td></tr>
+      <tr><td>Cluster</td><td>Nothing &mdash; remove and recreate</td><td>Name, type, membership</td></tr>
+      <tr><td>Complaint</td><td>Priority and limited fields; unit by assignment or transfer</td><td>Source and reference numbers</td></tr>
+      <tr><td>Inspection</td><td>Everything while Draft or Returned</td><td>Locked once submitted</td></tr>
+      <tr><td>Penalty</td><td>Amount, due date, reason, remarks while pending; recovery details afterwards</td><td>Contractor, origin link</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>7.3 Search and filter practice</h3>
+  <p>Ten minutes, individually. On any listing the trainee can reach:</p>
+  <ol>
+    <li>Find one record using the search box alone.</li>
+    <li>Find the same record using filters alone, with the search box empty.</li>
+    <li>Combine both to narrow to a single row.</li>
+    <li>Clear everything and confirm the full list returns.</li>
+    <li>Page to the last page and back.</li>
+  </ol>
+  <p>Point out that some screens filter in the browser across the whole list &mdash; Users, ID Cards &mdash; while others ask the server page by page. The visible difference is that server-filtered screens briefly show &ldquo;Loading&hellip;&rdquo;.</p>
+
+  <h3>7.4 Master data discipline</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Master</th><th>Who maintains it</th><th>Guidance</th></tr></thead>
+    <tbody>
+      <tr><td>Stations, Trains, Clusters, Units</td><td>Admin and Sub Admin tiers</td><td>Deactivate rather than remove wherever the option exists &mdash; history depends on it.</td></tr>
+      <tr><td>Complaint Type / Sub-Type</td><td>Admin tier in practice (Sub Admins are entitled but the button is hidden)</td><td>Review after every RailMadad import &mdash; unrecognised types are <strong>added automatically</strong> and will accumulate near-duplicates if not curated.</td></tr>
+      <tr><td>Inspection Category / Type</td><td>Same</td><td>Deactivate obsolete types rather than deleting; existing inspections still reference them.</td></tr>
+      <tr><td>Contract Category</td><td>Admin Module permission &mdash; Super Admin HQ and HQ Admin only</td><td><strong>No management screen exists.</strong> Changes require a direct API call through the support desk.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>7.5 Import practice</h3>
+  <p>Twenty minutes, Track A. Beyond EX&ndash;11:</p>
+  <ol>
+    <li>Import a RailMadad Excel export and record the four summary figures.</li>
+    <li>Import the identical file again. Confirm every row is now counted as a duplicate and nothing is imported twice.</li>
+    <li>Open the Complaint Type master and find any type added automatically by the import.</li>
+    <li>Decide as a group whether it should be kept, renamed, or deactivated.</li>
+  </ol>
+  <p>Step 2 is the reassurance trainees need: re-running an import is safe. Step 3 is the responsibility that comes with it.</p>
+</section>
+
+<!-- ═══ 8 ═══ -->
+<section class="chap" id="t8">
+  <div class="chap-head"><span class="chap-num">Section 8</span><h2>Dashboard and Reports Training</h2></div>
+
+  <h3>8.1 Reading the Dashboard as a work queue</h3>
+  <p>Teach the Dashboard as the first screen of the day, not a summary. Each figure answers &ldquo;what needs me today?&rdquo;</p>
+  <div class="tw"><table>
+    <thead><tr><th>If this figure is non-zero&hellip;</th><th>&hellip;someone must act</th></tr></thead>
+    <tbody>
+      <tr><td>Penalty &rarr; Overdue</td><td>Dealing Section chases recovery; Admin reviews the ageing</td></tr>
+      <tr><td>Pending Action &rarr; Complaints Pending ATR</td><td>Dealing Section owes an Action Taken Report</td></tr>
+      <tr><td>Pending Action &rarr; Inspections Pending ATR</td><td>Dealing Section owes an Action Taken Report</td></tr>
+      <tr><td>Critical Alerts &rarr; Contract Expiry, Expired</td><td>Admin renews or suspends the contractor</td></tr>
+      <tr><td>Critical Alerts &rarr; Vendor Compliance PVR / Medical, Expired</td><td>Sub Admin raises a renewal &mdash; those vendors cannot hold a valid card</td></tr>
+      <tr><td>Registered Vendors &rarr; Inactive</td><td>Review whether each should be renewed or removed from service</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>8.2 Interpretation drill</h3>
+  <p>Fifteen minutes, whole group. Project a Dashboard with realistic data and ask:</p>
+  <ol>
+    <li>Which division carries the largest overdue penalty exposure? How would you confirm it?</li>
+    <li>How many vendors would lose a valid ID card in the next thirty days?</li>
+    <li>Do the Pending Action figures represent work owed <em>by</em> this division or <em>to</em> it?</li>
+    <li>Which single figure, reduced to zero, would most improve the division's compliance position?</li>
+    <li>Why might a licence-fee figure not match the list it opens?</li>
+  </ol>
+  <p>Question 3 is the one trainees most often get wrong. Pending Action is work this division owes.</p>
+
+  <h3>8.3 Choosing the right export</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Need</th><th>Use</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>A quick working list from a screen you are already on</td><td>That module's Export button</td><td>Fastest, applies the filters already set</td></tr>
+      <tr><td>More than 2,000 rows</td><td>Report Builder</td><td>Vendor and Penalty exports are capped silently</td></tr>
+      <tr><td>Specific columns, or columns from several angles</td><td>Report Builder</td><td>Only the builder lets you choose fields</td></tr>
+      <tr><td>The same extract every month</td><td>Report Builder &rarr; save as a template</td><td>Reusable, shareable, usage-tracked</td></tr>
+      <tr><td>A genuine <code>.xlsx</code> workbook</td><td>Complaints, Inspections, or Report Builder</td><td>Vendor and Audit &ldquo;Excel&rdquo; buttons produce CSV</td></tr>
+      <tr><td>Evidence of who changed what</td><td>Audit Logs export</td><td>The only export carrying before and after values</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>8.4 Export discipline</h3>
+  <ul>
+    <li>Every export removes data from SERVMS's access controls. Once a spreadsheet leaves, division scoping and permissions no longer apply to it.</li>
+    <li>Vendor exports contain identity data. Store them on railway systems only and delete them when the task is complete.</li>
+    <li>Report Builder exports are logged in Export History with your name. Per-module exports are not, which makes them <em>less</em> accountable, not more discreet.</li>
+    <li>Templates marked <strong>Shared</strong> are visible to colleagues. Share the definition, never the extracted file.</li>
+  </ul>
+</section>
+
+<!-- ═══ 9 ═══ -->
+<section class="chap" id="t9">
+  <div class="chap-head"><span class="chap-num">Section 9</span><h2>Troubleshooting Training</h2></div>
+
+  <h3>9.1 Scenario drills</h3>
+  <p>Work these as a group. Read the scenario, ask what the user sees, then agree the correct action before revealing the answer.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Scenario</th><th>What the user sees</th><th>Correct action</th></tr></thead>
+    <tbody>
+      <tr><td>A colleague cannot sign in and says the system does not recognise them</td><td>&ldquo;User not found!&rdquo;</td><td>They are typing their Employee Number. The field needs their <strong>username</strong> &mdash; look it up in User Management.</td></tr>
+      <tr><td>A user has forgotten their password</td><td>Forgot Password does nothing</td><td>Raise an assisted reset; a second administrator approves it and you relay the temporary password in person.</td></tr>
+      <tr><td>Work is lost part-way through a long form</td><td>&ldquo;Session expired, please log in again&rdquo;</td><td>Sign in again. Teach: save long work in stages; the session is 12 hours and does not warn before it ends.</td></tr>
+      <tr><td>A record a colleague can see returns nothing for you</td><td>Empty list, or &ldquo;Record not found&rdquo;</td><td>It is in another division. Route the task to that division, or to an HQ role.</td></tr>
+      <tr><td>An Inspector cannot see a colleague's inspection</td><td>Empty search result</td><td>Correct. Inspectors see only their own inspections. Ask the author or a Sub Admin.</td></tr>
+      <tr><td>An ID card request is refused</td><td>&ldquo;Cannot use medical expiry &mdash; no valid-till date on file&rdquo;</td><td>Complete the vendor's verification dates, or choose the other expiry driver.</td></tr>
+      <tr><td>An Admin cannot approve an ID card</td><td>No Approve &amp; Sign button</td><td>Card approval needs the Card Signing Authority credential, not just a role. Route to a signing authority.</td></tr>
+      <tr><td>A platform check shows NOT ISSUED for a card the vendor is holding</td><td>Verification page reads NOT ISSUED</td><td>The card was re-issued and is awaiting approval. Have a signing authority approve it. The printed card is not valid meanwhile.</td></tr>
+      <tr><td>An ATR cannot be decided</td><td>&ldquo;Cannot decide an Action Taken Report before Sub-admin review&rdquo;</td><td>A Sub Admin must review and forward it first. No stage can be skipped.</td></tr>
+      <tr><td>An ATR cannot be edited</td><td>&ldquo;Only the submitter can edit this Action Taken Report&rdquo;</td><td>Ask the author to amend it, or send it back for a fresh report.</td></tr>
+      <tr><td>Recovery cannot be marked Recovered</td><td>&ldquo;Recovery amount must equal the full penalty amount&rdquo;</td><td>Use <em>Partially Recovered</em> until the full balance is received.</td></tr>
+      <tr><td>A recovery figure was entered wrongly and is now too high</td><td>&ldquo;Recovery status cannot move backward&rdquo;</td><td>Recovery only advances. Escalate to the support desk &mdash; it cannot be corrected on screen.</td></tr>
+      <tr><td>A departing member of staff was deactivated but still has access</td><td>They sign in normally</td><td><strong>Deactivation does not block sign-in.</strong> Have their password reset to a value they do not know.</td></tr>
+      <tr><td>Nobody was told a penalty was overdue</td><td>No email arrived</td><td>SERVMS sends no email or SMS. Check the Notification Centre and the Dashboard daily.</td></tr>
+      <tr><td>An export appears to be missing rows</td><td>Exactly 2,000 rows</td><td>Vendor and Penalty exports are capped. Use the Report Builder.</td></tr>
+      <tr><td>A permission change was saved and a whole team lost a module</td><td>The module vanished from their sidebars mid-shift</td><td>Restore the ticks and save again. Warn that <strong>Reset to Default does not undo this</strong> &mdash; the original values must be re-entered by hand.</td></tr>
+      <tr><td>Notification badge shows unread items already dealt with</td><td>Badge count is wrong on a different computer</td><td>Read state is stored per browser. Expected behaviour.</td></tr>
+      <tr><td>A document link forwarded to a colleague opened without them signing in</td><td>The file opens for anyone</td><td>Expected &mdash; and a reason not to forward links. Explain the exposure and report the disclosure if the document was sensitive.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>9.2 Escalation</h3>
+  <p>Teach a four-part escalation. A report missing any part will come back for more information.</p>
+  <div class="flow">
+    <div><span class="s">1</span><span class="t">Exact wording</span><span class="w">Type the message verbatim or screenshot it</span></div>
+    <div><span class="s">2</span><span class="t">Where</span><span class="w">Screen name and the record code</span></div>
+    <div><span class="s">3</span><span class="t">When</span><span class="w">Date and time, so the audit trail can be matched</span></div>
+    <div><span class="s">4</span><span class="t">Who</span><span class="w">Your username and role</span></div>
+  </div>
+  <p>Route first to the division administrator, then to the CRIS support desk. Anything involving a suspected compromise, an unexpected permission, or a record the user should not be able to see goes to both immediately.</p>
+</section>
+
+<!-- ═══ 10 ═══ -->
+<section class="chap" id="t10">
+  <div class="chap-head"><span class="chap-num">Section 10</span><h2>Exercises and Assessment</h2></div>
+
+  <h3>10.1 Exercise index</h3>
+  <div class="tw"><table>
+    <thead><tr><th>ID</th><th>Exercise</th><th>Session</th><th>Level</th><th>Tracks</th></tr></thead>
+    <tbody>
+      <tr><td>EX&ndash;01</td><td>Sign in and identify your scope</td><td>1</td><td>Beginner</td><td>A B C</td></tr>
+      <tr><td>EX&ndash;02</td><td>Read and filter the Dashboard</td><td>1</td><td>Beginner</td><td>A B C</td></tr>
+      <tr><td>EX&ndash;03</td><td>Drill through from a Dashboard figure</td><td>1</td><td>Beginner</td><td>A B C</td></tr>
+      <tr><td>EX&ndash;04</td><td>Prove the permission boundary</td><td>1</td><td>Intermediate</td><td>A B C</td></tr>
+      <tr><td>EX&ndash;05</td><td>Create a staff account</td><td>2</td><td>Beginner</td><td>A B</td></tr>
+      <tr><td>EX&ndash;06</td><td>Grant Card Signing Authority</td><td>2</td><td>Intermediate</td><td>A B</td></tr>
+      <tr><td>EX&ndash;07</td><td>Two-person password reset</td><td>2</td><td>Intermediate</td><td>A B</td></tr>
+      <tr><td>EX&ndash;08</td><td>Edit a permission matrix</td><td>2</td><td>Advanced</td><td>A</td></tr>
+      <tr><td>EX&ndash;09</td><td>Build the geography</td><td>3</td><td>Beginner</td><td>A B</td></tr>
+      <tr><td>EX&ndash;10</td><td>Create a unit</td><td>3</td><td>Intermediate</td><td>A B</td></tr>
+      <tr><td>EX&ndash;11</td><td>Bulk-import stations</td><td>3</td><td>Intermediate</td><td>A</td></tr>
+      <tr><td>EX&ndash;12</td><td>Register a contractor and assign a unit</td><td>4</td><td>Beginner</td><td>A B</td></tr>
+      <tr><td>EX&ndash;13</td><td>Onboard a vendor</td><td>4</td><td>Intermediate</td><td>A B</td></tr>
+      <tr><td>EX&ndash;14</td><td>Update verification and manage documents</td><td>4</td><td>Intermediate</td><td>A B</td></tr>
+      <tr><td>EX&ndash;15</td><td>Transfer and blacklist a vendor</td><td>4</td><td>Advanced</td><td>A</td></tr>
+      <tr><td>EX&ndash;16</td><td>Request an ID card</td><td>5</td><td>Beginner</td><td>A B</td></tr>
+      <tr><td>EX&ndash;17</td><td>Approve, sign, and download</td><td>5</td><td>Advanced</td><td>A B</td></tr>
+      <tr><td>EX&ndash;18</td><td>Verify a card by QR and handle a re-issue</td><td>5</td><td>Intermediate</td><td>A B</td></tr>
+      <tr><td>EX&ndash;19</td><td>Register, classify, and assign a complaint</td><td>6</td><td>Beginner</td><td>A B C</td></tr>
+      <tr><td>EX&ndash;20</td><td>Run the complaint ATR chain end to end</td><td>6</td><td>Advanced</td><td>A B C</td></tr>
+      <tr><td>EX&ndash;21</td><td>File, submit, return, resubmit an inspection</td><td>7</td><td>Intermediate</td><td>A B C</td></tr>
+      <tr><td>EX&ndash;22</td><td>Impose, approve, recover, and verify a penalty</td><td>7</td><td>Advanced</td><td>A B C</td></tr>
+      <tr><td>EX&ndash;23</td><td>Build, save, export a report; find yourself in the audit trail</td><td>8</td><td>Advanced</td><td>A C</td></tr>
+      <tr><td>EX&ndash;24</td><td>Limitation walk-through</td><td>9</td><td>Beginner</td><td>A B C</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>10.2 Beginner set &mdash; competence to work supervised</h3>
+  <p>EX&ndash;01, 02, 03, 05, 09, 12, 16, 19, 24. A trainee completing these unaided can operate SERVMS under supervision. They can sign in, navigate, read the Dashboard, search and filter, and create the basic record types their role permits.</p>
+
+  <h3>10.3 Intermediate set &mdash; competence to work unsupervised</h3>
+  <p>EX&ndash;04, 06, 07, 10, 11, 13, 14, 18, 21. Adds two-person workflows, conditional validation, document handling, imports, and the correct interpretation of permission and scope errors.</p>
+
+  <h3>10.4 Advanced set &mdash; competence to supervise others</h3>
+  <p>EX&ndash;08, 15, 17, 20, 22, 23. Covers permission administration, the full ATR chain, ID card signing, the complete penalty money trail, and the audit trail. A trainee who passes these can train others in their own division.</p>
+
+  <h3>10.5 Assessment checklist</h3>
+  <p>Mark each item observed, not claimed. The trainee must perform it while you watch.</p>
+
+  <h4>Universal &mdash; all roles</h4>
+  <ul class="chk">
+    <li>Signs in without assistance and states their own role and division scope</li>
+    <li>Names three modules their role cannot reach and explains why</li>
+    <li>Reads a Dashboard figure and drills through to the corresponding list</li>
+    <li>Searches and filters a listing, then clears both correctly</li>
+    <li>Recognises a permission error and names who to route the task to</li>
+    <li>States that &ldquo;Record not found&rdquo; may mean &ldquo;not in your division&rdquo;</li>
+    <li>Opens the Notification Centre and states that SERVMS sends no email or SMS</li>
+    <li>Signs out deliberately rather than closing the tab</li>
+    <li>Escalates a fault with wording, screen, time, and username</li>
+  </ul>
+
+  <h4>Track A &mdash; Administration</h4>
+  <ul class="chk">
+    <li>Creates a user with correct role and division, and states what is now permanent</li>
+    <li>Grants Card Signing Authority and names both eligibility conditions</li>
+    <li>Raises and approves a password reset, capturing the temporary password on sight</li>
+    <li>States that no self-service password change exists</li>
+    <li>Raises and approves a transfer, and knows the user must sign out and in</li>
+    <li>Edits a permission matrix and states that &ldquo;Reset to Default&rdquo; does not restore defaults</li>
+    <li>States that only Super Admin HQ can delete, and that only Super Admin HQ manages Admin-tier accounts</li>
+    <li>Creates a station, train, cluster, and unit, and knows clusters cannot be edited</li>
+    <li>Runs a station import and reads its error report</li>
+    <li>Registers a contractor and names the five permanent fields</li>
+    <li>Approves and closes a complaint through the full ATR chain</li>
+    <li>Approves a penalty and verifies its recovery</li>
+    <li>Builds, saves, and exports a report, and finds it in Export History</li>
+    <li>Locates their own actions in the audit trail and reads a before/after entry</li>
+    <li>States that sign-ins are not audited</li>
+  </ul>
+
+  <h4>Track B &mdash; Operations</h4>
+  <ul class="chk">
+    <li>Creates a user within their permitted roles</li>
+    <li>Onboards a vendor through all five wizard steps</li>
+    <li>States that no edit-vendor screen exists and names the four changeable items</li>
+    <li>Updates a verification with correct dates and an attachment</li>
+    <li>Uploads, views, and replaces a vendor document</li>
+    <li>Requests an ID card and explains the expiry driver</li>
+    <li>Approves and signs a card <em>(if holding signing authority)</em></li>
+    <li>Verifies a card by QR and explains what a re-issue does to it</li>
+    <li>Reviews and forwards an ATR</li>
+    <li>Returns an inspection to its author with remarks</li>
+    <li>States that type-master buttons are hidden from them and knows the workaround</li>
+  </ul>
+
+  <h4>Track C &mdash; Field</h4>
+  <ul class="chk">
+    <li><em>Inspector:</em> files an inspection with all four mandatory fields</li>
+    <li><em>Inspector:</em> submits their own, and states they can see only their own</li>
+    <li><em>Inspector:</em> corrects and resubmits a returned inspection</li>
+    <li><em>Inspector:</em> registers a complaint and states they cannot edit it afterwards</li>
+    <li><em>Dealing Section:</em> submits a complaint ATR and edits it while still pending</li>
+    <li><em>Dealing Section:</em> drafts, edits, and submits an inspection ATR</li>
+    <li><em>Dealing Section:</em> records partial then full recovery with correct amounts</li>
+    <li><em>Dealing Section:</em> uploads a recovery-proof document</li>
+    <li><em>Dealing Section:</em> states that recovery only moves forward</li>
+    <li><em>Complaint Cell:</em> registers a complaint with the right source reference</li>
+    <li><em>Complaint Cell:</em> assigns, reassigns, and transfers a complaint</li>
+    <li><em>Complaint Cell:</em> states they cannot close a complaint and names who can</li>
+  </ul>
+
+  <h3>10.6 Expected outcomes</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Result</th><th>Threshold</th><th>Outcome</th></tr></thead>
+    <tbody>
+      <tr><td>Pass with distinction</td><td>All universal items plus all track items, and the advanced set completed unaided</td><td>Cleared to work unsupervised and to train colleagues in their division</td></tr>
+      <tr><td>Pass</td><td>All universal items plus at least 80% of track items</td><td>Cleared to work unsupervised. Re-test the missed items within thirty days.</td></tr>
+      <tr><td>Provisional</td><td>All universal items, but under 80% of track items</td><td>Supervised working only. Repeat the relevant sessions within fourteen days.</td></tr>
+      <tr><td>Not yet competent</td><td>Any universal item unmet</td><td>Repeat Session 1 and Session 9 before any live access is granted.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call"><span class="lbl">Non-negotiable</span>
+    <p>Three items are mandatory for <em>every</em> outcome above &ldquo;not yet competent&rdquo;, regardless of role, because getting them wrong causes real harm:</p>
+    <ul>
+      <li>Knowing that <strong>deactivating a user does not block sign-in</strong>, and that a password reset is the way to remove access.</li>
+      <li>Knowing that <strong>SERVMS sends no email or SMS</strong>, so the Dashboard and Notification Centre must be checked daily.</li>
+      <li>Knowing that a <strong>printed ID card carries full Aadhaar and address in its QR</strong>, and handling cards accordingly.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ 11 ═══ -->
+<section class="chap" id="t11">
+  <div class="chap-head"><span class="chap-num">Section 11</span><h2>Trainer&rsquo;s Notes</h2></div>
+
+  <h3>11.1 Points trainees consistently miss</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Misconception</th><th>Correction to make explicitly</th></tr></thead>
+    <tbody>
+      <tr><td>&ldquo;I can fix that later&rdquo;</td><td>Not for vendors or users. There is no edit screen. Read back before submitting.</td></tr>
+      <tr><td>&ldquo;Deactivating removes their access&rdquo;</td><td>It does not. Reset the password instead.</td></tr>
+      <tr><td>&ldquo;I&rsquo;ll get an email when it needs me&rdquo;</td><td>You will not. Check the Dashboard and Notification Centre daily.</td></tr>
+      <tr><td>&ldquo;My Admin role lets me sign cards&rdquo;</td><td>Only the Card Signing Authority credential does.</td></tr>
+      <tr><td>&ldquo;Re-issue just prints another copy&rdquo;</td><td>It invalidates the current card until re-approved.</td></tr>
+      <tr><td>&ldquo;I can see my station&rsquo;s inspections&rdquo;</td><td>An Inspector sees only inspections they filed themselves.</td></tr>
+      <tr><td>&ldquo;Reset to Default will undo my mistake&rdquo;</td><td>It discards unsaved ticks only. A bad save must be re-entered by hand.</td></tr>
+      <tr><td>&ldquo;The export gave me everything&rdquo;</td><td>Vendor and Penalty exports stop silently at 2,000 rows.</td></tr>
+      <tr><td>&ldquo;Record not found means it was deleted&rdquo;</td><td>It usually means it belongs to another division.</td></tr>
+      <tr><td>&ldquo;Rejecting the ATR sends it back&rdquo;</td><td>It ends the case. <strong>Send Back</strong> returns it for correction.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>11.2 Timing guidance</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Session</th><th>Usually overruns because&hellip;</th><th>Recover by&hellip;</th></tr></thead>
+    <tbody>
+      <tr><td>2</td><td>EX&ndash;08 requires coordinating three accounts</td><td>Pre-creating the training role and its user before the session</td></tr>
+      <tr><td>4</td><td>The vendor wizard has the most fields in the system</td><td>Pre-filling Steps 1 and 2 on the projector and letting trainees start at Step 3</td></tr>
+      <tr><td>6</td><td>EX&ndash;20 needs three trainees in sequence</td><td>Running two chains in parallel across two groups of three</td></tr>
+      <tr><td>7</td><td>EX&ndash;22 has ten steps and six deliberate refusals</td><td>Never skipping the refusals &mdash; cut EX&ndash;21 to demonstration-only instead</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>11.3 After the session</h3>
+  <ol>
+    <li>Reset the training database before the next cohort. Records created during exercises cannot be deleted by most roles and will accumulate.</li>
+    <li>Deactivate every training account, and <strong>reset its password</strong> &mdash; deactivation alone leaves it usable.</li>
+    <li>Collect the assessment checklists and record outcomes against each trainee's role.</li>
+    <li>Pass any newly discovered defect to the CRIS support desk with the four-part escalation from Section 9.2.</li>
+    <li>Confirm every trainee holds a copy of the <strong>SERVMS User Manual</strong> before they begin live work.</li>
+  </ol>
+</section>
+
+</main>
+
+<footer>
+  <span>SERVMS Training Manual &middot; Edition 1.0</span>
+  <span>Companion to the SERVMS User Manual</span>
+</footer>
+
+</div>

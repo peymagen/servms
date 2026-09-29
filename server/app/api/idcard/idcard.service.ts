@@ -5,8 +5,14 @@ import path from "path";
 import { renderIdCardPdf, buildQrText } from "./idcard.pdf";
 import { type CardExpirySource, type CardTemplate, type IQrPayload } from "./idcard.dto";
 
-const FE_BASE_URL = process.env.FE_BASE_URL ?? "http://localhost:5173";
+const FE_BASE_URL = process.env.FE_BASE_URL ?? "servms.peymagen.com";
 const PDF_DIR = path.join(process.cwd(), "uploads", "idcards");
+
+// Fallback shown on the public verify page for any card that has no
+// per-card excel_status_link of its own — lets a site-wide status sheet work
+// out of the box while still letting an individual card be pointed at its own
+// sheet later (see updateIdCardStatusLink) without needing to touch this env var.
+const DEFAULT_STATUS_EXCEL_URL = process.env.IDCARD_STATUS_EXCEL_URL || null;
 
 const VENDOR_TYPE_LABELS: Record<string, string> = {
   train_tsv: "Train TSV",
@@ -56,14 +62,14 @@ export const getIdCards = async (filters: {
   const query = `
     SELECT
       v.id as vendor_id, v.vendor_code, v.full_name, v.vendor_type, v.profile_image, v.blood_group,
-      v.address, v.aadhaar_number,
+      v.address, v.aadhaar_number, v.mobile_number,
       v.validity_start, v.validity_end, v.police_verification_status, v.medical_verification_status,
       v.police_verification_valid_till, v.medical_verification_valid_till,
       c.company_name as contractor_name, c.primary_contact_mobile as contractor_mobile,
       u.unit_name, st.station_name, d.division_name,
       ic.id, ic.template, ic.id_number, ic.issued_date, ic.cards_status,
       ic.approval_status, ic.requested_by, ic.requested_at, ic.approved_by, ic.approved_at,
-      ic.expiry_source, ic.expiry_date, ic.signature_applied, ic.pdf_path, ic.last_checked_at,
+      ic.expiry_source, ic.expiry_date, ic.signature_applied, ic.pdf_path, ic.excel_status_link, ic.last_checked_at,
       reqUser.full_name as requested_by_name, appUser.full_name as approved_by_name,
       appUser.designation as approved_by_designation
     FROM vendors v
@@ -193,6 +199,7 @@ const buildCardPayload = (
     contract_valid_from: vendor.validity_start,
     contract_valid_to: vendor.validity_end,
     date_of_issue: issuedDate,
+    excel_status_link: card.excel_status_link || DEFAULT_STATUS_EXCEL_URL,
   };
 
   const data = {
@@ -201,6 +208,9 @@ const buildCardPayload = (
     vendorTypeLabel: VENDOR_TYPE_LABELS[vendor.vendor_type] ?? vendor.vendor_type,
     contractorName: vendor.contractor_name,
     contractorMobile: vendor.contractor_mobile,
+    // The card prints the vendor's own mobile number (entered at registration),
+    // not the contractor's — otherwise every vendor under one contractor shows the same number.
+    vendorMobile: vendor.mobile_number,
     unitName: vendor.unit_name,
     stationName: vendor.station_name,
     divisionName: vendor.division_name,
@@ -280,6 +290,21 @@ export const approveIdCard = async (
   return { vendor_id: Number(vendorId), id_number: card.id_number, pdf_path: pdfPath };
 };
 
+// Lets an admin point an individual card's "Check ID Card Status" link at its own
+// Excel sheet — a URL here always wins over DEFAULT_STATUS_EXCEL_URL for that card,
+// and can be changed at any time without touching the already-printed/scanned QR code.
+export const updateIdCardStatusLink = async (vendorId: string, excelStatusLink: string | null) => {
+  const card = await getCardRow(vendorId);
+  if (!card) throw new Error("No ID card found for this vendor");
+
+  await pool.execute("UPDATE vendor_id_cards SET excel_status_link = ? WHERE vendor_id = ?", [
+    excelStatusLink,
+    vendorId,
+  ]);
+
+  return { vendor_id: Number(vendorId), excel_status_link: excelStatusLink };
+};
+
 export const rejectIdCard = async (
   vendorId: string,
   approverUserId: number,
@@ -352,7 +377,7 @@ export const verifyIdCard = async (idNumberOrCode: string) => {
       c.company_name as contractor_name,
       u.unit_name, st.station_name, d.division_name,
       ic.id_number, ic.template, ic.cards_status, ic.approval_status, ic.expiry_date,
-      ic.signature_applied, ic.issued_date, ic.last_checked_at,
+      ic.signature_applied, ic.issued_date, ic.excel_status_link, ic.last_checked_at,
       appUser.full_name as issuing_authority_name,
       COALESCE(appUser.card_signing_authority_designation, appUser.designation) as issuing_authority_designation
     FROM vendor_id_cards ic
@@ -372,5 +397,5 @@ export const verifyIdCard = async (idNumberOrCode: string) => {
 
   await pool.execute("UPDATE vendor_id_cards SET last_checked_at = NOW() WHERE id_number = ?", [card.id_number]);
 
-  return card;
+  return { ...card, excel_status_link: card.excel_status_link || DEFAULT_STATUS_EXCEL_URL };
 };

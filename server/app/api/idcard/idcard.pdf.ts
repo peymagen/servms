@@ -26,6 +26,7 @@ export interface IdCardRenderData {
   vendorTypeLabel: string;
   contractorName: string | null;
   contractorMobile: string | null;
+  vendorMobile: string | null;
   unitName: string | null;
   stationName: string | null;
   divisionName: string | null;
@@ -107,6 +108,7 @@ export function buildQrText(payload: IQrPayload): string {
     `Validity of ID Card: ${qrFmtDate(payload.id_card_validity)}`,
     `Issuing Authority: ${issuingAuthority}`,
     `Verify: ${payload.verification_url}`,
+    ...(payload.excel_status_link ? [`Check ID Card Status: ${payload.excel_status_link}`] : []),
   ].join("\n");
 }
 
@@ -286,7 +288,7 @@ function drawBackFace(
   let cursorY = qrY - 20;
   drawCentered(page, data.department ?? "—", centerX, cursorY, bold, 9, DARK);
   cursorY -= 14;
-  drawCentered(page, data.contractorMobile ?? "—", centerX, cursorY, bold, 11, ORANGE);
+  drawCentered(page, data.vendorMobile ?? "—", centerX, cursorY, bold, 11, ORANGE);
 
   cursorY -= 18;
   const lines = [
@@ -392,7 +394,7 @@ function drawBackFaceFormat1(
   let cursorY = qrY - 24;
   drawCentered(page, data.department ?? "—", centerX, cursorY, bold, 11, DARK);
   cursorY -= 18;
-  drawCentered(page, data.contractorMobile ?? "—", centerX, cursorY, bold, 12, ORANGE);
+  drawCentered(page, data.vendorMobile ?? "—", centerX, cursorY, bold, 12, ORANGE);
   cursorY -= 16;
   drawCentered(page, maskAadhaar(data.aadhaarNumber), centerX, cursorY, bold, 10, DARK);
 

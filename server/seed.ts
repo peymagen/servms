@@ -48,9 +48,7 @@ async function main() {
       { code: "KGP", name: "Kharagpur Division" },
       { code: "ADRA", name: "Adra Division" },
       { code: "CKP", name: "Chakradharpur Division" },
-      { code: "RNC", name: "Ranchi Division" },
-      { code: "TATA", name: "Tatanagar Division" },
-      { code: "HLD", name: "Haldia Division" }
+      { code: "RNC", name: "Ranchi Division" }
     ];
 
     const divisionIds: Record<string, number> = {};
@@ -68,10 +66,8 @@ async function main() {
       { code: "KGP", name: "Kharagpur Junction", divCode: "KGP" },
       { code: "SRC", name: "Santragachi", divCode: "KGP" },
       { code: "BKSC", name: "Bokaro Steel City", divCode: "ADRA" },
-      { code: "TATA", name: "Tatanagar", divCode: "TATA" },
       { code: "RNC", name: "Ranchi", divCode: "RNC" },
-      { code: "HWH", name: "Howrah Station", divCode: "KGP" },
-      { code: "HLD", name: "Haldia Station", divCode: "HLD" }
+      { code: "HWH", name: "Howrah Station", divCode: "KGP" }
     ];
 
     const stationIds: Record<string, number> = {};
@@ -92,7 +88,7 @@ async function main() {
       { key: "divisional_admin", name: "divisional_admin", desc: "Divisional Admin — full access within a single division" },
       { key: "divisional_sub_admin", name: "divisional_sub_admin", desc: "Divisional Sub Admin — limited access within a division" },
       { key: "inspector", name: "inspector", desc: "Inspector — creates inspections, limited dashboard access" },
-      { key: "dealing_section", name: "dealing_section", desc: "Dealing Section — ATR, recovery, and reports" },
+      { key: "dealing_section", name: "dealing_section", desc: "Dealing Section — same powers as Divisional Admin, within own division" },
       { key: "complaint_cell", name: "complaint_cell", desc: "Complaint Cell — complaint module only" },
     ] as const;
 
@@ -212,16 +208,20 @@ async function main() {
         reports: [1, 0, 0, 0, 0, 0],
         dashboard: [1, 0, 0, 0, 0, 0],
       },
+      // Dealing Section has the same powers as Divisional Admin (within its own division).
       dealing_section: {
-        vendor_management: [1, 0, 0, 0, 0, 0],
-        contractor_management: [1, 0, 0, 0, 0, 0],
-        unit_management: [1, 0, 0, 0, 0, 0],
-        location_management: [1, 0, 0, 0, 0, 0],
-        id_card_management: [1, 0, 0, 0, 0, 0],
-        penalty_management: [1, 0, 1, 0, 0, 0],
-        complaint_management: [1, 0, 1, 0, 0, 0],
-        inspection_management: [1, 0, 1, 0, 0, 0],
-        reports: [1, 0, 0, 0, 0, 1],
+        user_management: [1, 1, 1, 0, 1, 1],
+        role_management: FULL,
+        vendor_management: [1, 1, 1, 0, 1, 1],
+        contractor_management: [1, 1, 1, 0, 1, 1],
+        unit_management: [1, 1, 1, 0, 1, 1],
+        location_management: [1, 1, 1, 0, 1, 1],
+        id_card_management: [1, 1, 1, 0, 1, 1],
+        penalty_management: [1, 1, 1, 0, 1, 1],
+        complaint_management: [1, 1, 1, 0, 1, 1],
+        inspection_management: [1, 1, 1, 0, 1, 1],
+        audit_logs: [1, 0, 0, 0, 0, 1],
+        reports: [1, 1, 1, 0, 1, 1],
         dashboard: [1, 0, 0, 0, 0, 0],
       },
       complaint_cell: {
@@ -296,7 +296,7 @@ async function main() {
         mobile: "9830033333",
         role_id: adminRoleId, // DIVISION ADMIN (admin)
         division_id: divisionIds["CKP"],
-        station_id: stationIds["TATA"],
+        station_id: null,
         designation: "Section Officer",
         status: "inactive"
       },
@@ -355,7 +355,7 @@ async function main() {
     const divisionalAdmins = [
       { username: "admin_kgp", name: "R. Prasad", email: "kgp_admin@cris.org.in", divCode: "KGP", stCode: "KGP", designationGrade: "JS", cardSigningAuthority: 1 },
       { username: "admin_adra", name: "B. K. Sharma", email: "adra_admin@cris.org.in", divCode: "ADRA", stCode: "BKSC", designationGrade: "JS", cardSigningAuthority: 1 },
-      { username: "admin_ckp", name: "S. K. Roy", email: "ckp_admin@cris.org.in", divCode: "CKP", stCode: "TATA", designationGrade: "JS", cardSigningAuthority: 1 },
+      { username: "admin_ckp", name: "S. K. Roy", email: "ckp_admin@cris.org.in", divCode: "CKP", stCode: null, designationGrade: "JS", cardSigningAuthority: 1 },
       { username: "admin_rnc", name: "A. K. Mehta", email: "rnc_admin@cris.org.in", divCode: "RNC", stCode: "RNC", designationGrade: "JS", cardSigningAuthority: 1 }
     ];
 
@@ -373,13 +373,41 @@ async function main() {
           passwordHash,
           adminRoleId,
           divisionIds[adm.divCode],
-          stationIds[adm.stCode],
+          adm.stCode ? stationIds[adm.stCode] : null,
           "Divisional Administrator",
           adm.designationGrade,
           adm.cardSigningAuthority
         ]
       );
       userIds[adm.username] = (res as any).insertId;
+    }
+
+    // Dealing Section — one per division, mapped to exactly that division.
+    const dealingSections = [
+      { username: "dealing_kgp", name: "Kharagpur Dealing", divCode: "KGP" },
+      { username: "dealing_adra", name: "Adra Dealing", divCode: "ADRA" },
+      { username: "dealing_ckp", name: "Chakradharpur Dealing", divCode: "CKP" },
+      { username: "dealing_rnc", name: "Ranchi Dealing", divCode: "RNC" },
+    ];
+
+    for (const ds of dealingSections) {
+      const [res] = await pool.execute(
+        `INSERT INTO users
+        (employee_id, username, full_name, email, mobile, password_hash, is_temp_password, role_id, division_id, station_id, designation)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, NULL, ?)`,
+        [
+          `EMP-${ds.username.toUpperCase()}`,
+          ds.username,
+          ds.name,
+          `${ds.divCode.toLowerCase()}_dealing@cris.org.in`,
+          "9876543211",
+          passwordHash,
+          roleIds["dealing_section"],
+          divisionIds[ds.divCode],
+          "Dealing Section",
+        ]
+      );
+      userIds[ds.username] = (res as any).insertId;
     }
 
     // 8. Insert Contractors
@@ -414,8 +442,6 @@ async function main() {
       { code: "UNT-SRC-01", name: "Santragachi Platform 2 Snack Corner", stationCode: "SRC", contractorCode: "CON-007" },
       { code: "UNT-BKSC-01", name: "Bokaro Platform 1 Refreshment Room", stationCode: "BKSC", contractorCode: "CON-002" },
       { code: "UNT-BKSC-02", name: "Bokaro Platform 2 Fruit Stall", stationCode: "BKSC", contractorCode: "CON-008" },
-      { code: "UNT-TATA-01", name: "Tatanagar Platform 1 Main Pantry", stationCode: "TATA", contractorCode: "CON-003" },
-      { code: "UNT-TATA-02", name: "Tatanagar Platform 3 Food Plaza", stationCode: "TATA", contractorCode: "CON-005" },
       { code: "UNT-RNC-01", name: "Ranchi Platform 1 General Stall", stationCode: "RNC", contractorCode: "CON-003" },
       { code: "UNT-HWH-01", name: "Howrah Platform 17 Fast Food Corner", stationCode: "HWH", contractorCode: "CON-006" }
     ];
@@ -477,24 +503,6 @@ async function main() {
         validityEnd: "2023-10-15",
         pvrStatus: "verified",
         medicalStatus: "pending"
-      },
-      {
-        code: "V-2024-0943",
-        name: "Rajesh Jha",
-        father: "Devendra Jha",
-        dob: "1988-12-10",
-        aadhaar: "123456789012",
-        mobile: "9431109876",
-        email: "rajesh.jha@gmail.com",
-        contractorCode: "CON-003",
-        unitCode: "UNT-TATA-01",
-        stationCode: "TATA",
-        divCode: "CKP",
-        status: "active",
-        validityStart: "2023-06-25",
-        validityEnd: "2024-06-24",
-        pvrStatus: "pending",
-        medicalStatus: "verified"
       },
       {
         code: "V-2024-1288",
@@ -575,16 +583,6 @@ async function main() {
         status: "open"
       },
       {
-        code: "CMP-88214",
-        unitCode: "UNT-TATA-01",
-        category: "Overcharging",
-        desc: "Charging ₹30 for a bottle of water which has MRP ₹15.",
-        date: "2023-10-23",
-        time: "16:45:00",
-        priority: "medium",
-        status: "investigating"
-      },
-      {
         code: "CMP-88198",
         unitCode: "UNT-RNC-01",
         category: "Vendor Misbehavior",
@@ -639,17 +637,6 @@ async function main() {
         status: "recovered",
         issuedDate: "2024-01-10",
         adminUser: "admin_kgp"
-      },
-      {
-        code: "PNL-2024-0015",
-        contractorCode: "CON-005", // Rail Bhojan
-        vendorCode: null,
-        unitCode: "UNT-TATA-02",
-        amount: 12500.00,
-        reason: "OVERCHARGING: Charging extra for tea and biscuits.",
-        status: "pending",
-        issuedDate: "2024-02-12",
-        adminUser: "admin_ckp"
       },
       {
         code: "PNL-2024-0792",
@@ -711,9 +698,7 @@ async function main() {
       { unitCode: "UNT-KGP-01", inspectorUser: "kiran_maurya", date: "2024-05-10", result: "satisfactory", remarks: "Hygiene is good." },
       { unitCode: "UNT-KGP-02", inspectorUser: "kiran_maurya", date: "2024-05-12", result: "minor_issues", remarks: "Slight dust on counters." },
       { unitCode: "UNT-SRC-01", inspectorUser: "rina_tiwari", date: "2024-05-15", result: "satisfactory", remarks: "All vendors have valid cards." },
-      { unitCode: "UNT-BKSC-01", inspectorUser: "kiran_maurya", date: "2024-05-18", result: "critical_failure", remarks: "Unauthorized vendors found." },
-      { unitCode: "UNT-TATA-01", inspectorUser: "kiran_maurya", date: "2024-05-20", result: "satisfactory", remarks: "Excellent compliance." },
-      { unitCode: "UNT-TATA-02", inspectorUser: "kiran_maurya", date: "2024-05-22", result: "minor_issues", remarks: "Prices not displayed clearly." }
+      { unitCode: "UNT-BKSC-01", inspectorUser: "kiran_maurya", date: "2024-05-18", result: "critical_failure", remarks: "Unauthorized vendors found." }
     ];
 
     for (const insp of inspections) {
